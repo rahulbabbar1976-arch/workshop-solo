@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mechanic Speech-to-Text Log</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-color: #f8fafc;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --danger-color: #ef4444;
+            --danger-hover: #dc2626;
+            --border-color: #334155;
+            --success-color: #10b981;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        select {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 16px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        .btn-danger:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .status-box {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-style: italic;
+            color: #94a3b8;
+            text-align: center;
+        }
+
+        .transcript-container {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .transcript-final {
+            color: var(--text-color);
+        }
+
+        .transcript-interim {
+            color: #94a3b8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: rgba(0,0,0,0.2);
+            font-weight: 600;
+        }
+
+        .type-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-part {
+            background-color: #8b5cf6;
+            color: white;
+        }
+
+        .badge-labor {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .badge-unknown {
+            background-color: #f59e0b;
+            color: white;
+        }
+
+        /* Pulse animation for recording */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .recording {
+            animation: pulse 1.5s infinite;
+            background-color: var(--danger-color) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Mechanic Speech Log (v4 - Continuous Discussion)</h1>
+
+        <div class="controls">
+            <select id="languageSelect">
+                <option value="en-US">English (US)</option>
+                <option value="hi-IN">Hindi (India)</option>
+                <option value="es-ES">Spanish (Spain)</option>
+            </select>
+
+            <button id="btnDiscussion" class="btn-primary">
+                🎤 Start Discussion
+            </button>
+        </div>
+
+        <div class="status-box" id="statusText">
+            Ready to record. Click "Start Discussion" and speak freely about the parts changed and labor performed.
+        </div>
+
+        <h3>Live Transcript:</h3>
+        <div class="transcript-container" id="transcriptContainer">
+            <span id="finalTranscript" class="transcript-final"></span>
+            <span id="interimTranscript" class="transcript-interim"></span>
+        </div>
+
+        <h3>Extracted Items (Prototype AI):</h3>
+        <table id="logTable">
+            <thead>
+                <tr>
+                    <th style="width: 15%">Type</th>
+                    <th style="width: 70%">Description</th>
+                    <th style="width: 15%">Action</th>
+                </tr>
+            </thead>
+            <tbody id="logTableBody">
+                <!-- Rows will be added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const statusText = document.getElementById('statusText');
+        const languageSelect = document.getElementById('languageSelect');
+        const btnDiscussion = document.getElementById('btnDiscussion');
+        const finalTranscriptSpan = document.getElementById('finalTranscript');
+        const interimTranscriptSpan = document.getElementById('interimTranscript');
+        const logTableBody = document.getElementById('logTableBody');
+        const transcriptContainer = document.getElementById('transcriptContainer');
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            statusText.innerText = "Speech Recognition API is not supported in this browser. Please use Google Chrome.";
+            statusText.style.color = "red";
+            btnDiscussion.disabled = true;
+        }
+
+        let recognition = null;
+        let isRecording = false;
+        let finalTranscriptString = "";
+
+        // Expanded keyword dictionary for better prototype extraction
+        const keywords = {
+            part: ['part', 'filter', 'belt', 'battery', 'pad', 'rotor', 'router', 'oil', 'fluid', 'coolant', 'tire', 'tyre', 'wiper', 'bulb', 'alternator', 'starter', 'pump', 'hose', 'wire', 'wiring', 'gasket', 'sensor', 'plug', 'brake', 'engine', 'transmission', 'suspension', 'exhaust'],
+            labor: ['labor', 'work', 'did', 'fixed', 'aligned', 'rotated', 'changed', 'repaired', 'repair', 'checked', 'replaced', 'installed', 'put in', 'new', 'faced', 'service', 'inspect', 'clean', 'remove', 'diagnose', 'test']
+        };
+
+        function toggleDiscussion() {
+            if (isRecording) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+
+        function startListening() {
+            if (!SpeechRecognition) return;
+
+            const lang = languageSelect.value;
+            recognition = new SpeechRecognition();
+            recognition.lang = lang;
+            recognition.continuous = true;  // Keep listening until stopped
+            recognition.interimResults = true; // Show results while speaking
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                isRecording = true;
+                btnDiscussion.classList.add('recording');
+                btnDiscussion.innerHTML = '🛑 Stop Discussion';
+                statusText.innerText = "Listening continuously... (Speak naturally)";
+                languageSelect.disabled = true;
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscriptString = "";
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript;
+                    
+                    if (event.results[i].isFinal) {
+                        finalTranscriptString += transcript + " ";
+                        // When a sentence/phrase is final, process it for extraction
+                        processPhrase(transcript);
+                    } else {
+                        interimTranscriptString += transcript;
+                    }
+                }
+
+                // Update UI
+                finalTranscriptSpan.innerText = finalTranscriptString;
+                interimTranscriptSpan.innerText = interimTranscriptString;
+                
+                // Auto scroll to bottom
+                transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Recognition error: ", event.error);
+                if (event.error === 'not-allowed') {
+                    statusText.innerHTML = `<span style="color:red">Microphone blocked!</span> Please allow permissions.`;
+                    stopListening(true);
+                } else if (event.error === 'no-speech') {
+                    // Ignore no-speech in continuous mode, it will restart automatically if needed
+                }
+            };
+
+            recognition.onend = () => {
+                // If it ended automatically but the user didn't click stop, restart it
+                if (isRecording) {
+                    console.log("Mic stopped automatically, restarting...");
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Failed to restart", e);
+                        stopListening(true);
+                    }
+                }
+            };
+
+            recognition.start();
+        }
+
+        function stopListening(force = false) {
+            isRecording = false;
+            btnDiscussion.classList.remove('recording');
+            btnDiscussion.innerHTML = '🎤 Start Discussion';
+            languageSelect.disabled = false;
+            statusText.innerText = "Discussion stopped. Ready for next session.";
+            
+            if (recognition) {
+                recognition.stop();
+            }
+        }
+
+        // Extremely basic AI prototype for extracting parts/labor from a raw phrase
+        function processPhrase(phrase) {
+            if (!phrase || phrase.trim() === "") return;
+            
+            const lowerPhrase = phrase.toLowerCase();
+            
+            let isPart = keywords.part.some(kw => lowerPhrase.includes(kw));
+            let isLabor = keywords.labor.some(kw => lowerPhrase.includes(kw));
+            
+            let type = "Uncategorized";
+            
+            if (isPart && isLabor) {
+                type = "Part & Labor";
+            } else if (isPart) {
+                type = "Part";
+            } else if (isLabor) {
+                type = "Labor";
+            } else if (phrase.split(' ').length <= 4) {
+                // Fallback: If it's a very short phrase (e.g. "Front bumper"), guess it's a part
+                type = "Part (Guessed)";
+            }
+            
+            addRowToTable(type, phrase.trim());
+        }
+
+        function addRowToTable(type, description) {
+            const row = document.createElement('tr');
+            
+            let badgeClass = 'badge-unknown';
+            if (type.includes('Part')) badgeClass = 'badge-part';
+            if (type.includes('Labor') && !type.includes('Part')) badgeClass = 'badge-labor';
+            if (type === 'Part & Labor') badgeClass = 'badge-primary'; // Uses the blue color for combined
+
+            row.innerHTML = `
+                <td><span class="type-badge ${badgeClass}">${type}</span></td>
+                <td>${description}</td>
+                <td><button class="btn-danger" onclick="this.closest('tr').remove()">Delete</button></td>
+            `;
+            
+            logTableBody.insertBefore(row, logTableBody.firstChild);
+        }
+
+        // Event Listeners
+        btnDiscussion.addEventListener('click', toggleDiscussion);
+
+    </script>
+</body>
+</html>
