@@ -1,98 +1,123 @@
 datasource db {
-  provider = "sqlite"
+  provider  = "postgresql"
 }
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  status    String   @default("ACTIVE") // PENDING, ACTIVE, SUSPENDED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  customers        Customer[]
+  vehicles         Vehicle[]
+  jobCards         JobCard[]
+  parts            PartsMaster[]
+  labour           LabourMaster[]
+  complaints       JobCardComplaint[]
+  workflowSettings WorkflowSettings[]
+}
+
+model TenantInvite {
+  id         String    @id @default(uuid())
+  identifier String    @unique // email or mobile
+  isClaimed  Boolean   @default(false)
+  claimedAt  DateTime?
+  createdAt  DateTime  @default(now())
 }
 
 // 4. Setup and control tables
 
 model WorkshopProfile {
-  id                    String             @id @default(uuid())
-  workshopName          String
-  brandName             String?
-  logoUrl               String?
-  addressLine1          String
-  addressLine2          String?
-  city                  String?
-  state                 String?
-  postalCode            String?
-  country               String             @default("IN")
-  mobile                String?
-  email                 String?
-  website               String?
-  salesTaxId            String?
-  incomeTaxId           String?
-  workshopTimings       String?
-  invoiceFooterText     String?
-  termsConditionsText   String?
-  whatsappTemplateText  String?
-  showCompanyName       Boolean            @default(true)
-  showCompanyAddress     Boolean            @default(true)
-  showCompanyContact     Boolean            @default(true)
-  showCompanyTaxId       Boolean            @default(true)
-  showCompanyLogo        Boolean            @default(true)
-  showGstRates          Boolean            @default(true)
-  showCompanyDetails     Boolean            @default(true)
-  geminiApiKey          String?            @default("")
-  currencyCode          String             @default("INR")
-  distanceUnit          String             @default("km")
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  id                   String   @id @default(uuid())
+  workshopName         String
+  brandName            String?
+  logoUrl              String?
+  addressLine1         String
+  addressLine2         String?
+  city                 String?
+  state                String?
+  postalCode           String?
+  country              String   @default("IN")
+  mobile               String?
+  email                String?
+  website              String?
+  salesTaxId           String?
+  incomeTaxId          String?
+  workshopTimings      String?
+  invoiceFooterText    String?
+  termsConditionsText  String?
+  whatsappTemplateText String?
+  showCompanyName      Boolean  @default(true)
+  showCompanyAddress   Boolean  @default(true)
+  showCompanyContact   Boolean  @default(true)
+  showCompanyTaxId     Boolean  @default(true)
+  showCompanyLogo      Boolean  @default(true)
+  showGstRates         Boolean  @default(true)
+  showCompanyDetails   Boolean  @default(true)
+  geminiApiKey         String?  @default("")
+  currencyCode         String   @default("INR")
+  distanceUnit         String   @default("km")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  taxSettings           TaxSettings[]
-  numberingSettings     NumberingSettings[]
-  printSettings         PrintSettings[]
-  documentTemplates     DocumentTemplate[]
+  taxSettings       TaxSettings[]
+  numberingSettings NumberingSettings[]
+  printSettings     PrintSettings[]
+  documentTemplates DocumentTemplate[]
 }
 
 model DocumentTemplate {
-  id                String          @id @default(uuid())
+  id                String   @id @default(uuid())
   workshopProfileId String
-  documentType      String          // e.g. JOBCARD, ESTIMATE, INVOICE, DELIVERY_SLIP
-  fontFamily        String          @default("Arial")
-  baseFontSize      String          @default("10pt")
-  primaryColor      String          @default("#000000")
-  secondaryColor    String          @default("#555555")
-  showLogo          Boolean         @default(true)
+  documentType      String // e.g. JOBCARD, ESTIMATE, INVOICE, DELIVERY_SLIP
+  fontFamily        String   @default("Arial")
+  baseFontSize      String   @default("10pt")
+  primaryColor      String   @default("#000000")
+  secondaryColor    String   @default("#555555")
+  showLogo          Boolean  @default(true)
   headerText        String?
   footerText        String?
-  layoutConfig      String          // JSON string for section order
-  columnsConfig     String          // JSON string for column toggles
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  layoutConfig      String // JSON string for section order
+  columnsConfig     String // JSON string for column toggles
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  workshopProfile   WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
+  workshopProfile WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
 
   @@unique([workshopProfileId, documentType])
 }
 
 model TaxSettings {
-  id                  String          @id @default(uuid())
+  id                  String   @id @default(uuid())
   workshopProfileId   String
-  defaultTaxMode      String          @default("exclusive") // exclusive / inclusive
-  intrastateCgstRate  Float           @default(9.00)
-  intrastateSgstRate  Float           @default(9.00)
-  interstateIgstRate  Float           @default(18.00)
-  defaultDiscountMode String          @default("line_item") // line_item / overall / both
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  defaultTaxMode      String   @default("exclusive") // exclusive / inclusive
+  intrastateCgstRate  Float    @default(9.00)
+  intrastateSgstRate  Float    @default(9.00)
+  interstateIgstRate  Float    @default(18.00)
+  defaultDiscountMode String   @default("line_item") // line_item / overall / both
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  workshopProfile     WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
+  workshopProfile WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
 }
 
 model NumberingSettings {
-  id                    String          @id @default(uuid())
-  workshopProfileId     String
-  estimateNumberFormat  String          @default("EST-{YYYY}-{####}")
-  jobcardNumberFormat   String          @default("JC-{YYYY}-{####}")
-  partsOrderNumberFormat String         @default("PO-{YYYY}-{####}")
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  id                     String   @id @default(uuid())
+  workshopProfileId      String
+  estimateNumberFormat   String   @default("EST-{YYYY}-{####}")
+  jobcardNumberFormat    String   @default("JC-{YYYY}-{####}")
+  partsOrderNumberFormat String   @default("PO-{YYYY}-{####}")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  workshopProfile       WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
+  workshopProfile WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
 }
 
 model FeatureFlags {
@@ -100,98 +125,102 @@ model FeatureFlags {
   featureKey  String   @unique
   featureName String
   isEnabled   Boolean  @default(true)
-  configJson  String?  // JSON string
+  configJson  String? // JSON string
   updatedAt   DateTime @updatedAt
 }
 
 model WorkflowSettings {
-  id                        String   @id @default(uuid())
-  mandatoryOdometer         Boolean  @default(true)
-  mandatorySignature        Boolean  @default(true)
-  mandatoryPhotos           Boolean  @default(true)
-  minimumIntakePhotoCount   Int      @default(4)
-  managerApprovalBeforePrint Boolean @default(false)
-  lockAfterClose            Boolean  @default(true)
-  allowReopenClosedJob      Boolean  @default(true)
-  duplicateVehicleAction    String   @default("warn") // warn / block
-  duplicateCustomerAction   String   @default("warn") // warn / block
-  importedJobsReadOnly      Boolean  @default(true)
-  updatedAt                 DateTime @updatedAt
+  id                         String   @id @default(uuid())
+  mandatoryOdometer          Boolean  @default(true)
+  mandatorySignature         Boolean  @default(true)
+  mandatoryPhotos            Boolean  @default(true)
+  minimumIntakePhotoCount    Int      @default(4)
+  managerApprovalBeforePrint Boolean  @default(false)
+  lockAfterClose             Boolean  @default(true)
+  allowReopenClosedJob       Boolean  @default(true)
+  duplicateVehicleAction     String   @default("warn") // warn / block
+  duplicateCustomerAction    String   @default("warn") // warn / block
+  importedJobsReadOnly       Boolean  @default(true)
+  updatedAt                  DateTime @updatedAt
+  tenantId                   String?
+  tenant                     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model PrintSettings {
-  id                        String          @id @default(uuid())
+  id                        String  @id @default(uuid())
   workshopProfileId         String
-  showTaxByDefault          Boolean         @default(true)
-  showDiscountByDefault     Boolean         @default(true)
-  includeSignature          Boolean         @default(true)
-  includeIntakePhotos       Boolean         @default(true)
-  includeWorkPhotos         Boolean         @default(false)
-  includeDeliveryPhotos     Boolean         @default(false)
-  showPartsLabourSeparately  Boolean         @default(true)
-  
+  showTaxByDefault          Boolean @default(true)
+  showDiscountByDefault     Boolean @default(true)
+  includeSignature          Boolean @default(true)
+  includeIntakePhotos       Boolean @default(true)
+  includeWorkPhotos         Boolean @default(false)
+  includeDeliveryPhotos     Boolean @default(false)
+  showPartsLabourSeparately Boolean @default(true)
+
   // Section (Row) Visibility Options
-  showCustomerDetails       Boolean         @default(true)
-  showVehicleDetails        Boolean         @default(true)
-  showLabourTable           Boolean         @default(true)
-  showPartsTable            Boolean         @default(true)
-  showSummary               Boolean         @default(true)
-  showSignatureSection      Boolean         @default(true)
-  showTermsConditions       Boolean         @default(true)
-  showLocusSigilli          Boolean         @default(true)
-  showDate                  Boolean         @default(true)
-  showStatus                Boolean         @default(true)
-  
+  showCustomerDetails  Boolean @default(true)
+  showVehicleDetails   Boolean @default(true)
+  showLabourTable      Boolean @default(true)
+  showPartsTable       Boolean @default(true)
+  showSummary          Boolean @default(true)
+  showSignatureSection Boolean @default(true)
+  showTermsConditions  Boolean @default(true)
+  showLocusSigilli     Boolean @default(true)
+  showDate             Boolean @default(true)
+  showStatus           Boolean @default(true)
+
   // Column Visibility Options
-  showColPartNo             Boolean         @default(true)
-  showColPartBrand          Boolean         @default(true)
-  showColQty                Boolean         @default(true)
-  showColRate               Boolean         @default(true)
-  showColTaxRate            Boolean         @default(true)
-  showColTotal              Boolean         @default(true)
-  showColDiscount           Boolean         @default(true)
-  
+  showColPartNo    Boolean @default(true)
+  showColPartBrand Boolean @default(true)
+  showColQty       Boolean @default(true)
+  showColRate      Boolean @default(true)
+  showColTaxRate   Boolean @default(true)
+  showColTotal     Boolean @default(true)
+  showColDiscount  Boolean @default(true)
+
   // Custom Print Settings
-  printTemplate             String          @default("classic") // classic / modern / minimalist
-  lineSpacing               Int             @default(0)
-  defaultTerms              String?         @default("")
-  contractorSignatureImage  String?         @default("")
-  showContractorSignature   Boolean         @default(true)
-  showCustomerSignature     Boolean         @default(true)
+  printTemplate            String  @default("classic") // classic / modern / minimalist
+  lineSpacing              Int     @default(0)
+  defaultTerms             String? @default("")
+  contractorSignatureImage String? @default("")
+  showContractorSignature  Boolean @default(true)
+  showCustomerSignature    Boolean @default(true)
 
-  updatedAt                 DateTime        @updatedAt
+  updatedAt DateTime @updatedAt
 
-  workshopProfile           WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
+  workshopProfile WorkshopProfile @relation(fields: [workshopProfileId], references: [id], onDelete: Cascade)
 }
 
 // 5. User, role, and permission tables
 
 model User {
-  id              String       @id @default(uuid())
+  id              String    @id @default(uuid())
   fullName        String
   mobile          String?
   email           String?
   passwordHash    String?
   quickPinHash    String?
   profilePhotoUrl String?
-  skillCategory   String?      // e.g. electrical, mechanical, AC
-  team            String?      // e.g. Team Alpha, Team Beta
-  isActive        Boolean      @default(true)
+  skillCategory   String? // e.g. electrical, mechanical, AC
+  team            String? // e.g. Team Alpha, Team Beta
+  isActive        Boolean   @default(true)
   lastLoginAt     DateTime?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   tenantDb        String?
 
-  roles           UserRole[]
+  roles    UserRole[]
+  tenantId String?
+  tenant   Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Role {
-  id          String     @id @default(uuid())
-  roleKey     String     @unique // admin, manager, advisor, mechanic, parts_manager, accounts
+  id          String  @id @default(uuid())
+  roleKey     String  @unique // admin, manager, advisor, mechanic, parts_manager, accounts
   roleName    String
   description String?
 
-  users       UserRole[]
+  users UserRole[]
 }
 
 model UserRole {
@@ -201,8 +230,8 @@ model UserRole {
   isPrimary Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
 }
@@ -210,78 +239,82 @@ model UserRole {
 // 6. Master tables
 
 model Customer {
-  id               String                    @id @default(uuid())
-  customerCode     String?
-  customerType     String                    @default("retail") // retail / corporate / insurance / dealer
-  displayName      String
-  billingName      String?
-  primaryMobile    String?
-  alternateMobile  String?
-  driverName       String?
-  driverMobile     String?
-  email            String?
-  taxId            String?
-  addressLine1     String?
-  addressLine2     String?
-  city             String?
-  state            String?
-  postalCode       String?
-  country          String?                   @default("IN")
-  notes            String?
-  isActive         Boolean                   @default(true)
-  isPriority       Boolean                   @default(false)
-  sourceSystem     String?
-  sourceRecordId   String?
-  createdAt        DateTime                  @default(now())
-  updatedAt        DateTime                  @updatedAt
+  id              String   @id @default(uuid())
+  customerCode    String?
+  customerType    String   @default("retail") // retail / corporate / insurance / dealer
+  displayName     String
+  billingName     String?
+  primaryMobile   String?
+  alternateMobile String?
+  driverName      String?
+  driverMobile    String?
+  email           String?
+  taxId           String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  postalCode      String?
+  country         String?  @default("IN")
+  notes           String?
+  isActive        Boolean  @default(true)
+  isPriority      Boolean  @default(false)
+  sourceSystem    String?
+  sourceRecordId  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   vehicles         Vehicle[]
   ownershipHistory VehicleOwnershipHistory[]
   jobCards         JobCard[]
+  tenantId         String?
+  tenant           Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Vehicle {
-  id                            String                    @id @default(uuid())
-  vehicleCode                   String?
-  registrationNumberRaw         String
-  registrationNumberNormalized  String                    @unique
-  vin                           String?
-  engineNumber                  String?
-  manufacturer                  String?
-  model                         String?
-  variant                       String?
-  fuelType                      String?
-  color                         String?
-  manufactureYear               Int?
-  batteryDetails                String?
-  batteryMake                   String?
-  batterySerialNumber           String?
-  batteryInstallationDate       DateTime?
-  batteryWarrantyMonths         Int?
-  nextServiceOdometer           Int?
-  currentOdometer               Int?
-  insurerName                   String?
-  insurancePolicyNumber         String?
-  insuranceExpiryDate           DateTime?
-  nextServiceDate               DateTime?
-  emissionInspectionNumber      String?
-  emissionInspectionExpiryDate  DateTime?
-  nextOilChangeDate             DateTime?
-  nextOilChangeDistance         Int?
-  nextTimingBeltChangeDate      DateTime?
-  notes                         String?
-  currentCustomerId             String
-  isActive                      Boolean                   @default(true)
-  sourceSystem                  String?
-  sourceRecordId                String?
-  createdAt                     DateTime                  @default(now())
-  updatedAt                     DateTime                  @updatedAt
+  id                           String    @id @default(uuid())
+  vehicleCode                  String?
+  registrationNumberRaw        String
+  registrationNumberNormalized String    @unique
+  vin                          String?
+  engineNumber                 String?
+  manufacturer                 String?
+  model                        String?
+  variant                      String?
+  fuelType                     String?
+  color                        String?
+  manufactureYear              Int?
+  batteryDetails               String?
+  batteryMake                  String?
+  batterySerialNumber          String?
+  batteryInstallationDate      DateTime?
+  batteryWarrantyMonths        Int?
+  nextServiceOdometer          Int?
+  currentOdometer              Int?
+  insurerName                  String?
+  insurancePolicyNumber        String?
+  insuranceExpiryDate          DateTime?
+  nextServiceDate              DateTime?
+  emissionInspectionNumber     String?
+  emissionInspectionExpiryDate DateTime?
+  nextOilChangeDate            DateTime?
+  nextOilChangeDistance        Int?
+  nextTimingBeltChangeDate     DateTime?
+  notes                        String?
+  currentCustomerId            String
+  isActive                     Boolean   @default(true)
+  sourceSystem                 String?
+  sourceRecordId               String?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
 
-  currentCustomer               Customer                  @relation(fields: [currentCustomerId], references: [id])
-  ownershipHistory              VehicleOwnershipHistory[]
-  jobCards                      JobCard[]
-  reminderEvents                ReminderEvent[]
-  diagnosticsReports            DiagnosticsReport[]
+  currentCustomer    Customer                  @relation(fields: [currentCustomerId], references: [id])
+  ownershipHistory   VehicleOwnershipHistory[]
+  jobCards           JobCard[]
+  reminderEvents     ReminderEvent[]
+  diagnosticsReports DiagnosticsReport[]
+  tenantId           String?
+  tenant             Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model VehicleOwnershipHistory {
@@ -293,12 +326,12 @@ model VehicleOwnershipHistory {
   transferNotes String?
   createdAt     DateTime  @default(now())
 
-  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }
 
 model PartsMaster {
-  id                  String   @id @default(uuid())
+  id                  String    @id @default(uuid())
   partName            String
   itemCode            String?
   sku                 String?
@@ -315,42 +348,44 @@ model PartsMaster {
   unit                String?
   defaultTaxRate      Float?
   defaultSellingPrice Float?
-  stockQuantity       Float?   @default(0)
+  stockQuantity       Float?    @default(0)
   category            String?
-  safetyStock         Float?   @default(2)
+  safetyStock         Float?    @default(2)
   lastUsedAt          DateTime?
   rackNumber          String?
   binNumber           String?
-  isActive            Boolean  @default(true)
+  isActive            Boolean   @default(true)
   sourceSystem        String?
   sourceRecordId      String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  
-  purchases           PartPurchase[]
-  inventoryLedgers    InventoryLedger[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  purchases        PartPurchase[]
+  inventoryLedgers InventoryLedger[]
+  tenant           Tenant?           @relation(fields: [tenantId], references: [id])
+  tenantId         String?
 }
 
 model PartPurchase {
-  id                  String   @id @default(uuid())
-  partMasterId        String
-  partMaster          PartsMaster @relation(fields: [partMasterId], references: [id])
-  dateOfPurchase      DateTime
-  invoiceNumber       String?
-  supplierName        String?
-  supplierContact     String?
-  purchasePrice       Float    @default(0)
-  quantityBought      Float    @default(0)
-  paymentMode         String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id              String      @id @default(uuid())
+  partMasterId    String
+  partMaster      PartsMaster @relation(fields: [partMasterId], references: [id])
+  dateOfPurchase  DateTime
+  invoiceNumber   String?
+  supplierName    String?
+  supplierContact String?
+  purchasePrice   Float       @default(0)
+  quantityBought  Float       @default(0)
+  paymentMode     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }
 
 model LabourMaster {
   id                  String   @id @default(uuid())
   labourName          String
   labourCode          String?
-  unitType            String?  // job / hour / flat
+  unitType            String? // job / hour / flat
   defaultTaxRate      Float?
   defaultSellingPrice Float?
   standardDescription String?
@@ -359,6 +394,8 @@ model LabourMaster {
   sourceRecordId      String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  tenantId            String?
+  tenant              Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model ComplaintIconMaster {
@@ -375,58 +412,60 @@ model JobCardAuditLog {
   id            String   @id @default(uuid())
   jobcardId     String
   userId        String?
-  actionType    String   // e.g., "EDIT_JOBCARD", "ASSIGN_MECHANIC"
-  previousState String?  // JSON snapshot
-  newState      String?  // JSON snapshot
+  actionType    String // e.g., "EDIT_JOBCARD", "ASSIGN_MECHANIC"
+  previousState String? // JSON snapshot
+  newState      String? // JSON snapshot
   timestamp     DateTime @default(now())
 
-  jobCard       JobCard  @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
+  jobCard JobCard @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
 }
 
 // 7. Transaction tables
 
 model JobCard {
-  id                        String              @id @default(uuid())
-  jobcardNumber             String              @unique
+  id                        String    @id @default(uuid())
+  jobcardNumber             String    @unique
   customerId                String
   vehicleId                 String
   advisorId                 String?
   primaryMechanicId         String?
-  status                    String              @default("draft") // draft, open, in_progress, waiting_for_parts, ready_for_review, ready_for_delivery, closed, reopened, legacy_imported_read_only
-  dateIn                    DateTime            @default(now())
+  status                    String    @default("draft") // draft, open, in_progress, waiting_for_parts, ready_for_review, ready_for_delivery, closed, reopened, legacy_imported_read_only
+  dateIn                    DateTime  @default(now())
   expectedDeliveryAt        DateTime?
   closedAt                  DateTime?
   intakeOdometer            Int?
   fuelLevel                 String?
   externalNotes             String?
   internalNotes             String?
-  customerSignatureRequired Boolean             @default(true)
-  intakePhotosRequired      Boolean             @default(true)
-  legacyImportFlag          Boolean             @default(false)
-  readOnlyFlag              Boolean             @default(false)
-  overallDiscountType       String?             // amount / percent
+  customerSignatureRequired Boolean   @default(true)
+  intakePhotosRequired      Boolean   @default(true)
+  legacyImportFlag          Boolean   @default(false)
+  readOnlyFlag              Boolean   @default(false)
+  overallDiscountType       String? // amount / percent
   overallDiscountValue      Float?
-  subtotalAmount            Float?              @default(0)
-  taxAmount                 Float?              @default(0)
-  totalAmount               Float?              @default(0)
+  subtotalAmount            Float?    @default(0)
+  taxAmount                 Float?    @default(0)
+  totalAmount               Float?    @default(0)
   placeOfSupplyState        String?
-  paymentStatus             String?             @default("unpaid") // unpaid / partial / paid
+  paymentStatus             String?   @default("unpaid") // unpaid / partial / paid
   zohoSyncStatus            String?
   sourceSystem              String?
   sourceRecordId            String?
-  createdAt                 DateTime            @default(now())
-  updatedAt                 DateTime            @updatedAt
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
-  customer                  Customer            @relation(fields: [customerId], references: [id])
-  vehicle                   Vehicle             @relation(fields: [vehicleId], references: [id])
-  auditLogs                 JobCardAuditLog[]
-  snapshot                  JobCardSnapshot?
-  mechanics                 JobCardMechanic[]
-  complaints                JobCardComplaint[]
-  labourLines               JobCardLabour[]
-  partLines                 JobCardPart[]
-  media                     JobCardMedia[]
-  diagnostics               DiagnosticsReport[]
+  customer    Customer            @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle             @relation(fields: [vehicleId], references: [id])
+  auditLogs   JobCardAuditLog[]
+  snapshot    JobCardSnapshot?
+  mechanics   JobCardMechanic[]
+  complaints  JobCardComplaint[]
+  labourLines JobCardLabour[]
+  partLines   JobCardPart[]
+  media       JobCardMedia[]
+  diagnostics DiagnosticsReport[]
+  tenantId    String?
+  tenant      Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model JobCardSnapshot {
@@ -447,19 +486,19 @@ model JobCardSnapshot {
   intakeOdometerSnapshot    Int?
   createdAt                 DateTime @default(now())
 
-  jobCard                   JobCard  @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
+  jobCard JobCard @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
 }
 
 model JobCardMechanic {
   id             String    @id @default(uuid())
   jobcardId      String
   mechanicUserId String
-  assignmentRole String?   // electrical / AC / body etc
+  assignmentRole String? // electrical / AC / body etc
   isPrimary      Boolean   @default(false)
   assignedAt     DateTime  @default(now())
   completedAt    DateTime?
 
-  jobCard        JobCard   @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
+  jobCard JobCard @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
 }
 
 model JobCardComplaint {
@@ -477,16 +516,18 @@ model JobCardComplaint {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  jobCard                JobCard  @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
-  icons                  JobCardComplaintIcon[]
+  jobCard  JobCard                @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
+  icons    JobCardComplaintIcon[]
+  tenant   Tenant?                @relation(fields: [tenantId], references: [id])
+  tenantId String?
 }
 
 model JobCardComplaintIcon {
-  id                  String           @id @default(uuid())
-  jobcardComplaintId  String
-  complaintIconId     String
+  id                 String @id @default(uuid())
+  jobcardComplaintId String
+  complaintIconId    String
 
-  complaint           JobCardComplaint @relation(fields: [jobcardComplaintId], references: [id], onDelete: Cascade)
+  complaint JobCardComplaint @relation(fields: [jobcardComplaintId], references: [id], onDelete: Cascade)
 }
 
 model JobCardLabour {
@@ -500,13 +541,13 @@ model JobCardLabour {
   mechanicNote           String?
   sellingPrice           Float?
   taxRate                Float?
-  discountType           String?  // amount / percent
+  discountType           String? // amount / percent
   discountValue          Float?
   quantity               Float    @default(1)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  jobCard                JobCard  @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
+  jobCard JobCard @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
 }
 
 model JobCardPart {
@@ -530,12 +571,12 @@ model JobCardPart {
   dispatchNote       String?
   sellingPrice       Float?
   taxRate            Float?
-  discountType       String?  // amount / percent
+  discountType       String? // amount / percent
   discountValue      Float?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  jobCard            JobCard  @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
+  jobCard JobCard @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
 }
 
 model JobCardMedia {
@@ -544,120 +585,120 @@ model JobCardMedia {
   complaintId      String?
   labourId         String?
   partId           String?
-  mediaType        String    // intake_photo / intake_video / complaint_audio / complaint_video / complaint_photo / delivery_photo / work_photo / signature / diagnostics_file / other
-  phase            String?   // intake / work / delivery / diagnostics
+  mediaType        String // intake_photo / intake_video / complaint_audio / complaint_video / complaint_photo / delivery_photo / work_photo / signature / diagnostics_file / other
+  phase            String? // intake / work / delivery / diagnostics
   fileUrl          String
   fileName         String?
   mimeType         String?
   fileSizeBytes    BigInt?
-  captureLabel     String?   // front, rear, dashboard, etc.
+  captureLabel     String? // front, rear, dashboard, etc.
   capturedByUserId String?
   capturedAt       DateTime?
   createdAt        DateTime  @default(now())
 
-  jobCard          JobCard   @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
+  jobCard JobCard @relation(fields: [jobcardId], references: [id], onDelete: Cascade)
 }
 
 model DiagnosticsReport {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   jobcardId       String?
   vehicleId       String
   mediaId         String?
-  sourceType      String?   // email / bluetooth / manual_upload
-  sourceReference String?   // email subject / device name / etc.
+  sourceType      String? // email / bluetooth / manual_upload
+  sourceReference String? // email subject / device name / etc.
   notes           String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime @default(now())
 
-  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  jobCard         JobCard?  @relation(fields: [jobcardId], references: [id])
+  vehicle Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  jobCard JobCard? @relation(fields: [jobcardId], references: [id])
 }
 
 model ReminderEvent {
   id           String   @id @default(uuid())
   vehicleId    String
-  reminderType String   // next_service / next_oil_change / next_puc / insurance_expiry
+  reminderType String // next_service / next_oil_change / next_puc / insurance_expiry
   dueDate      DateTime
   dueOdometer  Int?
-  sourceType   String?  // manual / import / system
+  sourceType   String? // manual / import / system
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  vehicle      Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
-  id             String   @id @default(uuid())
-  userId         String?
-  moduleName     String   // jobcard / import / settings / etc.
-  actionKey      String   // create / update / delete / merge / close / reopen
-  entityType     String
-  entityId       String
-  oldValuesJson  String?  // JSON string
-  newValuesJson  String?  // JSON string
-  actionNote     String?
-  createdAt      DateTime @default(now())
+  id            String   @id @default(uuid())
+  userId        String?
+  moduleName    String // jobcard / import / settings / etc.
+  actionKey     String // create / update / delete / merge / close / reopen
+  entityType    String
+  entityId      String
+  oldValuesJson String? // JSON string
+  newValuesJson String? // JSON string
+  actionNote    String?
+  createdAt     DateTime @default(now())
 }
 
 model PurchaseOrder {
-  id              String              @id @default(uuid())
-  poNumber        String              @unique
-  status          String              @default("draft") // draft, approved, sent, received, cancelled
-  supplierName    String?             @default("General Vendor")
-  totalAmount     Float               @default(0)
-  notes           String?
-  jobCardId       String?
-  vehicleMake     String?
-  vehicleModel    String?
-  vehicleYear     String?
-  vehicleVin      String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id           String   @id @default(uuid())
+  poNumber     String   @unique
+  status       String   @default("draft") // draft, approved, sent, received, cancelled
+  supplierName String?  @default("General Vendor")
+  totalAmount  Float    @default(0)
+  notes        String?
+  jobCardId    String?
+  vehicleMake  String?
+  vehicleModel String?
+  vehicleYear  String?
+  vehicleVin   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  lines           PurchaseOrderLine[]
+  lines PurchaseOrderLine[]
 }
 
 model PurchaseOrderLine {
-  id              String              @id @default(uuid())
-  purchaseOrderId String
-  partMasterId    String?
-  partName        String
-  partNumber      String?
-  brand           String?
-  category        String?
-  quantity        Float               @default(1)
-  estimatedUnitCost Float             @default(0)
-  totalCost       Float               @default(0)
-  createdAt       DateTime            @default(now())
+  id                String   @id @default(uuid())
+  purchaseOrderId   String
+  partMasterId      String?
+  partName          String
+  partNumber        String?
+  brand             String?
+  category          String?
+  quantity          Float    @default(1)
+  estimatedUnitCost Float    @default(0)
+  totalCost         Float    @default(0)
+  createdAt         DateTime @default(now())
 
-  purchaseOrder   PurchaseOrder       @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 }
 
 model Supplier {
-  id                 String               @id @default(uuid())
-  name               String               @unique
+  id                 String                @id @default(uuid())
+  name               String                @unique
   contactPerson      String?
   mobile             String
   email              String?
   address            String?
   gstin              String?
-  outstandingBalance Float                @default(0)
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  outstandingBalance Float                 @default(0)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
   transactions       SupplierTransaction[]
 }
 
 model SupplierTransaction {
-  id              String   @id @default(uuid())
-  supplierId      String
-  type            String   // purchase, payment, return
-  referenceId     String?  // PO id, Return id, or Payment receipt number
-  amount          Float    // Positive for purchase, negative for payment/return
-  notes           String?
-  paymentMethod   String?  // UPI, Cash, Bank Transfer
-  createdAt       DateTime @default(now())
+  id            String   @id @default(uuid())
+  supplierId    String
+  type          String // purchase, payment, return
+  referenceId   String? // PO id, Return id, or Payment receipt number
+  amount        Float // Positive for purchase, negative for payment/return
+  notes         String?
+  paymentMethod String? // UPI, Cash, Bank Transfer
+  createdAt     DateTime @default(now())
 
-  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 }
 
 model PartReturn {
@@ -676,49 +717,48 @@ model PartReturn {
 }
 
 model PartScanCache {
-  id               String   @id @default(uuid())
-  imageHash        String?  @unique
-  ocrText          String?
-  partDataJson     String?
-  createdAt        DateTime @default(now())
+  id           String   @id @default(uuid())
+  imageHash    String?  @unique
+  ocrText      String?
+  partDataJson String?
+  createdAt    DateTime @default(now())
 }
 
 model PreBooking {
-  id                String    @id @default(uuid())
-  bookingNumber     String    @unique
-  customerName      String
-  customerMobile    String
-  customerEmail     String?
-  regNo             String
-  make              String
-  model             String
-  year              String?
-  bookingType       String    // self_delivery / pick_up
-  bookingDate       DateTime
-  advisorId         String?   // User relation ID
-  team              String?
-  driverId          String?   // User relation ID
-  status            String    @default("pending") // pending / confirmed / checked_in / cancelled
-  notes             String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id             String   @id @default(uuid())
+  bookingNumber  String   @unique
+  customerName   String
+  customerMobile String
+  customerEmail  String?
+  regNo          String
+  make           String
+  model          String
+  year           String?
+  bookingType    String // self_delivery / pick_up
+  bookingDate    DateTime
+  advisorId      String? // User relation ID
+  team           String?
+  driverId       String? // User relation ID
+  status         String   @default("pending") // pending / confirmed / checked_in / cancelled
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
-
 model ImageScanCache {
-  id               String   @id @default(uuid())
-  imageHash        String?  @unique
-  ocrText          String?
-  plateNumber      String?
-  make             String?
-  model            String?
-  createdAt        DateTime @default(now())
+  id          String   @id @default(uuid())
+  imageHash   String?  @unique
+  ocrText     String?
+  plateNumber String?
+  make        String?
+  model       String?
+  createdAt   DateTime @default(now())
 }
 
 model InventoryLedger {
   id              String   @id @default(uuid())
   partMasterId    String
-  transactionType String   // PURCHASE_IN, ISSUE_OUT, ADJUSTMENT
+  transactionType String // PURCHASE_IN, ISSUE_OUT, ADJUSTMENT
   quantity        Float
   runningStock    Float
   vehicleRegNo    String?
@@ -728,54 +768,54 @@ model InventoryLedger {
   transactionDate DateTime @default(now())
   createdAt       DateTime @default(now())
 
-  partMaster      PartsMaster @relation(fields: [partMasterId], references: [id])
+  partMaster PartsMaster @relation(fields: [partMasterId], references: [id])
 }
 
 // ======= ESTIMATES =======
 
 model Estimate {
-  id                String         @id @default(uuid())
-  estimateNumber    String         @unique
-  customerId        String?
-  vehicleId         String?
-  advisorId         String?
-  status            String         @default("draft") // draft / sent / approved / rejected / converted
-  customerName      String
-  customerMobile    String?
-  vehicleRegNo      String?
-  vehicleMake       String?
-  vehicleModel      String?
-  customerNotes     String?
-  internalNotes     String?
-  photos            String?        // JSON array of photo URLs
-  subtotalAmount    Float          @default(0)
-  taxAmount         Float          @default(0)
-  discountAmount    Float          @default(0)
-  totalAmount       Float          @default(0)
-  validityDays      Int            @default(7)
-  convertedJobId    String?        // ID of the jobcard if converted
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  id             String   @id @default(uuid())
+  estimateNumber String   @unique
+  customerId     String?
+  vehicleId      String?
+  advisorId      String?
+  status         String   @default("draft") // draft / sent / approved / rejected / converted
+  customerName   String
+  customerMobile String?
+  vehicleRegNo   String?
+  vehicleMake    String?
+  vehicleModel   String?
+  customerNotes  String?
+  internalNotes  String?
+  photos         String? // JSON array of photo URLs
+  subtotalAmount Float    @default(0)
+  taxAmount      Float    @default(0)
+  discountAmount Float    @default(0)
+  totalAmount    Float    @default(0)
+  validityDays   Int      @default(7)
+  convertedJobId String? // ID of the jobcard if converted
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  lines             EstimateLine[]
+  lines EstimateLine[]
 }
 
 model EstimateLine {
-  id           String   @id @default(uuid())
-  estimateId   String
-  lineType     String   // part / labour
-  name         String
-  partNumber   String?
-  brand        String?
-  quantity     Float    @default(1)
-  unitPrice    Float    @default(0)
-  taxRate      Float    @default(18)
-  discountType String?
+  id            String   @id @default(uuid())
+  estimateId    String
+  lineType      String // part / labour
+  name          String
+  partNumber    String?
+  brand         String?
+  quantity      Float    @default(1)
+  unitPrice     Float    @default(0)
+  taxRate       Float    @default(18)
+  discountType  String?
   discountValue Float?
-  lineTotal    Float    @default(0)
-  createdAt    DateTime @default(now())
+  lineTotal     Float    @default(0)
+  createdAt     DateTime @default(now())
 
-  estimate     Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
 }
 
 // ======= AI SELF-LEARNING BRAIN =======
@@ -783,61 +823,61 @@ model EstimateLine {
 // answers first — zero API calls. Confidence grows with each successful reuse.
 
 model AIKnowledgeCache {
-  id              String   @id @default(uuid())
+  id String @id @default(uuid())
 
   // What kind of AI task this is
-  cacheType       String   // PLATE_SCAN | BATTERY_SCAN | SERVICE_SUGGESTION | DIAGNOSTIC | PARTS_SCAN
+  cacheType String // PLATE_SCAN | BATTERY_SCAN | SERVICE_SUGGESTION | DIAGNOSTIC | PARTS_SCAN
 
   // The semantic fingerprint — NOT an image hash
-  cacheKey        String   @unique
+  cacheKey String @unique
 
   // Human-readable label shown in Admin Brain panel
-  inputSummary    String
+  inputSummary String
 
   // The full AI response — stored as JSON string
-  responseJson    String
+  responseJson String
 
   // Self-Learning feedback properties
-  source          String   @default("gemini") // "gemini" | "user" (if manual override)
-  partDataJson    String?  // Optional list data for parts scanning lists
+  source       String  @default("gemini") // "gemini" | "user" (if manual override)
+  partDataJson String? // Optional list data for parts scanning lists
 
   // Learning metrics
-  useCount        Int      @default(1)      // total times served from cache
-  confidenceScore Float    @default(0.5)   // 0.0 (untrusted) → 1.0 (fully learned)
-  isValidated     Boolean  @default(false) // true if a human confirmed/used this response
+  useCount        Int     @default(1) // total times served from cache
+  confidenceScore Float   @default(0.5) // 0.0 (untrusted) → 1.0 (fully learned)
+  isValidated     Boolean @default(false) // true if a human confirmed/used this response
 
   // Timestamps
-  lastUsedAt      DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 // ======= INTEGRATIONS & MIGRATIONS =======
 
 model IntegrationConfig {
-  id                String   @id @default(uuid())
-  integrationType   String   @unique // zoho_books, tally, busy
-  isActive          Boolean  @default(false)
-  apiKey            String?
-  apiSecret         String?
-  organizationId    String?
-  webhookSecret     String?
-  additionalConfig  String?  // JSON string for other specific settings
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String   @id @default(uuid())
+  integrationType  String   @unique // zoho_books, tally, busy
+  isActive         Boolean  @default(false)
+  apiKey           String?
+  apiSecret        String?
+  organizationId   String?
+  webhookSecret    String?
+  additionalConfig String? // JSON string for other specific settings
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model IntegrationMapping {
-  id                String   @id @default(uuid())
-  integrationType   String   // zoho_books, tally, busy
-  entityType        String   // CUSTOMER, JOBCARD, PART, PURCHASE_ORDER
-  localId           String   // UUID in our DB
-  externalId        String   // ID in the external system
-  lastSyncedAt      DateTime @default(now())
-  syncStatus        String   @default("SUCCESS") // SUCCESS, FAILED, PENDING
-  syncError         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id              String   @id @default(uuid())
+  integrationType String // zoho_books, tally, busy
+  entityType      String // CUSTOMER, JOBCARD, PART, PURCHASE_ORDER
+  localId         String // UUID in our DB
+  externalId      String // ID in the external system
+  lastSyncedAt    DateTime @default(now())
+  syncStatus      String   @default("SUCCESS") // SUCCESS, FAILED, PENDING
+  syncError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@unique([integrationType, entityType, localId])
   @@index([integrationType, entityType, externalId])

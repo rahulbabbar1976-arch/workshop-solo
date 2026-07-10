@@ -1,302 +1,211 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  Building,
-  User, 
-  Lock, 
-  Smartphone, 
-  CheckCircle2, 
-  AlertCircle,
-  Loader2,
-  Key,
-  Shield,
-  ArrowLeft
-} from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Mail, KeyRound, ShieldCheck, User, Building, MapPin } from "lucide-react";
+import Link from "next/link";
 
 export default function SignupPage() {
   const router = useRouter();
-  
-  const [accountType, setAccountType] = useState<'enterprise' | 'solo'>('enterprise');
-  const [workshopName, setWorkshopName] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [password, setPassword] = useState('');
-  const [pin, setPin] = useState('');
-  
+  const [formData, setFormData] = useState({
+    fullName: "",
+    identifier: "",
+    workshopName: "",
+    addressLine1: "",
+    city: "",
+    pin: ""
+  });
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    // Pin validation
-    if (pin.length !== 4) {
-      setErrorMessage('Quick PIN must be exactly 4 digits.');
-      setLoading(false);
+    if (!formData.fullName || !formData.identifier || !formData.workshopName || !formData.pin) {
+      setError("Please fill in all required fields");
       return;
     }
-
+    if (formData.pin.length < 4) {
+      setError("PIN must be 4 digits");
+      return;
+    }
+    
+    setError("");
+    setLoading(true);
+    
     try {
-      const payload = {
-        workshopName: accountType === 'enterprise' ? workshopName : undefined,
-        fullName,
-        email,
-        mobile: mobile || undefined,
-        password,
-        quickPin: pin,
-        accountType
-      };
-
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(formData),
       });
-
       const data = await res.json();
-      if (data.success) {
-        setSuccessMessage(`${accountType === 'solo' ? 'Solo Account' : 'Workshop PWA'} created successfully! Redirecting to login...`);
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
-      } else {
-        setErrorMessage(data.error || 'Registration failed. Please check details.');
+      
+      if (!res.ok || !data.success) {
+        setError(data.error || 'Signup failed.');
+        return;
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Server connection error. Please try again.');
+      
+      setSuccess("Account created successfully! Redirecting to login...");
+      setTimeout(() => {
+        router.push('/solo/login');
+      }, 2000);
+      
+    } catch {
+      setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
   return (
-    <main className="glass-container" style={{ minHeight: '95vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
-      
-      {/* Back to Login Link */}
-      <div style={{ width: '100%', maxWidth: '460px', alignSelf: 'center', marginBottom: '1rem' }}>
-        <button 
-          onClick={() => router.push('/')}
-          style={{
-            background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, padding: 0
-          }}
-        >
-          <ArrowLeft size={16} /> Back to Login
-        </button>
-      </div>
-
-      {/* Brand Header */}
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '-0.02em' }}>
-          <span className="brand-title">AUTOBOTS</span>
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', letterSpacing: '0.15em', fontWeight: 600 }}>
-          REGISTER NEW WORKSHOP PWAS
-        </p>
-      </div>
-
-      {/* Main Glass Signup Card */}
-      <div className="glass-card" style={{ width: '100%', maxWidth: '460px', padding: '2rem', borderRadius: '16px', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.08)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+    <div className="flex flex-col min-h-screen bg-teal-500 text-white overflow-hidden relative font-[Outfit]">
+      <div className="flex-1 flex flex-col justify-center px-6 py-12 z-10 relative">
         
-        {/* Toggle Account Type */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.25rem', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <button 
-            type="button"
-            onClick={() => { setAccountType('enterprise'); setErrorMessage(null); }}
-            style={{ 
-              flex: 1, padding: '0.5rem 0.25rem', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600,
-              background: accountType === 'enterprise' ? 'var(--primary)' : 'transparent',
-              color: accountType === 'enterprise' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
-            }}
-          >
-            <Building size={14} /> Workshop PWA
-          </button>
-          <button 
-            type="button"
-            onClick={() => { setAccountType('solo'); setErrorMessage(null); }}
-            style={{ 
-              flex: 1, padding: '0.5rem 0.25rem', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600,
-              background: accountType === 'solo' ? 'var(--primary)' : 'transparent',
-              color: accountType === 'solo' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem'
-            }}
-          >
-            <User size={14} /> Solo Account
-          </button>
+        {/* Header */}
+        <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <h1 className="text-3xl font-bold text-white mb-2 uppercase tracking-wide">
+            Create an Account
+          </h1>
+          <p className="text-teal-100 text-sm max-w-md mx-auto">
+            Sign up to manage your workshop. Note: You must be invited by an administrator to create an account.
+          </p>
         </div>
 
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center', marginBottom: '1.5rem' }}>
-          {accountType === 'enterprise' 
-            ? 'Create a fresh workshop partition. The registered email will become the primary Owner.'
-            : 'Get a personal solo workspace tailored for independent mechanics and freelancers.'}
-        </p>
-
-        {errorMessage && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(239,68,68,0.1)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.8rem' }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {successMessage && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#10b981', padding: '0.75rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.8rem' }}>
-            <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
-            <span>{successMessage}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-          
-          {/* Workshop Name */}
-          {accountType === 'enterprise' && (
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Workshop / Business Name
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Building size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-                <input 
-                  type="text"
-                  required={accountType === 'enterprise'}
-                  className="form-control"
-                  style={{ paddingLeft: '2.5rem', fontSize: '0.85rem' }}
-                  placeholder="e.g. Apex Performance Tuning"
-                  value={workshopName}
-                  onChange={(e) => setWorkshopName(e.target.value)}
-                />
+        {/* Signup Form */}
+        <div className="w-full max-w-md mx-auto animate-in zoom-in-95 duration-500 delay-150">
+          <form onSubmit={handleSignup} className="space-y-4">
+            
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-300">
+                <User className="h-5 w-5" />
               </div>
-            </div>
-          )}
-
-          {/* Full Name */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Owner Full Name
-            </label>
-            <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-              <input 
+              <input
                 type="text"
+                id="fullName"
                 required
-                className="form-control"
-                style={{ paddingLeft: '2.5rem', fontSize: '0.85rem' }}
-                placeholder="e.g. John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                className="block w-full pl-11 pr-4 py-3 bg-white/10 border-2 border-teal-400 rounded-xl focus:border-white text-base text-white transition-all placeholder:text-teal-200 outline-none"
+                placeholder="Full Name *"
+                value={formData.fullName}
+                onChange={handleChange}
               />
             </div>
-          </div>
 
-          {/* Email Address */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Email Address (Username)
-            </label>
-            <div style={{ position: 'relative' }}>
-              <User size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-              <input 
-                type="email"
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-300">
+                <Mail className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                id="identifier"
                 required
-                className="form-control"
-                style={{ paddingLeft: '2.5rem', fontSize: '0.85rem' }}
-                placeholder="e.g. john@apex.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                className="block w-full pl-11 pr-4 py-3 bg-white/10 border-2 border-teal-400 rounded-xl focus:border-white text-base text-white transition-all placeholder:text-teal-200 outline-none"
+                placeholder="Email or Mobile Number *"
+                value={formData.identifier}
+                onChange={handleChange}
               />
             </div>
-          </div>
 
-          {/* Mobile Number */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Mobile Number (Optional)
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Smartphone size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-              <input 
-                type="tel"
-                className="form-control"
-                style={{ paddingLeft: '2.5rem', fontSize: '0.85rem' }}
-                placeholder="e.g. 9876543210"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-300">
+                <Building className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                id="workshopName"
+                required
+                className="block w-full pl-11 pr-4 py-3 bg-white/10 border-2 border-teal-400 rounded-xl focus:border-white text-base text-white transition-all placeholder:text-teal-200 outline-none"
+                placeholder="Workshop Name *"
+                value={formData.workshopName}
+                onChange={handleChange}
               />
             </div>
-          </div>
 
-          {/* Password */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-              <input 
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-300">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                id="addressLine1"
+                className="block w-full pl-11 pr-4 py-3 bg-white/10 border-2 border-teal-400 rounded-xl focus:border-white text-base text-white transition-all placeholder:text-teal-200 outline-none"
+                placeholder="Address"
+                value={formData.addressLine1}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-300">
+                <MapPin className="h-5 w-5" />
+              </div>
+              <input
+                type="text"
+                id="city"
+                className="block w-full pl-11 pr-4 py-3 bg-white/10 border-2 border-teal-400 rounded-xl focus:border-white text-base text-white transition-all placeholder:text-teal-200 outline-none"
+                placeholder="City"
+                value={formData.city}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-teal-300">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <input
                 type="password"
+                id="pin"
                 required
-                minLength={6}
-                className="form-control"
-                style={{ paddingLeft: '2.5rem', fontSize: '0.85rem' }}
-                placeholder="Minimum 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* 4-Digit Quick PIN */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              4-Digit Quick PIN (for fast login)
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Key size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-              <input 
-                type="text"
-                required
-                maxLength={4}
-                pattern="\d*"
                 inputMode="numeric"
-                className="form-control"
-                style={{ paddingLeft: '2.5rem', fontSize: '0.85rem', letterSpacing: '0.25em' }}
+                maxLength={4}
+                className="block w-full pl-11 pr-4 py-3 bg-white/10 border-2 border-teal-400 rounded-xl focus:border-white text-2xl tracking-[0.5em] text-white transition-all placeholder:text-teal-200 outline-none font-bold"
                 placeholder="••••"
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                value={formData.pin}
+                onChange={(e) => setFormData(prev => ({ ...prev, pin: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
               />
+              <p className="text-xs text-teal-200 mt-1 pl-2">Set a 4-digit PIN for login</p>
             </div>
-          </div>
 
-          <button 
-            type="submit" 
-            className="btn btn-primary"
-            disabled={loading}
-            style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 600 }}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="spinner" size={16} /> Provisioning PWA...
-              </>
-            ) : (
-              'Create PWA Account'
+            {error && (
+              <div className="flex items-center gap-2 bg-red-500/20 border border-red-400/40 rounded-xl px-4 py-3">
+                <ShieldCheck className="h-5 w-5 text-red-300 shrink-0" />
+                <p className="text-sm text-red-200 font-medium">{error}</p>
+              </div>
             )}
-          </button>
-        </form>
 
+            {success && (
+              <div className="flex items-center gap-2 bg-emerald-500/40 border border-emerald-400/60 rounded-xl px-4 py-3">
+                <ShieldCheck className="h-5 w-5 text-emerald-100 shrink-0" />
+                <p className="text-sm text-emerald-50 font-medium">{success}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center items-center py-4 px-4 rounded-xl shadow-md text-lg font-bold text-teal-600 bg-white hover:bg-gray-50 active:scale-[0.98] transition-all disabled:opacity-60 mt-4 uppercase tracking-wider"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2"><span className="animate-spin w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full"></span> Creating Account...</span>
+              ) : "Sign Up"}
+            </button>
+            
+            <div className="mt-6 text-center text-sm text-teal-100">
+              <p>Already have an account?</p>
+              <Link href="/solo/login" className="font-bold text-white hover:underline mt-1 inline-block">
+                Back to Login
+              </Link>
+            </div>
+            
+          </form>
+        </div>
       </div>
-
-      {/* Cloud Security Indicator */}
-      <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
-        <Shield size={14} color="#10b981" />
-        <span>Secure Isolation • Individual Tenant DB Partition</span>
-      </div>
-
-    </main>
+    </div>
   );
 }

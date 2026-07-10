@@ -1,155 +1,180 @@
 "use client";
 
-import { Users, Database, Activity, Search, ShieldAlert, ArrowRight, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, Database, ShieldAlert, TrendingUp, Search, ArrowRight, KeyRound, Plus, X } from "lucide-react";
 import Link from "next/link";
 
 export default function AutobotAdminDashboardPage() {
-  // Real data will be fetched from the database via API
-  const stats = {
-    totalTenants: 0,
-    activeToday: 0,
-    totalJobsProcessed: 0,
-    storageUsed: "0 MB",
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [invites, setInvites] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newInvite, setNewInvite] = useState("");
+  const [addingInvite, setAddingInvite] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [tRes, iRes] = await Promise.all([
+        fetch('/api/admin/tenants'),
+        fetch('/api/admin/whitelist')
+      ]);
+      const tData = await tRes.json();
+      const iData = await iRes.json();
+      if (tData.success) setTenants(tData.tenants);
+      if (iData.success) setInvites(iData.invites);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const recentTenants: { id: string; name: string; owner: string; city: string; jobs: number; status: string }[] = [];
+  const handleAddInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newInvite) return;
+    setAddingInvite(true);
+    try {
+      const res = await fetch('/api/admin/whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: newInvite })
+      });
+      if (res.ok) {
+        setNewInvite("");
+        fetchData();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAddingInvite(false);
+    }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-4">
+    <div className="max-w-7xl mx-auto space-y-12">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Command Center</h1>
           <p className="text-slate-500 font-medium">Global overview of all Solo Enterprise Tenants.</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/autobot-admin/settings/otp" className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm flex items-center gap-2">
-            OTP Settings
-          </Link>
-          <Link href="/autobot-admin/backup" className="px-5 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-2">
-            System Backup
-          </Link>
-        </div>
       </div>
       
       {/* Premium Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <div className="bg-white p-7 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all cursor-pointer group">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-7 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100">
           <div className="flex justify-between items-start mb-6">
-            <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-sm">
+            <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
               <Users className="w-6 h-6" />
             </div>
-            <span className="flex items-center text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">
-              <TrendingUp className="w-3 h-3 mr-1" /> +12%
-            </span>
           </div>
-          <h3 className="text-4xl font-extrabold text-slate-900 mb-1">{stats.totalTenants}</h3>
-          <p className="text-sm text-slate-500 font-bold">Total Solo Tenants</p>
+          <h3 className="text-4xl font-extrabold text-slate-900 mb-1">{tenants.length}</h3>
+          <p className="text-sm text-slate-500 font-bold">Total Tenants</p>
         </div>
         
-        <div className="bg-white p-7 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all cursor-pointer group">
+        <div className="bg-white p-7 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100">
           <div className="flex justify-between items-start mb-6">
-            <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-500 group-hover:text-white transition-colors shadow-sm">
-              <Activity className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-4xl font-extrabold text-slate-900 mb-1">{stats.activeToday}</h3>
-          <p className="text-sm text-slate-500 font-bold">Active Today</p>
-        </div>
-
-        <div className="bg-white p-7 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all cursor-pointer group">
-          <div className="flex justify-between items-start mb-6">
-            <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors shadow-sm">
+            <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
               <ShieldAlert className="w-6 h-6" />
             </div>
           </div>
-          <h3 className="text-4xl font-extrabold text-slate-900 mb-1">{stats.totalJobsProcessed.toLocaleString()}</h3>
-          <p className="text-sm text-slate-500 font-bold">Global Jobs Processed</p>
-        </div>
-
-        <div className="bg-white p-7 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all cursor-pointer group">
-          <div className="flex justify-between items-start mb-6">
-            <div className="p-4 bg-orange-50 text-orange-600 rounded-2xl group-hover:bg-orange-500 group-hover:text-white transition-colors shadow-sm">
-              <Database className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-4xl font-extrabold text-slate-900 mb-1">{stats.storageUsed}</h3>
-          <p className="text-sm text-slate-500 font-bold">Total Storage Used</p>
+          <h3 className="text-4xl font-extrabold text-slate-900 mb-1">{invites.length}</h3>
+          <p className="text-sm text-slate-500 font-bold">Whitelist Invites</p>
         </div>
       </div>
 
-      {/* Tenants List */}
-      <div className="bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden">
-        <div className="p-8 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Tenant Fleet Activity</h2>
-          <div className="relative w-full sm:w-80 group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-blue-500 text-slate-400">
-              <Search className="h-5 w-5" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium transition-all shadow-sm placeholder:text-slate-400"
-              placeholder="Search by ID, Name or Location..."
-            />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Whitelist Manager */}
+        <div className="lg:col-span-1 bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden flex flex-col h-full">
+          <div className="p-6 border-b border-gray-100 bg-slate-50/50">
+            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Access Whitelist</h2>
+            <p className="text-sm text-slate-500 mt-1">Pre-authorize emails/mobiles for signup</p>
           </div>
-        </div>
-        
-            <div className="overflow-x-auto">
-              {recentTenants.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center text-slate-400">
-                  <Database className="w-12 h-12 mb-4 opacity-30" />
-                  <p className="font-bold text-slate-500">No tenants registered yet</p>
-                  <p className="text-sm mt-1">Tenant accounts will appear here once users register.</p>
+          <div className="p-6 flex-1 overflow-y-auto">
+            <form onSubmit={handleAddInvite} className="flex gap-2 mb-6">
+              <input 
+                type="text" 
+                className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
+                placeholder="Email or Mobile"
+                value={newInvite}
+                onChange={e => setNewInvite(e.target.value.trim())}
+              />
+              <button 
+                type="submit" 
+                disabled={addingInvite || !newInvite}
+                className="bg-slate-900 text-white px-4 py-3 rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </form>
+            
+            <div className="space-y-3">
+              {invites.map(inv => (
+                <div key={inv.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
+                  <div>
+                    <p className="font-bold text-slate-800">{inv.identifier}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {inv.isClaimed ? <span className="text-emerald-600 font-semibold">Claimed</span> : <span className="text-amber-500 font-semibold">Pending</span>}
+                      {' • '} {new Date(inv.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <table className="min-w-full divide-y divide-gray-100">
-                  <thead className="bg-white">
-                    <tr>
-                      <th scope="col" className="px-8 py-5 text-left text-xs font-extrabold text-slate-400 uppercase tracking-widest">Tenant Identifier</th>
-                      <th scope="col" className="px-8 py-5 text-left text-xs font-extrabold text-slate-400 uppercase tracking-widest">Operator / Region</th>
-                      <th scope="col" className="px-8 py-5 text-left text-xs font-extrabold text-slate-400 uppercase tracking-widest">Total Volume</th>
-                      <th scope="col" className="px-8 py-5 text-left text-xs font-extrabold text-slate-400 uppercase tracking-widest">Network Status</th>
-                      <th scope="col" className="px-8 py-5 text-right text-xs font-extrabold text-slate-400 uppercase tracking-widest">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-50">
-                    {recentTenants.map((tenant) => (
-                      <tr key={tenant.id} className="hover:bg-slate-50 transition-colors group">
-                        <td className="px-8 py-5 whitespace-nowrap">
-                          <div className="font-extrabold text-slate-900 text-base">{tenant.name}</div>
-                          <div className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{tenant.id}</div>
-                        </td>
-                        <td className="px-8 py-5 whitespace-nowrap">
-                          <div className="text-sm font-bold text-slate-800">{tenant.owner}</div>
-                          <div className="text-sm font-medium text-slate-500 mt-0.5">{tenant.city}</div>
-                        </td>
-                        <td className="px-8 py-5 whitespace-nowrap text-sm font-extrabold text-slate-900">
-                          {tenant.jobs} <span className="text-xs font-bold text-slate-400 ml-1">Jobs</span>
-                        </td>
-                        <td className="px-8 py-5 whitespace-nowrap">
-                          <span className={`px-4 py-1.5 inline-flex text-xs font-extrabold rounded-xl border ${
-                            tenant.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                            tenant.status === 'New' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
-                            'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full mr-2 self-center ${
-                              tenant.status === 'Active' ? 'bg-emerald-500' : 
-                              tenant.status === 'New' ? 'bg-blue-500' : 
-                              'bg-slate-400'
-                            }`}></span>
-                            {tenant.status}
-                          </span>
-                        </td>
-                        <td className="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
-                          <button className="text-blue-600 hover:text-blue-800 flex items-center justify-end w-full font-bold group-hover:translate-x-1 transition-transform">
-                            Inspect Node <ArrowRight className="w-4 h-4 ml-1" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              ))}
+              {invites.length === 0 && !loading && (
+                <div className="text-center py-10 text-slate-400 font-medium">No invites found</div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Tenants List */}
+        <div className="lg:col-span-2 bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100 bg-slate-50/50">
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Tenant Fleet</h2>
+          </div>
+          
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="p-20 text-center text-slate-400">Loading...</div>
+            ) : tenants.length === 0 ? (
+              <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+                <Database className="w-12 h-12 mb-4 opacity-30" />
+                <p className="font-bold text-slate-500">No tenants registered yet</p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-white">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-widest">Workspace Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-extrabold text-slate-400 uppercase tracking-widest">Stats</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-50">
+                  {tenants.map((tenant) => (
+                    <tr key={tenant.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-extrabold text-slate-900">{tenant.name}</div>
+                        <div className="text-xs text-slate-400 mt-1">{tenant.id}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 text-xs font-extrabold rounded-lg ${tenant.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                          {tenant.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">
+                        {tenant._count?.users || 0} Users • {tenant._count?.customers || 0} Customers
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

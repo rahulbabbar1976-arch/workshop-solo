@@ -2,38 +2,49 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, KeyRound, ShieldCheck } from "lucide-react";
+import { Mail, KeyRound, ShieldCheck, Lock } from "lucide-react";
+import Link from "next/link";
 
 export default function SoloLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pin, setPin]     = useState("");
+  const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<'pin' | 'password'>('pin');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) {
-      setError("Please enter a valid email address");
+    if (!email || !email.includes('@') && !/^\d{10}$/.test(email)) {
+      setError("Please enter a valid email or 10-digit mobile number");
       return;
     }
-    if (pin.length < 4) {
+    if (authMode === 'pin' && pin.length < 4) {
       setError("Please enter your 4-digit PIN");
       return;
     }
+    if (authMode === 'password' && !password) {
+      setError("Please enter your password");
+      return;
+    }
+    
     setError("");
     setLoading(true);
+    
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identity: email, pin, authMode: 'pin' }),
+        body: JSON.stringify({ identity: email, pin: authMode === 'pin' ? pin : undefined, password: authMode === 'password' ? password : undefined, authMode }),
       });
       const data = await res.json();
+      
       if (!res.ok || !data.success) {
         setError(data.error || 'Login failed. Please check your credentials.');
         return;
       }
+      
       // Redirect based on role
       const role = data.session?.primaryRole;
       if (role === 'super_admin' || role === 'admin') {
@@ -65,41 +76,76 @@ export default function SoloLoginPage() {
 
         {/* Login Form */}
         <div className="w-full max-w-sm mx-auto animate-in zoom-in-95 duration-500 delay-150">
+          
+          <div className="flex bg-teal-600/50 rounded-full p-1 mb-6">
+            <button 
+              type="button"
+              onClick={() => setAuthMode('pin')}
+              className={`flex-1 py-2 text-sm font-semibold rounded-full transition-all ${authMode === 'pin' ? 'bg-white text-teal-600 shadow-md' : 'text-teal-100 hover:text-white'}`}
+            >
+              PIN Login
+            </button>
+            <button 
+              type="button"
+              onClick={() => setAuthMode('password')}
+              className={`flex-1 py-2 text-sm font-semibold rounded-full transition-all ${authMode === 'password' ? 'bg-white text-teal-600 shadow-md' : 'text-teal-100 hover:text-white'}`}
+            >
+              Password Login
+            </button>
+          </div>
+
           <form onSubmit={handleLogin} className="space-y-4">
             
-            {/* Email */}
+            {/* Email / Mobile */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-teal-300">
                 <Mail className="h-5 w-5" />
               </div>
               <input
-                type="email"
+                type="text"
                 id="email"
                 autoComplete="email"
                 className="block w-full pl-12 pr-5 py-4 bg-transparent border-2 border-teal-400 rounded-full focus:border-white text-base text-white transition-all placeholder:text-teal-200 outline-none"
-                placeholder="Email Address"
+                placeholder="Email or Mobile"
                 value={email}
                 onChange={(e) => setEmail(e.target.value.trim())}
               />
             </div>
 
-            {/* PIN */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-teal-300">
-                <KeyRound className="h-5 w-5" />
+            {/* PIN or Password */}
+            {authMode === 'pin' ? (
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-teal-300">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <input
+                  type="password"
+                  id="pin"
+                  autoComplete="current-password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className="block w-full pl-12 pr-5 py-4 bg-transparent border-2 border-teal-400 rounded-full focus:border-white text-2xl tracking-[0.5em] text-center text-white transition-all placeholder:text-teal-200 outline-none font-bold"
+                  placeholder="••••"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                />
               </div>
-              <input
-                type="password"
-                id="pin"
-                autoComplete="current-password"
-                inputMode="numeric"
-                maxLength={6}
-                className="block w-full pl-12 pr-5 py-4 bg-transparent border-2 border-teal-400 rounded-full focus:border-white text-2xl tracking-[0.5em] text-center text-white transition-all placeholder:text-teal-200 outline-none font-bold"
-                placeholder="••••"
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              />
-            </div>
+            ) : (
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-teal-300">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  autoComplete="current-password"
+                  className="block w-full pl-12 pr-5 py-4 bg-transparent border-2 border-teal-400 rounded-full focus:border-white text-base text-white transition-all placeholder:text-teal-200 outline-none"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 bg-red-500/20 border border-red-400/40 rounded-xl px-4 py-3">
@@ -110,13 +156,21 @@ export default function SoloLoginPage() {
 
             <button
               type="submit"
-              disabled={loading || !email || pin.length < 4}
+              disabled={loading || !email || (authMode === 'pin' ? pin.length < 4 : !password)}
               className="w-full flex justify-center items-center py-4 px-4 rounded-full shadow-md text-lg font-bold text-teal-600 bg-white hover:bg-gray-50 active:scale-[0.98] transition-all disabled:opacity-60 mt-4 uppercase tracking-wider"
             >
               {loading ? (
                 <span className="flex items-center gap-2"><span className="animate-spin w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full"></span> Signing in...</span>
               ) : "Sign In"}
             </button>
+            
+            <div className="mt-6 text-center text-sm text-teal-100">
+              <p>Don't have an account?</p>
+              <Link href="/signup" className="font-bold text-white hover:underline mt-1 inline-block">
+                Create a Workshop Account
+              </Link>
+            </div>
+            
           </form>
         </div>
       </div>

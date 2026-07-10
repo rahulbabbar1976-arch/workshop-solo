@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getPrismaForDb, encryptDbPath } from '@/lib/db';
-import crypto from 'crypto';
-
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
+import bcrypt from 'bcryptjs';
 
 export async function GET() {
   return NextResponse.json({ success: true, message: "Authentication service is ready" });
@@ -47,16 +43,22 @@ export async function POST(request: Request) {
       if (!pin) {
         return NextResponse.json({ success: false, error: '4-digit Quick PIN is required' }, { status: 400 });
       }
-      const hashedPin = hashPassword(String(pin));
-      if (user.quickPinHash !== hashedPin) {
+      if (!user.quickPinHash) {
+        return NextResponse.json({ success: false, error: 'User does not have a PIN setup' }, { status: 400 });
+      }
+      const isMatch = await bcrypt.compare(String(pin), user.quickPinHash);
+      if (!isMatch) {
         return NextResponse.json({ success: false, error: 'Incorrect Quick PIN' }, { status: 401 });
       }
     } else {
       if (!password) {
         return NextResponse.json({ success: false, error: 'Password is required' }, { status: 400 });
       }
-      const hashedPasswordVal = hashPassword(password);
-      if (user.passwordHash !== hashedPasswordVal) {
+      if (!user.passwordHash) {
+         return NextResponse.json({ success: false, error: 'User does not have a password setup' }, { status: 400 });
+      }
+      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      if (!isMatch) {
         return NextResponse.json({ success: false, error: 'Incorrect password' }, { status: 401 });
       }
     }

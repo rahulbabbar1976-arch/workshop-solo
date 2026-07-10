@@ -1,5 +1,6 @@
-import { PrismaClient } from '../generated/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { workUnitAsyncStorage } from 'next/dist/server/app-render/work-unit-async-storage.external';
 import crypto from 'crypto';
 import path from 'path';
@@ -40,52 +41,19 @@ export function decryptDbPath(encryptedText: string): string {
   }
 }
 
-// Cache of Prisma client instances per database path
-const clientCache: Record<string, PrismaClient> = {};
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
 
-export function getPrismaForDb(dbPath: string): PrismaClient {
-  // Normalize path to prevent directory traversal
-  const cleanPath = path.basename(dbPath);
-  const finalPath = cleanPath.startsWith('dev') ? `./${cleanPath}` : './dev.db';
-  const key = path.normalize(finalPath);
-  
-  if (!clientCache[key]) {
-    const adapter = new PrismaBetterSqlite3({
-      url: `file:${key}`
-    });
-    clientCache[key] = new PrismaClient({ adapter });
-  }
-  return clientCache[key];
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+export const prisma = globalForPrisma.prisma || new PrismaClient({ adapter })
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+// Maintain compatibility with existing code calling getPrismaForDb
+export function getPrismaForDb(dbPath?: string): PrismaClient {
+  return prisma;
 }
-
-// Proxy that routes to the correct database instance dynamically
-const prisma = new Proxy({} as PrismaClient, {
-  get(target, prop, receiver) {
-    let dbPath = 'dev.db';
-    try {
-      const store = (workUnitAsyncStorage as any).getStore();
-      if (store) {
-        // Read cookies from request store synchronously
-        const cookies = store.userspaceMutableCookies || store.cookies;
-        if (cookies) {
-          const dbCookie = cookies.get('workshop_db_path');
-          if (dbCookie?.value) {
-            dbPath = decryptDbPath(dbCookie.value);
-          }
-        }
-      }
-    } catch (e) {
-      // Fallback to default if not in request context
-    }
-
-    const client = getPrismaForDb(dbPath);
-    const value = Reflect.get(client, prop, receiver);
-    if (typeof value === 'function') {
-      return value.bind(client);
-    }
-    return value;
-  }
-});
 
 export default prisma;
 export * from '../generated/client';
