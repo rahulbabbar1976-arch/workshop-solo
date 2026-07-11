@@ -2,10 +2,20 @@
 
 import { useState } from "react";
 import { Download, Upload, Database, CheckCircle, AlertCircle } from "lucide-react";
-import { exportTenantDataAction, restoreTenantDataAction, importLegacyCsvAction } from "@/app/actions/settingsActions";
+import Papa from "papaparse";
+import { 
+  exportTenantDataAction, 
+  restoreTenantDataAction, 
+  importLegacyCustomersAction,
+  importLegacyVehiclesAction,
+  importLegacyWorksheetsAction,
+  importLegacyProblemsAction,
+  importLegacyItemsAction
+} from "@/app/actions/settingsActions";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
+  const [progressMsg, setProgressMsg] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [legacyFiles, setLegacyFiles] = useState<{
@@ -72,6 +82,25 @@ export default function SettingsPage() {
     }
   };
 
+  const parseCsvFile = (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      Papa.parse(file, {
+        header: false,
+        skipEmptyLines: true,
+        complete: (results) => resolve(results.data),
+        error: (err) => reject(err)
+      });
+    });
+  };
+
+  const chunkArray = (array: any[], size: number) => {
+    const chunked = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunked.push(array.slice(i, i + size));
+    }
+    return chunked;
+  };
+
   const handleLegacyImport = async () => {
     if (!legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet || !legacyFiles.problem || !legacyFiles.item) {
       setMessage({ type: "error", text: "Please select all six legacy CSV files." });
@@ -81,21 +110,53 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       setMessage(null);
-      const formData = new FormData();
-      formData.append("customerFile", legacyFiles.customer);
-      formData.append("addressFile", legacyFiles.address);
-      formData.append("thingFile", legacyFiles.thing);
-      formData.append("worksheetFile", legacyFiles.worksheet);
-      formData.append("problemFile", legacyFiles.problem);
-      formData.append("itemFile", legacyFiles.item);
+      
+      setProgressMsg("Parsing files...");
+      const customersRaw = await parseCsvFile(legacyFiles.customer);
+      const addressesRaw = await parseCsvFile(legacyFiles.address);
+      const thingsRaw = await parseCsvFile(legacyFiles.thing);
+      const worksheetsRaw = await parseCsvFile(legacyFiles.worksheet);
+      const problemsRaw = await parseCsvFile(legacyFiles.problem);
+      const itemsRaw = await parseCsvFile(legacyFiles.item);
 
-      await importLegacyCsvAction(formData);
-      setMessage({ type: "success", text: "Legacy data imported successfully." });
+      setProgressMsg("Importing Customers...");
+      const custChunks = chunkArray(customersRaw, 1000);
+      for (let i = 0; i < custChunks.length; i++) {
+        await importLegacyCustomersAction(custChunks[i], addressesRaw);
+      }
+
+      setProgressMsg("Importing Vehicles...");
+      const thingChunks = chunkArray(thingsRaw, 1000);
+      for (let i = 0; i < thingChunks.length; i++) {
+        await importLegacyVehiclesAction(thingChunks[i]);
+      }
+
+      setProgressMsg("Importing Job Cards...");
+      const wsChunks = chunkArray(worksheetsRaw, 1000);
+      for (let i = 0; i < wsChunks.length; i++) {
+        await importLegacyWorksheetsAction(wsChunks[i]);
+      }
+
+      setProgressMsg("Importing Complaints...");
+      const probChunks = chunkArray(problemsRaw, 1000);
+      for (let i = 0; i < probChunks.length; i++) {
+        await importLegacyProblemsAction(probChunks[i]);
+      }
+
+      setProgressMsg("Importing Parts and Labor...");
+      const itemChunks = chunkArray(itemsRaw, 1000);
+      for (let i = 0; i < itemChunks.length; i++) {
+        setProgressMsg(`Importing Parts and Labor (${i + 1} of ${itemChunks.length})...`);
+        await importLegacyItemsAction(itemChunks[i]);
+      }
+
+      setMessage({ type: "success", text: "Legacy data imported successfully!" });
       setLegacyFiles({ customer: null, address: null, thing: null, worksheet: null, problem: null, item: null });
     } catch (err: any) {
       setMessage({ type: "error", text: err.message || "Failed to import legacy data." });
     } finally {
       setLoading(false);
+      setProgressMsg("");
     }
   };
 
@@ -235,9 +296,11 @@ export default function SettingsPage() {
             <button
               onClick={handleLegacyImport}
               disabled={loading || !legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet || !legacyFiles.problem || !legacyFiles.item}
-              className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg uppercase tracking-wider disabled:opacity-50 mt-4"
+              className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg uppercase tracking-wider disabled:opacity-50 mt-4 relative"
             >
-              {loading ? "Processing..." : "Import Legacy Data"}
+              {loading ? (
+                <span>{progressMsg || "Processing..."}</span>
+              ) : "Import Legacy Data"}
             </button>
           </div>
         </div>

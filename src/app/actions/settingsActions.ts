@@ -2,7 +2,6 @@
 
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
-import Papa from "papaparse";
 import { revalidatePath } from "next/cache";
 
 async function getTenantId() {
@@ -119,47 +118,14 @@ export async function restoreTenantDataAction(formData: FormData) {
   return { success: true };
 }
 
-// 3. Import Legacy Jobcard2 Data
-export async function importLegacyCsvAction(formData: FormData) {
+// ----------------------------------------------------------------------
+// CHUNKED LEGACY IMPORT ACTIONS
+// ----------------------------------------------------------------------
+
+export async function importLegacyCustomersAction(customersRaw: any[], addressesRaw: any[]) {
   const tenantId = await getTenantId();
-  
-  const custFile = formData.get("customerFile") as File;
-  const addrFile = formData.get("addressFile") as File;
-  const thingFile = formData.get("thingFile") as File;
-  const worksheetFile = formData.get("worksheetFile") as File;
-  const problemFile = formData.get("problemFile") as File;
-  const itemFile = formData.get("itemFile") as File;
-
-  if (!custFile || !addrFile || !thingFile || !worksheetFile || !problemFile || !itemFile) {
-    throw new Error("Missing required CSV files");
-  }
-
-  const custText = await custFile.text();
-  const addrText = await addrFile.text();
-  const thingText = await thingFile.text();
-  const worksheetText = await worksheetFile.text();
-  const problemText = await problemFile.text();
-  const itemText = await itemFile.text();
-
-  const parseCsv = (text: string) => {
-    return new Promise<any[]>((resolve) => {
-      Papa.parse(text, {
-        header: false,
-        skipEmptyLines: true,
-        complete: (results) => resolve(results.data),
-      });
-    });
-  };
-
-  const addressesRaw = await parseCsv(addrText);
-  const customersRaw = await parseCsv(custText);
-  const thingsRaw = await parseCsv(thingText);
-  const worksheetsRaw = await parseCsv(worksheetText);
-  const problemsRaw = await parseCsv(problemText);
-  const itemsRaw = await parseCsv(itemText);
 
   await prisma.$transaction(async (tx) => {
-    // 1. Map Addresses
     const addressMap = new Map();
     for (const row of addressesRaw) {
       const customerId = row[2];
@@ -171,7 +137,6 @@ export async function importLegacyCsvAction(formData: FormData) {
       }
     }
 
-    // 2. Insert Customers
     for (const row of customersRaw) {
       const legacyId = row[0];
       const mobile = row[11] || '';
@@ -204,8 +169,15 @@ export async function importLegacyCsvAction(formData: FormData) {
         sourceSystem: 'jobcard2'
       }
     });
+  });
 
-    // 3. Insert Vehicles (Things)
+  return { success: true };
+}
+
+export async function importLegacyVehiclesAction(thingsRaw: any[]) {
+  const tenantId = await getTenantId();
+
+  await prisma.$transaction(async (tx) => {
     for (const row of thingsRaw) {
       const legacyId = row[0];
       let custId = row[1];
@@ -241,10 +213,15 @@ export async function importLegacyCsvAction(formData: FormData) {
         }
       });
     }
+  });
 
-    // 4. Insert Worksheets (JobCards)
-    const validLegacyJobCards = new Set<string>();
+  return { success: true };
+}
 
+export async function importLegacyWorksheetsAction(worksheetsRaw: any[]) {
+  const tenantId = await getTenantId();
+
+  await prisma.$transaction(async (tx) => {
     for (const row of worksheetsRaw) {
       const legacyId = row[0];
       const thingId = row[1];
@@ -255,23 +232,18 @@ export async function importLegacyCsvAction(formData: FormData) {
       if (!legacyId) continue;
 
       const jobcardNumber = `LEGACY-JC-${legacyId}`;
-
       let mappedCustId = `legacy-cust-${custId}`;
       let validCustomer = await tx.customer.findUnique({ where: { id: mappedCustId } });
       if (!validCustomer) mappedCustId = `legacy-cust-unknown`;
 
-      // Find Vehicle by sourceRecordId = thingId
       let mappedVehicleId = null;
       if (thingId) {
         const v = await tx.vehicle.findFirst({ where: { sourceSystem: 'jobcard2', sourceRecordId: thingId, tenantId } });
         if (v) mappedVehicleId = v.id;
       }
 
-      if (!mappedVehicleId) {
-        continue;
-      }
+      if (!mappedVehicleId) continue;
 
-      validLegacyJobCards.add(legacyId);
       const dateIn = dateInStr ? new Date(dateInStr) : new Date();
 
       const exists = await tx.jobCard.findUnique({ where: { jobcardNumber } });
@@ -295,15 +267,25 @@ export async function importLegacyCsvAction(formData: FormData) {
         });
       }
     }
+  });
 
-    // 5. Insert Problems (Complaints)
+  return { success: true };
+}
+
+export async function importLegacyProblemsAction(problemsRaw: any[]) {
+  const tenantId = await getTenantId();
+
+  await prisma.$transaction(async (tx) => {
     for (const row of problemsRaw) {
       const problemLegacyId = row[0];
       const worksheetId = row[1];
       const text = row[8] || '';
 
-      if (!worksheetId || !validLegacyJobCards.has(worksheetId) || !text) continue;
+      if (!worksheetId || !text) continue;
       const jobcardUuid = `legacy-jc-uuid-${worksheetId}`;
+
+      const validJobCard = await tx.jobCard.findUnique({ where: { id: jobcardUuid } });
+      if (!validJobCard) continue;
 
       await tx.jobCardComplaint.create({
         data: {
@@ -313,23 +295,33 @@ export async function importLegacyCsvAction(formData: FormData) {
         }
       });
     }
+  });
 
-    // 6. Insert Items (Parts and Labor)
+  return { success: true };
+}
+
+export async function importLegacyItemsAction(itemsRaw: any[]) {
+  const tenantId = await getTenantId();
+
+  await prisma.$transaction(async (tx) => {
     for (const row of itemsRaw) {
       const itemLegacyId = row[0];
       const worksheetId = row[2];
-      const parentType = row[8]; // WORKSHEET
+      const parentType = row[8]; 
       const itemName = row[22] || '';
       const priceStr = row[24];
       const unit = row[26] || '';
       const qtyStr = row[29];
 
-      if (!worksheetId || !validLegacyJobCards.has(worksheetId) || parentType !== 'WORKSHEET' || !itemName) continue;
+      if (!worksheetId || parentType !== 'WORKSHEET' || !itemName) continue;
       const jobcardUuid = `legacy-jc-uuid-${worksheetId}`;
+
+      const validJobCard = await tx.jobCard.findUnique({ where: { id: jobcardUuid } });
+      if (!validJobCard) continue;
 
       const price = priceStr && !isNaN(parseFloat(priceStr)) ? parseFloat(priceStr) : 0;
       const qty = qtyStr && !isNaN(parseFloat(qtyStr)) ? parseFloat(qtyStr) : 1;
-      const absolutePrice = Math.abs(price); // Sometimes negative in legacy exports?
+      const absolutePrice = Math.abs(price);
 
       const isLabor = itemName.toLowerCase().includes('labour') || itemName.toLowerCase().includes('labor') || itemName.toLowerCase().includes('service') || itemName.toLowerCase().includes('repair');
 
