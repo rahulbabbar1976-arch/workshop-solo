@@ -25,9 +25,12 @@ async function parseCSV(fileName: string): Promise<any[]> {
 async function main() {
   console.log('Starting Legacy Data Import...');
 
-  // Get BABBARSONS tenant
-  const tenant = await prisma.tenant.findFirst({ where: { name: 'BABBARSONS' } });
-  if (!tenant) throw new Error('Tenant BABBARSONS not found. Please seed the database first.');
+  // Get tenant associated with rahulbabbar@msn.com
+  const user = await prisma.user.findFirst({ where: { email: 'rahulbabbar@msn.com' } });
+  if (!user || !user.tenantId) throw new Error('User rahulbabbar@msn.com not found or has no tenant assigned.');
+
+  const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId } });
+  if (!tenant) throw new Error('Tenant not found.');
 
   console.log(`Importing data into Tenant: ${tenant.name} (${tenant.id})`);
 

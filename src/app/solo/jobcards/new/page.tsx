@@ -6,6 +6,7 @@ import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, Therm
 import Link from "next/link";
 import { useContactPicker } from "@/hooks/useContactPicker";
 import { useSaveContact } from "@/hooks/useSaveContact";
+import { searchVehicleAction, createJobCardAction } from "@/app/actions/jobcardActions";
 
 export default function SoloNewJobcardPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function SoloNewJobcardPage() {
   const { saveContact } = useSaveContact();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -36,21 +38,30 @@ export default function SoloNewJobcardPage() {
     pollutionSafeDate: "",
   });
 
-  // Mock Database for auto-population
-  const mockDB = {
-    "MH01AB1234": {
-      make: "Hyundai", model: "i20", year: "2018", color: "White",
-      customerName: "John Doe", mobile: "9876543210", address: "Mumbai, Bandra",
-    }
-  };
-
-  const handleRegSearch = (val: string) => {
-    setFormData({...formData, regNo: val.toUpperCase()});
-    if (val.length >= 4) {
-      const match = mockDB[val.toUpperCase() as keyof typeof mockDB];
-      if (match) {
-        setFormData(prev => ({...prev, ...match, regNo: val.toUpperCase()}));
+  const handleRegSearch = async (val: string) => {
+    const uppercased = val.toUpperCase();
+    setFormData({...formData, regNo: uppercased});
+    
+    if (uppercased.length >= 4) {
+      setSearching(true);
+      try {
+        const data = await searchVehicleAction(uppercased);
+        if (data) {
+          setFormData(prev => ({
+            ...prev,
+            make: data.make || prev.make,
+            model: data.model || prev.model,
+            year: data.year || prev.year,
+            odometer: data.odometer || prev.odometer,
+            customerName: data.customerName || prev.customerName,
+            mobile: data.mobile || prev.mobile,
+            address: data.address || prev.address
+          }));
+        }
+      } catch(e) {
+        console.error("Error searching vehicle", e);
       }
+      setSearching(false);
     }
   };
 
@@ -131,13 +142,31 @@ export default function SoloNewJobcardPage() {
     { icon: <Volume2 className="w-5 h-5 text-slate-500" />, label: "Horn", text: "Horn not working" },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.push("/solo/jobcards/JC-1005");
-    }, 1500);
+    
+    const data = new FormData();
+    data.append("regNo", formData.regNo);
+    data.append("customerName", formData.customerName);
+    data.append("mobile", formData.mobile);
+    data.append("address", formData.address);
+    data.append("make", formData.make);
+    data.append("model", formData.model);
+    data.append("year", formData.year);
+    data.append("odometer", formData.odometer);
+    data.append("complaint", formData.complaint);
+
+    try {
+      const res = await createJobCardAction(data);
+      if (res.success) {
+        alert(`Job Card ${res.jobCardId} created successfully!`);
+        router.push("/solo/dashboard");
+      }
+    } catch(e) {
+      console.error(e);
+      alert("Failed to create job card.");
+    }
+    setLoading(false);
   };
 
   const handleImportContact = async () => {
@@ -178,13 +207,16 @@ export default function SoloNewJobcardPage() {
               
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Reg No / Phone <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded focus:ring-0 focus:border-teal-500 font-bold text-gray-800 uppercase"
-                  placeholder="Enter Reg or Phone to Auto-fill"
-                  value={formData.regNo}
-                  onChange={(e) => handleRegSearch(e.target.value)}
-                />
+                <div className="flex gap-2 relative">
+                  <input 
+                    type="text" 
+                    placeholder="Registration Number" 
+                    value={formData.regNo}
+                    onChange={(e) => handleRegSearch(e.target.value)}
+                    className="w-full p-4 border-2 border-gray-200 rounded focus:border-teal-500 font-bold text-gray-800 uppercase focus:ring-0"
+                  />
+                  {searching && <span className="absolute right-6 top-4 animate-pulse text-amber-500 font-bold">...</span>}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
