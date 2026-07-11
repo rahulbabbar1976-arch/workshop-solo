@@ -50,7 +50,7 @@ export default function SoloJobcardDetailPage() {
   const grandTotal = totalParts + totalLabor;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-36 font-[Outfit]">
+    <div className="flex flex-col min-h-screen bg-gray-100 pb-36 font-outfit">
       {/* Flat Teal Header */}
       <div className="bg-teal-500 text-white px-4 pt-6 pb-6 shadow-md relative">
         <div className="flex justify-between items-center mb-4">

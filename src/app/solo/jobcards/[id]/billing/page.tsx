@@ -45,7 +45,7 @@ export default function SoloBillingPage() {
   const whatsappMessage = `Hello ${job.customer}, your ${billType === 'estimate' ? 'Estimate' : 'Final Invoice'} for vehicle ${job.vehicle} is ready. Total amount is Rs ${grandTotal.toLocaleString()}. Click here to view: https://workshop.com/v/${job.id}`;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-24 font-[Outfit]">
+    <div className="flex flex-col min-h-screen bg-gray-100 pb-24 font-outfit">
       {/* Flat Teal Header */}
       <div className="bg-teal-500 text-white px-4 py-4 shadow-md flex items-center sticky top-0 z-30">
         {!completed && (

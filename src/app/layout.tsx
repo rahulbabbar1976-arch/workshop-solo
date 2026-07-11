@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -9,6 +9,11 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -34,7 +39,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#0f172a" />
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
-      <body>{children}</body>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} font-sans antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }

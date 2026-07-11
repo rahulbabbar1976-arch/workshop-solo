@@ -152,7 +152,7 @@ export default function SoloNewJobcardPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 pb-24 font-[Outfit]">
+    <div className="flex flex-col min-h-screen bg-gray-100 pb-24 font-outfit">
       {/* Flat Teal Header */}
       <div className="bg-teal-500 px-4 py-4 shadow-md flex items-center sticky top-0 z-30 text-white">
         <Link href={step === 1 ? "/solo/dashboard" : "#"} onClick={(e) => { if (step > 1) { e.preventDefault(); setStep(step - 1); } }} className="mr-3 p-2 -ml-2 hover:bg-teal-600 rounded-full transition-colors">

@@ -48,7 +48,7 @@ export default async function SoloDashboardPage() {
   }));
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-24 font-[Outfit]">
+    <div className="bg-gray-100 min-h-screen pb-24 font-outfit">
       <div className="max-w-lg mx-auto w-full px-6 py-10 space-y-6">
         
         {/* Floating Header Card */}

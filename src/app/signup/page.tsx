@@ -64,7 +64,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-teal-500 text-white overflow-hidden relative font-[Outfit]">
+    <div className="flex flex-col min-h-screen bg-teal-500 text-white overflow-hidden relative font-outfit">
       <div className="flex-1 flex flex-col justify-center px-6 py-12 z-10 relative">
         
         {/* Header */}

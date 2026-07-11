@@ -7,7 +7,7 @@ export default function AutobotAdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] font-[Outfit]">
+    <div className="flex min-h-screen bg-[#f8fafc] font-outfit">
       {/* Sidebar Desktop - Deep Dark Glassmorphism */}
       <aside className="w-72 bg-[#090e17] text-slate-300 hidden md:flex flex-col relative overflow-hidden border-r border-slate-800/60">
         

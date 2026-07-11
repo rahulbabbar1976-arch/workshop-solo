@@ -40,7 +40,7 @@ export default function PrintSettingsPage() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-24 font-[Outfit]">
+    <div className="bg-gray-100 min-h-screen pb-24 font-outfit">
       {/* Header */}
       <div className="bg-teal-500 px-4 pt-6 pb-6 shadow-md relative z-10 flex items-center justify-between">
         <Link href="/solo/dashboard" className="text-white p-2 -ml-2">
