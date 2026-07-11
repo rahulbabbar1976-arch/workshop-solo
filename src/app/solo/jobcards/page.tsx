@@ -1,18 +1,36 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { PlusCircle, Search, Filter, Clock, MapPin, Phone } from "lucide-react";
+import { Search, Filter, Clock } from "lucide-react";
+import { prisma } from "@/lib/db";
+import { cookies } from "next/headers";
 
-export default function SoloJobcardsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
+export default async function SoloJobcardsPage() {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('workshop_user_id')?.value;
   
-  const jobs = [
-    { id: "JC-1001", customer: "Rajesh K.", vehicle: "MH01AB1234", make: "Honda City", status: "In Progress", date: "Today", amount: 0 },
-    { id: "JC-1002", customer: "Amit S.", vehicle: "MH12CD5678", make: "Hyundai i20", status: "Waiting for Parts", date: "Today", amount: 2500 },
-    { id: "JC-1003", customer: "Suresh P.", vehicle: "MH04XY9988", make: "Suzuki Swift", status: "Ready", date: "Yesterday", amount: 1500 },
-    { id: "JC-1004", customer: "Vikram D.", vehicle: "MH47PQ1122", make: "Toyota Innova", status: "Closed", date: "Oct 24", amount: 8900 },
-  ];
+  let tenantId: string | null = null;
+  if (userId) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    tenantId = user?.tenantId || null;
+  }
+
+  const rawJobs = await prisma.jobCard.findMany({
+    where: { tenantId: tenantId || undefined },
+    orderBy: { createdAt: "desc" },
+    include: {
+      customer: true,
+      vehicle: true,
+    }
+  });
+
+  const jobs = rawJobs.map(job => ({
+    id: job.jobCardNumber,
+    customer: job.customer.displayName,
+    vehicle: job.vehicle.registrationNumberNormalized || 'UNKNOWN',
+    make: job.vehicle.model || 'Unknown',
+    status: job.status,
+    date: job.createdAt.toLocaleDateString(),
+    amount: 0 // Placeholder until invoices are ready
+  }));
 
   return (
     <div className="bg-[#f8fafc] min-h-screen pb-32">
@@ -32,8 +50,7 @@ export default function SoloJobcardsPage() {
               type="text"
               className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all font-medium text-slate-700 placeholder:text-slate-400"
               placeholder="Search reg no or customer..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              name="searchQuery"
             />
           </div>
           <button className="flex items-center justify-center px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm text-slate-600 hover:bg-slate-100 hover:text-blue-600 active:scale-95 transition-all">
@@ -44,6 +61,9 @@ export default function SoloJobcardsPage() {
 
       {/* Job List */}
       <div className="px-5 mt-6 space-y-4 relative z-0">
+        {jobs.length === 0 && (
+          <div className="text-center py-10 text-slate-500">No job cards found.</div>
+        )}
         {jobs.map((job) => (
           <Link key={job.id} href={`/solo/jobcards/${job.id}`} className="block bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 active:scale-[0.98] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-slate-300 transition-all group relative overflow-hidden">
             
@@ -73,18 +93,16 @@ export default function SoloJobcardsPage() {
 
             <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
               <span className={`text-xs font-extrabold px-3 py-1.5 rounded-xl flex items-center ${
-                job.status === "In Progress" ? "bg-blue-50 text-blue-700 border border-blue-100" : 
-                job.status === "Ready" ? "bg-green-50 text-green-700 border border-green-100" :
-                job.status === "Closed" ? "bg-slate-100 text-slate-700 border border-slate-200" :
+                job.status === "IN_PROGRESS" ? "bg-blue-50 text-blue-700 border border-blue-100" : 
+                job.status === "COMPLETED" || job.status === "DELIVERED" ? "bg-green-50 text-green-700 border border-green-100" :
                 "bg-amber-50 text-amber-700 border border-amber-100"
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                  job.status === "In Progress" ? "bg-blue-600" : 
-                  job.status === "Ready" ? "bg-green-500" :
-                  job.status === "Closed" ? "bg-slate-500" :
+                  job.status === "IN_PROGRESS" ? "bg-blue-600" : 
+                  job.status === "COMPLETED" || job.status === "DELIVERED" ? "bg-green-500" :
                   "bg-amber-500"
                 }`}></span>
-                {job.status}
+                {job.status.replace(/_/g, ' ')}
               </span>
               {job.amount > 0 ? (
                  <span className="text-base font-extrabold text-slate-900 tracking-tight">₹{job.amount.toLocaleString()}</span>

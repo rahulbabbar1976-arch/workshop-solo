@@ -75,6 +75,19 @@ async function main() {
   }
   console.log(`Imported ${customerCount} customers.`);
 
+  // Create a fallback customer for orphaned vehicles
+  await prisma.customer.upsert({
+    where: { id: `legacy-cust-unknown` },
+    update: {},
+    create: {
+      id: `legacy-cust-unknown`,
+      tenantId: tenant.id,
+      displayName: 'Unknown Legacy Customer',
+      customerType: 'retail',
+      sourceSystem: 'jobcard2'
+    }
+  });
+
   // 2. Import Vehicles (THING)
   // THING columns: 0=THING_ID, 1=CUSTOMER_ID, 2=NAME(LPN), 3=NOTES, 8=DATA_10(VIN?), 9=DATA_11(Year?), 10=DATA_12(Make?), 11=DATA_13(Model?)
   console.log('Reading Vehicles...');
@@ -90,6 +103,8 @@ async function main() {
     const model = row[11] || 'Unknown';
     const vin = row[8] || '';
 
+    const finalCustomerId = customerId ? `legacy-cust-${customerId}` : `legacy-cust-unknown`;
+    
     try {
       const vehicle = await prisma.vehicle.upsert({
         where: { registrationNumberNormalized: normalizedLpn },
@@ -102,7 +117,8 @@ async function main() {
           model: model,
           vin: vin,
           sourceSystem: 'jobcard2',
-          sourceRecordId: legacyId
+          sourceRecordId: legacyId,
+          currentCustomerId: finalCustomerId
         }
       });
 
@@ -110,9 +126,8 @@ async function main() {
       if (customerId) {
         await prisma.vehicleOwnershipHistory.create({
           data: {
-            tenantId: tenant.id,
             vehicleId: vehicle.id,
-            customerId: `legacy-cust-${customerId}`,
+            customerId: finalCustomerId,
             isCurrentOwner: true
           }
         });

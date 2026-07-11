@@ -52,11 +52,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (scope === 'full') {
-      // Include tenant DB list
-      const dbDir = process.cwd();
-      const tenantFiles = fs.readdirSync(dbDir).filter(f => f.endsWith('.db') && f !== 'dev.db');
-      manifest.tenantDatabases = tenantFiles;
-      exportData.tenantDatabaseList = tenantFiles;
+      const tenants = await db.tenant.findMany();
+      const customers = await db.customer.findMany();
+      const vehicles = await db.vehicle.findMany();
+      const jobCards = await db.jobCard.findMany();
+      
+      manifest.tenantCount = tenants.length;
+      exportData.tenants = tenants;
+      exportData.customers = customers;
+      exportData.vehicles = vehicles;
+      exportData.jobCards = jobCards;
     }
 
     // ── Build a simple JSON export (ZIP would require archiver package) ──

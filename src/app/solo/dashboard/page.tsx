@@ -1,17 +1,51 @@
-"use client";
-
 import { ClipboardList, PlusCircle, Car, TrendingUp, AlertCircle, Clock, Search, ChevronRight, Zap, Menu } from "lucide-react";
 import Link from "next/link";
+import { prisma } from "@/lib/db";
+import { cookies } from "next/headers";
 
-export default function SoloDashboardPage() {
-  // Stats and jobs will be fetched from the API (real data)
+export default async function SoloDashboardPage() {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('workshop_user_id')?.value;
+  
+  let tenantId: string | null = null;
+  if (userId) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    tenantId = user?.tenantId || null;
+  }
+
+  // Fetch real stats
+  const activeJobs = await prisma.jobCard.count({
+    where: { tenantId: tenantId || undefined, status: "IN_PROGRESS" }
+  });
+  
+  const pendingEstimates = await prisma.jobCard.count({
+    where: { tenantId: tenantId || undefined, status: "WAITING_FOR_ESTIMATE" }
+  });
+
+  const rawJobs = await prisma.jobCard.findMany({
+    where: { tenantId: tenantId || undefined },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    include: {
+      customer: true,
+      vehicle: true,
+    }
+  });
+
   const stats = {
-    activeJobs: 0,
-    pendingEstimates: 0,
-    todayRevenue: 0,
+    activeJobs,
+    pendingEstimates,
+    todayRevenue: 0, // Requires invoice table logic
   };
 
-  const recentJobs: { id: string; customer: string; vehicle: string; make: string; status: string; time: string }[] = [];
+  const recentJobs = rawJobs.map(job => ({
+    id: job.jobCardNumber,
+    customer: job.customer.displayName,
+    vehicle: job.vehicle.registrationNumberNormalized || 'UNKNOWN',
+    make: job.vehicle.model || 'Unknown',
+    status: job.status,
+    time: job.createdAt.toLocaleDateString()
+  }));
 
   return (
     <div className="bg-gray-100 min-h-screen pb-24 font-[Outfit]">
