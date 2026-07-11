@@ -13,11 +13,15 @@ export default function SettingsPage() {
     address: File | null;
     thing: File | null;
     worksheet: File | null;
+    problem: File | null;
+    item: File | null;
   }>({
     customer: null,
     address: null,
     thing: null,
     worksheet: null,
+    problem: null,
+    item: null,
   });
 
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
@@ -69,8 +73,8 @@ export default function SettingsPage() {
   };
 
   const handleLegacyImport = async () => {
-    if (!legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet) {
-      setMessage({ type: "error", text: "Please select all four legacy CSV files." });
+    if (!legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet || !legacyFiles.problem || !legacyFiles.item) {
+      setMessage({ type: "error", text: "Please select all six legacy CSV files." });
       return;
     }
 
@@ -82,10 +86,12 @@ export default function SettingsPage() {
       formData.append("addressFile", legacyFiles.address);
       formData.append("thingFile", legacyFiles.thing);
       formData.append("worksheetFile", legacyFiles.worksheet);
+      formData.append("problemFile", legacyFiles.problem);
+      formData.append("itemFile", legacyFiles.item);
 
       await importLegacyCsvAction(formData);
       setMessage({ type: "success", text: "Legacy data imported successfully." });
-      setLegacyFiles({ customer: null, address: null, thing: null, worksheet: null });
+      setLegacyFiles({ customer: null, address: null, thing: null, worksheet: null, problem: null, item: null });
     } catch (err: any) {
       setMessage({ type: "error", text: err.message || "Failed to import legacy data." });
     } finally {
@@ -204,11 +210,31 @@ export default function SettingsPage() {
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Problem.csv (Complaints)</label>
+                <input 
+                  type="file" 
+                  accept=".csv"
+                  onChange={(e) => setLegacyFiles({...legacyFiles, problem: e.target.files?.[0] || null})}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Item.csv (Parts & Labor)</label>
+                <input 
+                  type="file" 
+                  accept=".csv"
+                  onChange={(e) => setLegacyFiles({...legacyFiles, item: e.target.files?.[0] || null})}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                />
+              </div>
             </div>
             
             <button
               onClick={handleLegacyImport}
-              disabled={loading || !legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet}
+              disabled={loading || !legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet || !legacyFiles.problem || !legacyFiles.item}
               className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg uppercase tracking-wider disabled:opacity-50 mt-4"
             >
               {loading ? "Processing..." : "Import Legacy Data"}

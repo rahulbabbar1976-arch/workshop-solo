@@ -127,8 +127,10 @@ export async function importLegacyCsvAction(formData: FormData) {
   const addrFile = formData.get("addressFile") as File;
   const thingFile = formData.get("thingFile") as File;
   const worksheetFile = formData.get("worksheetFile") as File;
+  const problemFile = formData.get("problemFile") as File;
+  const itemFile = formData.get("itemFile") as File;
 
-  if (!custFile || !addrFile || !thingFile || !worksheetFile) {
+  if (!custFile || !addrFile || !thingFile || !worksheetFile || !problemFile || !itemFile) {
     throw new Error("Missing required CSV files");
   }
 
@@ -136,6 +138,8 @@ export async function importLegacyCsvAction(formData: FormData) {
   const addrText = await addrFile.text();
   const thingText = await thingFile.text();
   const worksheetText = await worksheetFile.text();
+  const problemText = await problemFile.text();
+  const itemText = await itemFile.text();
 
   const parseCsv = (text: string) => {
     return new Promise<any[]>((resolve) => {
@@ -151,6 +155,8 @@ export async function importLegacyCsvAction(formData: FormData) {
   const customersRaw = await parseCsv(custText);
   const thingsRaw = await parseCsv(thingText);
   const worksheetsRaw = await parseCsv(worksheetText);
+  const problemsRaw = await parseCsv(problemText);
+  const itemsRaw = await parseCsv(itemText);
 
   await prisma.$transaction(async (tx) => {
     // 1. Map Addresses
@@ -237,6 +243,8 @@ export async function importLegacyCsvAction(formData: FormData) {
     }
 
     // 4. Insert Worksheets (JobCards)
+    const validLegacyJobCards = new Set<string>();
+
     for (const row of worksheetsRaw) {
       const legacyId = row[0];
       const thingId = row[1];
@@ -260,18 +268,17 @@ export async function importLegacyCsvAction(formData: FormData) {
       }
 
       if (!mappedVehicleId) {
-        // Can't link a jobcard without a vehicle in our schema. 
-        // We will create a dummy vehicle if it doesn't exist, or just skip.
-        // It's safer to skip if the vehicle is missing.
         continue;
       }
 
+      validLegacyJobCards.add(legacyId);
       const dateIn = dateInStr ? new Date(dateInStr) : new Date();
 
       const exists = await tx.jobCard.findUnique({ where: { jobcardNumber } });
       if (!exists) {
         await tx.jobCard.create({
           data: {
+            id: `legacy-jc-uuid-${legacyId}`,
             jobcardNumber,
             tenantId,
             customerId: mappedCustId,
@@ -284,6 +291,66 @@ export async function importLegacyCsvAction(formData: FormData) {
             readOnlyFlag: true,
             sourceSystem: 'jobcard2',
             sourceRecordId: legacyId
+          }
+        });
+      }
+    }
+
+    // 5. Insert Problems (Complaints)
+    for (const row of problemsRaw) {
+      const problemLegacyId = row[0];
+      const worksheetId = row[1];
+      const text = row[8] || '';
+
+      if (!worksheetId || !validLegacyJobCards.has(worksheetId) || !text) continue;
+      const jobcardUuid = `legacy-jc-uuid-${worksheetId}`;
+
+      await tx.jobCardComplaint.create({
+        data: {
+          jobcardId: jobcardUuid,
+          tenantId,
+          customerComplaintText: text
+        }
+      });
+    }
+
+    // 6. Insert Items (Parts and Labor)
+    for (const row of itemsRaw) {
+      const itemLegacyId = row[0];
+      const worksheetId = row[2];
+      const parentType = row[8]; // WORKSHEET
+      const itemName = row[22] || '';
+      const priceStr = row[24];
+      const unit = row[26] || '';
+      const qtyStr = row[29];
+
+      if (!worksheetId || !validLegacyJobCards.has(worksheetId) || parentType !== 'WORKSHEET' || !itemName) continue;
+      const jobcardUuid = `legacy-jc-uuid-${worksheetId}`;
+
+      const price = priceStr && !isNaN(parseFloat(priceStr)) ? parseFloat(priceStr) : 0;
+      const qty = qtyStr && !isNaN(parseFloat(qtyStr)) ? parseFloat(qtyStr) : 1;
+      const absolutePrice = Math.abs(price); // Sometimes negative in legacy exports?
+
+      const isLabor = itemName.toLowerCase().includes('labour') || itemName.toLowerCase().includes('labor') || itemName.toLowerCase().includes('service') || itemName.toLowerCase().includes('repair');
+
+      if (isLabor) {
+        await tx.jobCardLabour.create({
+          data: {
+            jobcardId: jobcardUuid,
+            labourName: itemName,
+            sellingPrice: absolutePrice,
+            quantity: qty,
+            status: "completed"
+          }
+        });
+      } else {
+        await tx.jobCardPart.create({
+          data: {
+            jobcardId: jobcardUuid,
+            partName: itemName,
+            sellingPrice: absolutePrice,
+            quantityRequested: qty,
+            status: "used"
           }
         });
       }
