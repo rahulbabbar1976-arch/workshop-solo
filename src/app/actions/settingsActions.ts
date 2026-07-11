@@ -126,14 +126,16 @@ export async function importLegacyCsvAction(formData: FormData) {
   const custFile = formData.get("customerFile") as File;
   const addrFile = formData.get("addressFile") as File;
   const thingFile = formData.get("thingFile") as File;
+  const worksheetFile = formData.get("worksheetFile") as File;
 
-  if (!custFile || !addrFile || !thingFile) {
+  if (!custFile || !addrFile || !thingFile || !worksheetFile) {
     throw new Error("Missing required CSV files");
   }
 
   const custText = await custFile.text();
   const addrText = await addrFile.text();
   const thingText = await thingFile.text();
+  const worksheetText = await worksheetFile.text();
 
   const parseCsv = (text: string) => {
     return new Promise<any[]>((resolve) => {
@@ -148,6 +150,7 @@ export async function importLegacyCsvAction(formData: FormData) {
   const addressesRaw = await parseCsv(addrText);
   const customersRaw = await parseCsv(custText);
   const thingsRaw = await parseCsv(thingText);
+  const worksheetsRaw = await parseCsv(worksheetText);
 
   await prisma.$transaction(async (tx) => {
     // 1. Map Addresses
@@ -231,6 +234,59 @@ export async function importLegacyCsvAction(formData: FormData) {
           sourceRecordId: legacyId
         }
       });
+    }
+
+    // 4. Insert Worksheets (JobCards)
+    for (const row of worksheetsRaw) {
+      const legacyId = row[0];
+      const thingId = row[1];
+      const custId = row[3];
+      const dateInStr = row[7];
+      const notes = row[19] || '';
+      
+      if (!legacyId) continue;
+
+      const jobcardNumber = `LEGACY-JC-${legacyId}`;
+
+      let mappedCustId = `legacy-cust-${custId}`;
+      let validCustomer = await tx.customer.findUnique({ where: { id: mappedCustId } });
+      if (!validCustomer) mappedCustId = `legacy-cust-unknown`;
+
+      // Find Vehicle by sourceRecordId = thingId
+      let mappedVehicleId = null;
+      if (thingId) {
+        const v = await tx.vehicle.findFirst({ where: { sourceSystem: 'jobcard2', sourceRecordId: thingId, tenantId } });
+        if (v) mappedVehicleId = v.id;
+      }
+
+      if (!mappedVehicleId) {
+        // Can't link a jobcard without a vehicle in our schema. 
+        // We will create a dummy vehicle if it doesn't exist, or just skip.
+        // It's safer to skip if the vehicle is missing.
+        continue;
+      }
+
+      const dateIn = dateInStr ? new Date(dateInStr) : new Date();
+
+      const exists = await tx.jobCard.findUnique({ where: { jobcardNumber } });
+      if (!exists) {
+        await tx.jobCard.create({
+          data: {
+            jobcardNumber,
+            tenantId,
+            customerId: mappedCustId,
+            vehicleId: mappedVehicleId,
+            status: 'legacy_imported_read_only',
+            createdAt: dateIn,
+            dateIn: dateIn,
+            externalNotes: notes,
+            legacyImportFlag: true,
+            readOnlyFlag: true,
+            sourceSystem: 'jobcard2',
+            sourceRecordId: legacyId
+          }
+        });
+      }
     }
   });
 
