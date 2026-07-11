@@ -42,6 +42,7 @@ export default function SoloLoginPage() {
       
       if (!res.ok || !data.success) {
         setError(data.error || 'Login failed. Please check your credentials.');
+        setLoading(false);
         return;
       }
       
@@ -52,9 +53,9 @@ export default function SoloLoginPage() {
       } else {
         router.push('/solo/dashboard');
       }
+      // Do NOT set loading to false here, keep the spinner active while router transitions
     } catch {
       setError('Network error. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
