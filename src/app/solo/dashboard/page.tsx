@@ -39,7 +39,7 @@ export default async function SoloDashboardPage() {
   };
 
   const recentJobs = rawJobs.map(job => ({
-    id: job.jobCardNumber,
+    id: job.jobcardNumber,
     customer: job.customer.displayName,
     vehicle: job.vehicle.registrationNumberNormalized || 'UNKNOWN',
     make: job.vehicle.model || 'Unknown',

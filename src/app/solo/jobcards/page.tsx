@@ -23,7 +23,7 @@ export default async function SoloJobcardsPage() {
   });
 
   const jobs = rawJobs.map(job => ({
-    id: job.jobCardNumber,
+    id: job.jobcardNumber,
     customer: job.customer.displayName,
     vehicle: job.vehicle.registrationNumberNormalized || 'UNKNOWN',
     make: job.vehicle.model || 'Unknown',
