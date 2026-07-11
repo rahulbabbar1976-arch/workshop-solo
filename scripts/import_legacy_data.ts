@@ -103,27 +103,51 @@ async function main() {
     const customerId = row[1];
     const lpn = row[2] || `UNKNOWN-${legacyId}`;
     const normalizedLpn = lpn.toUpperCase().replace(/[\s-]/g, '');
-    const make = row[10] || 'Unknown';
-    const model = row[11] || 'Unknown';
+    const make = row[22] || 'Unknown';
+    const model = row[23] || 'Unknown';
+    const variant = row[24] || '';
+    const fuelType = row[25] || '';
     const vin = row[8] || '';
+    const yearRaw = parseInt(row[9]);
+    const year = isNaN(yearRaw) ? null : yearRaw;
+    const color = row[10] || '';
+    const batteryDetails = row[21] || '';
+    const nextServiceDate = row[12] ? new Date(row[12]) : null;
+    const nextOilChangeDate = row[14] ? new Date(row[14]) : null;
+    const nextPucDate = row[16] ? new Date(row[16]) : null;
+    const odometerRaw = parseInt(row[18]);
+    const currentOdometer = isNaN(odometerRaw) ? null : odometerRaw;
+    const notes = row[3] || '';
 
     const finalCustomerId = customerId ? `legacy-cust-${customerId}` : `legacy-cust-unknown`;
     
     try {
-      const vehicle = await prisma.vehicle.upsert({
-        where: { registrationNumberNormalized: normalizedLpn },
-        update: {},
-        create: {
+      const vehicleData = {
           tenantId: tenant.id,
           registrationNumberRaw: lpn,
           registrationNumberNormalized: normalizedLpn,
           manufacturer: make,
           model: model,
+          variant: variant,
+          fuelType: fuelType,
           vin: vin,
+          manufactureYear: year,
+          color: color,
+          batteryDetails: batteryDetails,
+          nextServiceDate: nextServiceDate,
+          nextOilChangeDate: nextOilChangeDate,
+          emissionInspectionExpiryDate: nextPucDate,
+          currentOdometer: currentOdometer,
+          notes: notes,
           sourceSystem: 'jobcard2',
           sourceRecordId: legacyId,
           currentCustomerId: finalCustomerId
-        }
+      };
+
+      const vehicle = await prisma.vehicle.upsert({
+        where: { registrationNumberNormalized: normalizedLpn },
+        update: vehicleData,
+        create: vehicleData
       });
 
       // Link Ownership if customer exists
@@ -158,22 +182,53 @@ async function main() {
     // Convert dates safely
     const dateIn = row[7] ? new Date(row[7]) : new Date();
     
-    const finalCustomerId = customerId ? `legacy-cust-${customerId}` : `legacy-cust-unknown`;
+    let finalCustomerId = customerId ? `legacy-cust-${customerId}` : `legacy-cust-unknown`;
+    
     // We don't have vehicle primary keys, so we lookup by sourceRecordId
     const vehicle = await prisma.vehicle.findFirst({ where: { sourceRecordId: vehicleId } });
     
     if (vehicle) {
-      await prisma.jobCard.upsert({
-        where: { jobcardNumber: `LEGACY-${legacyId}` },
-        update: {},
-        create: {
+      // Ensure customer exists to avoid Foreign Key violations
+      const custExists = await prisma.customer.findUnique({ where: { id: finalCustomerId } });
+      if (!custExists) {
+        finalCustomerId = 'legacy-cust-unknown';
+      }
+      
+      const rawNotes = row[19] || '';
+      let driverName = '';
+      let driverMobile = '';
+      let internalNotes = rawNotes;
+
+      // Extract driver name and mobile: "Driver Name Deeraj. (9873292195)"
+      const driverMatch = rawNotes.match(/Driver Name\s+([^.]+)\.?\s*\((\d+)\)/i);
+      if (driverMatch) {
+          driverName = driverMatch[1].trim();
+          driverMobile = driverMatch[2].trim();
+          internalNotes = rawNotes.replace(driverMatch[0], '').trim();
+      }
+
+      // If we found a driver, let's also update the Customer record if it doesn't have one
+      if (driverName && custExists && !custExists.driverName) {
+         await prisma.customer.update({
+             where: { id: finalCustomerId },
+             data: { driverName, driverMobile }
+         });
+      }
+
+      const jobCardData = {
           jobcardNumber: `LEGACY-${legacyId}`,
           tenantId: tenant.id,
           customerId: finalCustomerId,
           vehicleId: vehicle.id,
           status: 'closed',
           createdAt: dateIn,
-        }
+          internalNotes: internalNotes
+      };
+
+      await prisma.jobCard.upsert({
+        where: { jobcardNumber: `LEGACY-${legacyId}` },
+        update: jobCardData,
+        create: jobCardData
       });
       worksheetCount++;
     }
