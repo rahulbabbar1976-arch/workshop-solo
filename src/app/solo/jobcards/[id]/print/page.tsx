@@ -1,12 +1,9 @@
-import { getPrismaForDb } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { PrintLayoutClient } from "./PrintLayoutClient";
 import { notFound } from "next/navigation";
 
 export default async function PrintJobCardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  
-  // Create Prisma client (assuming dev.db for solo app)
-  const prisma = getPrismaForDb("dev.db");
   
   // Fetch JobCard with all relations
   const jobCard = await prisma.jobCard.findUnique({
@@ -14,8 +11,8 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
     include: {
       customer: true,
       vehicle: true,
-      parts: true,
-      labour: true,
+      partLines: true,
+      labourLines: true,
       complaints: true
     }
   });
@@ -27,8 +24,8 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
       include: {
         customer: true,
         vehicle: true,
-        parts: true,
-        labour: true,
+        partLines: true,
+        labourLines: true,
         complaints: true
       }
     });

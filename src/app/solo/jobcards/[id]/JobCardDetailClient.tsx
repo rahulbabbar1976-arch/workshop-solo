@@ -15,8 +15,8 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
   const vehicleName = jobCard.vehicle?.registrationNumberRaw || jobCard.vehicle?.registrationNumberNormalized || "Unknown Vehicle";
   const makeModel = `${jobCard.vehicle?.manufacturer || ""} ${jobCard.vehicle?.model || ""}`.trim() || "Unknown Make/Model";
 
-  const parts = jobCard.parts || [];
-  const labor = jobCard.labour || [];
+  const parts = jobCard.partLines || [];
+  const labor = jobCard.labourLines || [];
   const complaints = jobCard.complaints || [];
 
   const getPartTotal = (p: any) => {

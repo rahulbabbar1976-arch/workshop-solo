@@ -29,8 +29,8 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
     window.print();
   };
 
-  const totalParts = jobCard.parts.reduce((sum: number, p: any) => sum + ((p.quantityRequested || 0) * (p.sellingPrice || 0)), 0);
-  const totalLabour = jobCard.labour.reduce((sum: number, l: any) => sum + ((l.quantity || 0) * (l.sellingPrice || 0)), 0);
+  const totalParts = (jobCard.partLines || []).reduce((sum: number, p: any) => sum + ((p.quantityRequested || 0) * (p.sellingPrice || 0)), 0);
+  const totalLabour = (jobCard.labourLines || []).reduce((sum: number, l: any) => sum + ((l.quantity || 0) * (l.sellingPrice || 0)), 0);
   const grandTotal = totalParts + totalLabour;
 
   return (
@@ -170,7 +170,7 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
           )}
 
           {/* Parts Section */}
-          {jobCard.parts?.length > 0 && (
+          {jobCard.partLines?.length > 0 && (
             <div className="mb-8">
               <h3 className="text-md font-bold text-gray-800 uppercase tracking-wider border-b-2 border-gray-800 pb-2 mb-4">Parts & Materials</h3>
               <table className="w-full text-left border-collapse">
@@ -185,7 +185,7 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {jobCard.parts.map((p: any) => {
+                  {jobCard.partLines.map((p: any) => {
                     const amount = (p.quantityRequested || 0) * (p.sellingPrice || 0);
                     return (
                       <tr key={p.id} className="border-b border-gray-200">
@@ -210,9 +210,9 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
           )}
 
           {/* Labour Section */}
-          {jobCard.labour?.length > 0 && (
+          {jobCard.labourLines?.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-md font-bold text-gray-800 uppercase tracking-wider border-b-2 border-gray-800 pb-2 mb-4">Labour Charges</h3>
+              <h3 className="text-md font-bold text-gray-800 uppercase tracking-wider border-b-2 border-gray-800 pb-2 mb-4">Labour & Services</h3>
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-100 print:bg-gray-200">
@@ -225,7 +225,7 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {jobCard.labour.map((l: any) => {
+                  {jobCard.labourLines.map((l: any) => {
                     const amount = (l.quantity || 0) * (l.sellingPrice || 0);
                     return (
                       <tr key={l.id} className="border-b border-gray-200">
