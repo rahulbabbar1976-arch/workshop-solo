@@ -39,12 +39,12 @@ export default async function SoloDashboardPage() {
   };
 
   const recentJobs = rawJobs.map(job => ({
-    id: job.jobcardNumber,
-    customer: job.customer.displayName,
-    vehicle: job.vehicle.registrationNumberNormalized || 'UNKNOWN',
-    make: job.vehicle.model || 'Unknown',
-    status: job.status,
-    time: job.createdAt.toLocaleDateString()
+    id: job.jobcardNumber || 'UNKNOWN',
+    customer: job.customer?.displayName || 'Unknown',
+    vehicle: job.vehicle?.registrationNumberNormalized || 'UNKNOWN',
+    make: job.vehicle?.model || 'Unknown',
+    status: job.status || 'UNKNOWN',
+    time: job.createdAt ? job.createdAt.toLocaleDateString() : 'Unknown'
   }));
 
   return (

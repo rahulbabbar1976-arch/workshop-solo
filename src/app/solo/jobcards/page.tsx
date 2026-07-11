@@ -23,12 +23,12 @@ export default async function SoloJobcardsPage() {
   });
 
   const jobs = rawJobs.map(job => ({
-    id: job.jobcardNumber,
-    customer: job.customer.displayName,
-    vehicle: job.vehicle.registrationNumberNormalized || 'UNKNOWN',
-    make: job.vehicle.model || 'Unknown',
-    status: job.status,
-    date: job.createdAt.toLocaleDateString(),
+    id: job.jobcardNumber || 'UNKNOWN',
+    customer: job.customer?.displayName || 'Unknown',
+    vehicle: job.vehicle?.registrationNumberNormalized || 'UNKNOWN',
+    make: job.vehicle?.model || 'Unknown',
+    status: job.status || 'UNKNOWN',
+    date: job.createdAt ? job.createdAt.toLocaleDateString() : 'Unknown',
     amount: 0 // Placeholder until invoices are ready
   }));
 
