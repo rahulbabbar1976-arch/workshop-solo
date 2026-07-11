@@ -46,7 +46,6 @@ export async function POST(request: Request) {
       // Create Workshop Profile
       await tx.workshopProfile.create({
         data: {
-          tenantId: newTenant.id,
           workshopName,
           addressLine1,
           city: city || 'Unknown',

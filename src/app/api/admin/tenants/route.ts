@@ -3,7 +3,7 @@ import { getPrismaForDb } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 async function verifySuperAdmin() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const role = cookieStore.get('workshop_user_role')?.value;
   if (role !== 'super_admin') {
     throw new Error('Unauthorized');
