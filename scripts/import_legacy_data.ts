@@ -175,8 +175,8 @@ async function main() {
   let worksheetCount = 0;
   for (const row of worksheetsRaw) {
     const legacyId = row[0];
-    const customerId = row[1];
-    const vehicleId = row[3];
+    const vehicleId = row[1];
+    const customerId = row[3];
     if (!legacyId) continue;
     
     // Convert dates safely
