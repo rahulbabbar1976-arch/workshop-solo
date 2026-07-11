@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { getPrismaForDb } from '../src/lib/db';
 import fs from 'fs';
 import path from 'path';
@@ -143,6 +144,127 @@ async function main() {
   console.log(`Imported ${vehicleCount} vehicles.`);
 
   console.log('Data import complete!');
+
+  // 3. Import Worksheets (JobCards)
+  console.log('Reading Worksheets...');
+  const worksheetsRaw = await parseCSV('worksheet.csv');
+  let worksheetCount = 0;
+  for (const row of worksheetsRaw) {
+    const legacyId = row[0];
+    const customerId = row[1];
+    const vehicleId = row[3];
+    if (!legacyId) continue;
+    
+    // Convert dates safely
+    const dateIn = row[7] ? new Date(row[7]) : new Date();
+    
+    const finalCustomerId = customerId ? `legacy-cust-${customerId}` : `legacy-cust-unknown`;
+    // We don't have vehicle primary keys, so we lookup by sourceRecordId
+    const vehicle = await prisma.vehicle.findFirst({ where: { sourceRecordId: vehicleId } });
+    
+    if (vehicle) {
+      await prisma.jobCard.upsert({
+        where: { jobcardNumber: `LEGACY-${legacyId}` },
+        update: {},
+        create: {
+          jobcardNumber: `LEGACY-${legacyId}`,
+          tenantId: tenant.id,
+          customerId: finalCustomerId,
+          vehicleId: vehicle.id,
+          status: 'closed',
+          createdAt: dateIn,
+        }
+      });
+      worksheetCount++;
+    }
+  }
+  console.log(`Imported ${worksheetCount} worksheets.`);
+
+  // 4. Import Problems (Complaints)
+  console.log('Reading Problems...');
+  const problemsRaw = await parseCSV('problem.csv');
+  let problemCount = 0;
+  for (const row of problemsRaw) {
+    const legacyId = row[0];
+    const worksheetId = row[5];
+    const desc = row[8] || '';
+    if (!legacyId || !worksheetId || !desc.trim()) continue;
+
+    const jobCard = await prisma.jobCard.findUnique({ where: { jobcardNumber: `LEGACY-${worksheetId}` } });
+    if (jobCard) {
+      // Find existing to avoid duplicates if re-run
+      const existing = await prisma.jobCardComplaint.findFirst({
+        where: { jobcardId: jobCard.id, customerComplaintText: desc }
+      });
+      if (!existing) {
+        await prisma.jobCardComplaint.create({
+          data: {
+            jobcardId: jobCard.id,
+            tenantId: tenant.id,
+            customerComplaintText: desc
+          }
+        });
+        problemCount++;
+      }
+    }
+  }
+  console.log(`Imported ${problemCount} problems.`);
+
+  // 5. Import Items (Parts and Labour)
+  console.log('Reading Items...');
+  const itemsRaw = await parseCSV('item.csv');
+  let itemCount = 0;
+  let labourCount = 0;
+  for (const row of itemsRaw) {
+    const legacyId = row[0];
+    const worksheetId = row[7];
+    const desc = row[22] || '';
+    const rawQty = parseFloat(row[24] || '0');
+    const qty = Math.abs(rawQty) || 1; 
+    const price = parseFloat(row[32] || '0');
+    
+    if (!legacyId || !worksheetId || !desc.trim()) continue;
+    
+    const jobCard = await prisma.jobCard.findUnique({ where: { jobcardNumber: `LEGACY-${worksheetId}` } });
+    if (jobCard) {
+      const isLabour = /labour|service|charge|repair|fixing|open|fitment/i.test(desc);
+      if (isLabour) {
+        const existing = await prisma.jobCardLabour.findFirst({
+          where: { jobcardId: jobCard.id, labourName: desc }
+        });
+        if (!existing) {
+          await prisma.jobCardLabour.create({
+            data: {
+              jobcardId: jobCard.id,
+              labourName: desc,
+              sellingPrice: price,
+              quantity: qty,
+              status: 'completed'
+            }
+          });
+          labourCount++;
+        }
+      } else {
+        const existing = await prisma.jobCardPart.findFirst({
+          where: { jobcardId: jobCard.id, partName: desc }
+        });
+        if (!existing) {
+          await prisma.jobCardPart.create({
+            data: {
+              jobcardId: jobCard.id,
+              partName: desc,
+              sellingPrice: price,
+              quantityRequested: qty,
+              status: 'used'
+            }
+          });
+          itemCount++;
+        }
+      }
+    }
+  }
+  console.log(`Imported ${itemCount} parts and ${labourCount} labour items.`);
+
 }
 
 main().catch(console.error);
