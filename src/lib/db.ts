@@ -56,4 +56,3 @@ export function getPrismaForDb(dbPath?: string): PrismaClient {
 }
 
 export default prisma;
-export * from '../generated/client';
