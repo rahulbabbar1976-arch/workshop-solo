@@ -33,28 +33,28 @@ export default async function SoloJobcardsPage() {
   }));
 
   return (
-    <div className="bg-[#f8fafc] min-h-screen pb-32">
-      {/* Premium Header */}
-      <div className="bg-white px-5 pt-12 pb-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border-b border-gray-100 relative z-10">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Job Cards</h1>
+    <div className="bg-gray-100 min-h-screen pb-32">
+      {/* Flat Mobile Header */}
+      <div className="bg-amber-400 px-5 pt-8 pb-4 shadow-sm relative z-10">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold text-white uppercase tracking-wider">Job Cards</h1>
         </div>
 
         {/* Search & Filter */}
-        <div className="flex space-x-3">
+        <div className="flex space-x-2">
           <div className="relative flex-1 group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-blue-600 text-slate-400">
-              <Search className="h-5 w-5" />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <Search className="h-4 w-4" />
             </div>
             <input
               type="text"
-              className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all font-medium text-slate-700 placeholder:text-slate-400"
+              className="block w-full pl-9 pr-3 py-2.5 bg-white rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-medium text-gray-700 placeholder-gray-400"
               placeholder="Search reg no or customer..."
               name="searchQuery"
             />
           </div>
-          <button className="flex items-center justify-center px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm text-slate-600 hover:bg-slate-100 hover:text-blue-600 active:scale-95 transition-all">
-            <Filter className="h-5 w-5" />
+          <button className="flex items-center justify-center px-3 py-2.5 bg-white rounded-lg shadow-sm text-gray-600 hover:text-teal-600 active:scale-95 transition-all">
+            <Filter className="h-4 w-4" />
           </button>
         </div>
       </div>
