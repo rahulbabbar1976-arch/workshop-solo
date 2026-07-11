@@ -47,7 +47,7 @@ export default function SoloLoginPage() {
       
       // Redirect based on role
       const role = data.session?.primaryRole;
-      if (role === 'super_admin' || role === 'admin') {
+      if (role === 'super_admin') {
         router.push('/autobot-admin');
       } else {
         router.push('/solo/dashboard');
