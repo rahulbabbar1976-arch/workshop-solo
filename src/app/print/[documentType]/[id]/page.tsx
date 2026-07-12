@@ -123,7 +123,12 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
     }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+          body { background: white !important; margin: 0; padding: 0; }
+          * {
+            color: black !important;
+            background: transparent !important;
+            box-shadow: none !important;
+          }
           .no-print { display: none !important; }
         }
         table { border-collapse: collapse; width: 100%; font-size: ${globalStyle.baseFontSize - 1}pt; }

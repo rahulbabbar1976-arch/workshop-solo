@@ -146,6 +146,15 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
       </div>
 
       {/* Print Preview Area */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          * {
+            color: black !important;
+            background: transparent !important;
+            box-shadow: none !important;
+          }
+        }
+      `}} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto print:p-0 print:overflow-visible flex justify-center">
         <div className="bg-white shadow-xl print:shadow-none print:w-full w-full max-w-4xl text-black" style={{ fontFamily: fontFamily === 'serif' ? 'Times New Roman, serif' : `"${fontFamily}", sans-serif`, fontSize: baseFontSize, padding: '1cm 1.5cm' }}>
           
