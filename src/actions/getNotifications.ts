@@ -11,7 +11,13 @@ export async function getNotifications() {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const tenantId = user?.tenantId || undefined;
 
-  const notifications = [];
+  const notifications: Array<{
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    time: string;
+  }> = [];
   const now = new Date();
   
   // 1. Upcoming Bookings (next 2 days)
