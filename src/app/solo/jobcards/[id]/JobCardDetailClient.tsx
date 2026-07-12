@@ -362,7 +362,6 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
             </button>
           </div>
         )}
-      </div>
 
         {activeTab === "pictures" && (
           <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
