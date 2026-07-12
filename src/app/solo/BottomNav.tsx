@@ -13,7 +13,7 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-amber-400 text-white z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-amber-400 text-white z-50 print:hidden">
       <div className="flex justify-around items-center h-16">
         <Link href="/solo/dashboard" className="flex flex-col items-center justify-center w-full h-full hover:bg-amber-500 transition-colors">
           <Home className="h-6 w-6" />
