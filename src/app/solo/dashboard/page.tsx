@@ -24,7 +24,7 @@ export default async function SoloDashboardPage() {
 
   // Fetch real stats
   const openJobs = await prisma.jobCard.count({
-    where: { tenantId, status: { in: ["open", "in_progress"] } }
+    where: { tenantId, status: { not: "closed" } }
   });
   
   const awaitingOk = await prisma.jobCard.count({
