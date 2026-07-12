@@ -10,6 +10,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
   const [baseFontSize, setBaseFontSize] = useState("12px");
   const [showWorkshopHeader, setShowWorkshopHeader] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [footerText, setFooterText] = useState("");
   const [cols, setCols] = useState<any>({ parts: [], labour: [] });
 
   useEffect(() => {
@@ -19,6 +20,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
         if (data.template) {
           setFontFamily(data.template.fontFamily || "Inter");
           setBaseFontSize(data.template.baseFontSize || "12px");
+          setFooterText(data.template.footerText || "");
           if (data.template.columnsConfig) {
             try {
               const parsedCols = JSON.parse(data.template.columnsConfig);
