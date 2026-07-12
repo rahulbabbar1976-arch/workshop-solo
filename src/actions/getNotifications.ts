@@ -17,6 +17,7 @@ export async function getNotifications() {
     title: string;
     message: string;
     time: string;
+    link: string;
   }> = [];
   const now = new Date();
   
@@ -41,7 +42,8 @@ export async function getNotifications() {
       type: "booking",
       title: "Upcoming Booking",
       message: `${booking.regNo} scheduled for ${booking.bookingDate.toLocaleDateString()}`,
-      time: booking.createdAt.toISOString()
+      time: booking.createdAt.toISOString(),
+      link: `/solo/dashboard`
     });
   });
 
@@ -61,7 +63,8 @@ export async function getNotifications() {
       type: "part",
       title: "Pending Part",
       message: `${part.partName} for Job ${part.jobCard.jobcardNumber}`,
-      time: part.createdAt.toISOString()
+      time: part.createdAt.toISOString(),
+      link: `/solo/jobcards/${part.jobCard.id}`
     });
   });
 
@@ -81,7 +84,8 @@ export async function getNotifications() {
       type: "delivery",
       title: "Ready for Delivery",
       message: `${job.vehicle.registrationNumberNormalized} is ready for customer pickup.`,
-      time: job.updatedAt.toISOString()
+      time: job.updatedAt.toISOString(),
+      link: `/solo/jobcards/${job.id}`
     });
   });
 
@@ -106,7 +110,8 @@ export async function getNotifications() {
       type: "service",
       title: "Service Due",
       message: `${vehicle.registrationNumberNormalized} is due for service by ${vehicle.nextServiceDate?.toLocaleDateString()}`,
-      time: now.toISOString()
+      time: now.toISOString(),
+      link: `/solo/vehicles/${vehicle.id}`
     });
   });
 

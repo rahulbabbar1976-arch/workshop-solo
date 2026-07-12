@@ -10,10 +10,13 @@ type Notification = {
   title: string;
   message: string;
   time: string;
+  link: string;
 };
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const [viewAllOpen, setViewAllOpen] = useState(false);
+  const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -72,7 +75,14 @@ export default function NotificationBell() {
             ) : (
               <div className="divide-y divide-gray-100">
                 {notifications.map(notif => (
-                  <div key={notif.id} className="p-4 hover:bg-gray-50 transition-colors flex gap-3 cursor-pointer">
+                  <div 
+                    key={notif.id} 
+                    className="p-4 hover:bg-gray-50 transition-colors flex gap-3 cursor-pointer"
+                    onClick={() => {
+                      setSelectedNotif(notif);
+                      setOpen(false);
+                    }}
+                  >
                     <div className="mt-0.5 bg-gray-100 p-2 rounded-full h-fit">
                       {getIcon(notif.type)}
                     </div>
@@ -88,10 +98,86 @@ export default function NotificationBell() {
           </div>
           
           <div className="p-2 border-t border-gray-100 text-center">
-            <button className="text-xs font-bold text-orange-500 uppercase hover:text-orange-600 transition-colors py-1">View All</button>
+            <button 
+              onClick={() => {
+                setViewAllOpen(true);
+                setOpen(false);
+              }}
+              className="text-xs font-bold text-orange-500 uppercase hover:text-orange-600 transition-colors py-1 w-full"
+            >
+              View All
+            </button>
           </div>
         </div>
       )}
+
+      {/* Selected Notification Panel Modal */}
+      {selectedNotif && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative">
+            <div className="bg-gray-900 p-5 flex items-center justify-between">
+              <h3 className="text-white font-bold tracking-wide flex items-center gap-2">
+                {getIcon(selectedNotif.type)} {selectedNotif.title}
+              </h3>
+              <button onClick={() => setSelectedNotif(null)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 text-lg">{selectedNotif.message}</p>
+              <p className="text-gray-400 font-mono text-xs mt-4">Generated on: {new Date(selectedNotif.time).toLocaleString()}</p>
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setSelectedNotif(null)}
+                className="px-4 py-2 text-sm font-bold text-gray-500 uppercase tracking-wider"
+              >
+                Close
+              </button>
+              <a 
+                href={selectedNotif.link}
+                className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold uppercase tracking-wider rounded-lg shadow-md transition-colors"
+              >
+                View Reference
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View All Notifications Modal */}
+      {viewAllOpen && (
+        <div className="fixed inset-0 z-[100] bg-gray-100 flex flex-col animate-in slide-in-from-bottom-full duration-300">
+          <div className="bg-gray-900 px-4 py-4 flex items-center shadow-md">
+            <button onClick={() => setViewAllOpen(false)} className="text-gray-400 hover:text-white mr-4">✕</button>
+            <h2 className="text-white font-bold tracking-wider text-lg">All Notifications</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full">
+            <div className="space-y-3">
+              {notifications.map(notif => (
+                <div 
+                  key={notif.id} 
+                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:border-orange-500 cursor-pointer transition-colors"
+                  onClick={() => {
+                    setSelectedNotif(notif);
+                  }}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                      <span className="bg-gray-100 p-1.5 rounded-full">{getIcon(notif.type)}</span>
+                      {notif.title}
+                    </h4>
+                    <span className="text-[10px] text-gray-400 font-mono">{new Date(notif.time).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">{notif.message}</p>
+                </div>
+              ))}
+              {notifications.length === 0 && (
+                <div className="text-center p-8 text-gray-500">No notifications.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
