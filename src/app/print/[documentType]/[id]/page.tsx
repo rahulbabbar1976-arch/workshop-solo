@@ -138,14 +138,19 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
         
         switch (section.id) {
           case 'HEADER':
+            const showWorkshopHeader = columnsConfig.showWorkshopHeader ?? true;
             return (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `0.5px solid ${globalStyle.primaryColor}`, paddingBottom: '2px', marginBottom: '4px' }}>
                 <div>
-                  <h1 style={{ fontSize: `${globalStyle.baseFontSize + 4}pt`, margin: 0, fontWeight: 500, color: globalStyle.primaryColor }}>{profile?.workshopName || 'Autobots Multibrand Repair'}</h1>
-                  <p style={{ fontSize: `${globalStyle.baseFontSize - 1}pt`, color: '#475569', margin: '4px 0 0 0', lineHeight: '1.4' }}>
-                    {profile?.email ? `Email: ${profile.email}` : 'Email: info@workshop.com'} |{' '}
-                    {profile?.mobile ? `Ph: ${profile.mobile}` : 'Ph: +91-9876543210'}
-                  </p>
+                  {showWorkshopHeader && (
+                    <>
+                      <h1 style={{ fontSize: `${globalStyle.baseFontSize + 4}pt`, margin: 0, fontWeight: 500, color: globalStyle.primaryColor }}>{profile?.workshopName || 'Autobots Multibrand Repair'}</h1>
+                      <p style={{ fontSize: `${globalStyle.baseFontSize - 1}pt`, color: '#475569', margin: '4px 0 0 0', lineHeight: '1.4' }}>
+                        {profile?.email ? `Email: ${profile.email}` : 'Email: info@workshop.com'} |{' '}
+                        {profile?.mobile ? `Ph: ${profile.mobile}` : 'Ph: +91-9876543210'}
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <h2 style={{ fontSize: `${globalStyle.baseFontSize + 2}pt`, margin: 0, textTransform: 'uppercase', color: globalStyle.primaryColor, fontWeight: 500 }}>

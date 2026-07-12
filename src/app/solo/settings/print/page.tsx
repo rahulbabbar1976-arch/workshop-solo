@@ -54,6 +54,7 @@ export default function PrintSettingsPage() {
         if (data.template.columnsConfig) {
           try {
             const cols = JSON.parse(data.template.columnsConfig);
+            setShowWorkshopHeader(cols.showWorkshopHeader ?? true);
             setFields({
               partNo: cols.parts?.includes("partNo") ?? true,
               brand: cols.parts?.includes("brand") ?? true,
@@ -78,6 +79,7 @@ export default function PrintSettingsPage() {
       setIsSaving(true);
       
       const columnsConfig = {
+        showWorkshopHeader,
         labour: ["description", fields.qty ? "qty" : "", fields.rate ? "rate" : "", fields.taxRate ? "tax" : "", fields.discount ? "discount" : "", fields.total ? "total" : ""].filter(Boolean),
         parts: ["partName", fields.partNo ? "partNo" : "", fields.brand ? "brand" : "", fields.qty ? "qty" : "", fields.rate ? "rate" : "", fields.taxRate ? "tax" : "", fields.discount ? "discount" : "", fields.total ? "total" : ""].filter(Boolean)
       };
