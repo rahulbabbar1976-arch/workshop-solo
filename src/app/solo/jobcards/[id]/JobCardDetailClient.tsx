@@ -389,34 +389,34 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-36 font-outfit">
       {/* Flat Teal Header */}
-      <div className="bg-teal-500 text-white px-4 pt-6 pb-6 shadow-md relative">
+      <div className="bg-gray-900 text-white px-4 pt-6 pb-6 shadow-md relative">
         <div className="flex justify-between items-center mb-4">
-          <Link href="/solo/jobcards" className="p-2 -ml-2 hover:bg-teal-600 rounded-full transition-colors">
+          <Link href="/solo/jobcards" className="p-2 -ml-2 hover:bg-gray-800 rounded-full transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </Link>
           <div className="bg-white/20 border border-white/40 px-3 py-1 rounded">
              <span className="text-xs font-bold uppercase tracking-wider">{jobCard.jobcardNumber}</span>
           </div>
-          <Link href={`/solo/jobcards/${jobCard.id}/print`} className="p-2 hover:bg-teal-600 rounded-full transition-colors">
+          <Link href={`/solo/jobcards/${jobCard.id}/print`} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
             <Printer className="w-5 h-5" />
           </Link>
         </div>
         
         <div className="text-center mt-2">
           <h1 className="text-3xl font-extrabold tracking-tight mb-1">{vehicleName}</h1>
-          <p className="text-teal-100 font-semibold">{makeModel}</p>
+          <p className="text-gray-400 font-semibold">{makeModel}</p>
           <div className="mt-4 flex flex-col items-center gap-2">
-            <div className="inline-flex items-center bg-teal-600 px-4 py-2 rounded shadow-inner">
-               <div className="w-8 h-8 rounded-full bg-teal-400 flex items-center justify-center mr-3 font-bold text-white border border-teal-300">
+            <div className="inline-flex items-center bg-gray-800 px-4 py-2 rounded shadow-inner">
+               <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-3 font-bold text-white border border-orange-300">
                   {customerName.charAt(0).toUpperCase()}
                </div>
                <div className="text-left">
                   <p className="text-sm font-bold">{customerName}</p>
-                  <p className="text-xs text-teal-200 font-medium">+91 {mobile}</p>
+                  <p className="text-xs text-gray-400 font-medium">+91 {mobile}</p>
                </div>
                <button 
                  onClick={() => saveContact({ name: customerName, phone: mobile })}
-                 className="ml-4 p-1.5 bg-teal-500 hover:bg-teal-400 rounded-md transition-colors"
+                 className="ml-4 p-1.5 bg-gray-900 hover:bg-gray-700 rounded-md transition-colors"
                  title="Save to Contacts"
                >
                  <Contact className="w-4 h-4" />
@@ -432,7 +432,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           <button
             onClick={() => setActiveTab("details")}
             className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all whitespace-nowrap ${
-              activeTab === "details" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
+              activeTab === "details" ? "text-orange-500 border-b-4 border-orange-500 bg-orange-50" : "text-gray-500"
             }`}
           >
             Details
@@ -440,7 +440,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           <button
             onClick={() => setActiveTab("parts")}
             className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center whitespace-nowrap ${
-              activeTab === "parts" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
+              activeTab === "parts" ? "text-orange-500 border-b-4 border-orange-500 bg-orange-50" : "text-gray-500"
             }`}
           >
             <Package className="w-4 h-4 mr-1.5" /> Parts
@@ -448,7 +448,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           <button
             onClick={() => setActiveTab("labor")}
             className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center whitespace-nowrap ${
-              activeTab === "labor" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
+              activeTab === "labor" ? "text-orange-500 border-b-4 border-orange-500 bg-orange-50" : "text-gray-500"
             }`}
           >
             <Wrench className="w-4 h-4 mr-1.5" /> Labor
@@ -456,7 +456,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           <button
             onClick={() => setActiveTab("pictures")}
             className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center whitespace-nowrap ${
-              activeTab === "pictures" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
+              activeTab === "pictures" ? "text-orange-500 border-b-4 border-orange-500 bg-orange-50" : "text-gray-500"
             }`}
           >
             <Camera className="w-4 h-4 mr-1.5" /> Pictures
@@ -471,7 +471,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-2">
                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Customer Complaint</h3>
-                 <button className="text-teal-500"><PenLine className="w-4 h-4" /></button>
+                 <button className="text-orange-500"><PenLine className="w-4 h-4" /></button>
               </div>
               
               {complaints.length > 0 ? (
@@ -508,7 +508,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 ) : (
                   <button 
                     onClick={() => handleUpdateStatus("ready_for_delivery")}
-                    className="flex-1 text-center py-2 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-wider text-sm hover:bg-teal-500 hover:text-white transition-colors cursor-pointer"
+                    className="flex-1 text-center py-2 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-wider text-sm hover:bg-gray-900 hover:text-white transition-colors cursor-pointer"
                   >
                     Mark Ready
                   </button>
@@ -571,7 +571,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   <p className="font-bold text-gray-900 mb-2">₹{getPartTotal(p).toFixed(2)}</p>
                   {!isLocked && (
                     <div className="flex space-x-2">
-                      <button onClick={() => handleEditPart(p)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
+                      <button onClick={() => handleEditPart(p)} className="p-1.5 text-gray-400 hover:text-orange-500 bg-gray-50 hover:bg-orange-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
                       <button onClick={() => handleDeletePart(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
                     </div>
                   )}
@@ -587,7 +587,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   setNewPartPrice("");
                   setIsPartModalOpen(true);
                 }}
-                className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
+                className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
                 Add Part
               </button>
             )}
@@ -607,7 +607,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   <p className="font-bold text-gray-900 mb-2">₹{getLaborTotal(l).toFixed(2)}</p>
                   {!isLocked && (
                     <div className="flex space-x-2">
-                      <button onClick={() => handleEditLabor(l)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
+                      <button onClick={() => handleEditLabor(l)} className="p-1.5 text-gray-400 hover:text-orange-500 bg-gray-50 hover:bg-orange-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
                       <button onClick={() => handleDeleteLabor(l.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
                     </div>
                   )}
@@ -623,7 +623,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   setNewLaborPrice("");
                   setIsLaborModalOpen(true);
                 }}
-                className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
+                className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
                 Add Labor
               </button>
             )}
@@ -644,7 +644,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
             <button 
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="w-full py-6 bg-white border-2 border-dashed border-teal-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide mb-4">
+              className="w-full py-6 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide mb-4">
               {isUploading ? (
                 <Loader2 className="w-8 h-8 mb-2 animate-spin" />
               ) : (
@@ -672,7 +672,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-in fade-in">
           <div className="bg-white w-full sm:w-[400px] rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-8">
             <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-bold text-gray-800 flex items-center"><Package className="w-5 h-5 mr-2 text-teal-600"/> Add Part</h3>
+              <h3 className="text-lg font-bold text-gray-800 flex items-center"><Package className="w-5 h-5 mr-2 text-orange-500"/> Add Part</h3>
               <button onClick={() => setIsPartModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
             </div>
             <div className="space-y-4">
@@ -682,7 +682,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   type="text" 
                   value={newPartName}
                   onChange={handlePartNameChange}
-                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
+                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                   placeholder="e.g. Engine Oil"
                 />
                 {showPartResults && partSearchResults.length > 0 && (
@@ -690,7 +690,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     {partSearchResults.map(p => (
                       <div 
                         key={p.id} 
-                        className="px-4 py-2 hover:bg-teal-50 cursor-pointer text-sm text-gray-800"
+                        className="px-4 py-2 hover:bg-orange-50 cursor-pointer text-sm text-gray-800"
                         onClick={() => handleSelectPart(p)}
                       >
                         <div className="font-bold">{p.partName}</div>
@@ -707,7 +707,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newPartQty}
                     onChange={e => setNewPartQty(parseFloat(e.target.value))}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                   />
                 </div>
                 <div className="flex-1">
@@ -716,7 +716,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newPartPrice}
                     onChange={e => setNewPartPrice(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                     placeholder="0.00"
                   />
                 </div>
@@ -724,7 +724,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
               <button 
                 onClick={handleSavePart}
                 disabled={isSaving || !newPartName || !newPartPrice}
-                className="w-full bg-teal-600 text-white font-bold py-3.5 rounded-md mt-2 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                className="w-full bg-gray-800 text-white font-bold py-3.5 rounded-md mt-2 hover:bg-teal-700 disabled:opacity-50 transition-colors"
               >
                 {isSaving ? "Saving..." : "Save Part"}
               </button>
@@ -738,7 +738,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-in fade-in">
           <div className="bg-white w-full sm:w-[400px] rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-8">
             <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-bold text-gray-800 flex items-center"><Wrench className="w-5 h-5 mr-2 text-teal-600"/> Add Labor</h3>
+              <h3 className="text-lg font-bold text-gray-800 flex items-center"><Wrench className="w-5 h-5 mr-2 text-orange-500"/> Add Labor</h3>
               <button onClick={() => setIsLaborModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
             </div>
             <div className="space-y-4">
@@ -748,7 +748,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   type="text" 
                   value={newLaborName}
                   onChange={handleLaborNameChange}
-                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
+                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                   placeholder="e.g. General Service"
                 />
                 {showLaborResults && laborSearchResults.length > 0 && (
@@ -756,7 +756,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     {laborSearchResults.map(l => (
                       <div 
                         key={l.id} 
-                        className="px-4 py-2 hover:bg-teal-50 cursor-pointer text-sm text-gray-800"
+                        className="px-4 py-2 hover:bg-orange-50 cursor-pointer text-sm text-gray-800"
                         onClick={() => handleSelectLabor(l)}
                       >
                         <div className="font-bold">{l.labourName}</div>
@@ -773,7 +773,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newLaborQty}
                     onChange={e => setNewLaborQty(parseFloat(e.target.value))}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                   />
                 </div>
                 <div className="flex-1">
@@ -782,7 +782,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newLaborPrice}
                     onChange={e => setNewLaborPrice(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                     placeholder="0.00"
                   />
                 </div>
@@ -790,7 +790,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
               <button 
                 onClick={handleSaveLabor}
                 disabled={isSaving || !newLaborName || !newLaborPrice}
-                className="w-full bg-teal-600 text-white font-bold py-3.5 rounded-md mt-2 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                className="w-full bg-gray-800 text-white font-bold py-3.5 rounded-md mt-2 hover:bg-teal-700 disabled:opacity-50 transition-colors"
               >
                 {isSaving ? "Saving..." : "Save Labor"}
               </button>
@@ -804,7 +804,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         <div className="flex justify-between items-center">
           <div>
             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Est. Total</p>
-            <p className="text-2xl font-black text-teal-600">₹{grandTotal.toFixed(2)}</p>
+            <p className="text-2xl font-black text-orange-500">₹{grandTotal.toFixed(2)}</p>
           </div>
           <Link href={`/solo/jobcards/${jobCard.id}/billing`} className="bg-gray-900 text-white px-6 py-3 rounded font-bold shadow-md hover:bg-gray-800 transition-colors">
             Pay Now
