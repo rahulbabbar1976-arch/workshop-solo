@@ -137,6 +137,19 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
               </div>
             </div>
 
+            {/* Customer Details Panel */}
+            <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Customer Details</h3>
+              <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-700">
+                 <div className="font-medium text-gray-500">Address</div>
+                 <div>{jobCard.currentCustomer?.address || jobCard.customer?.address || "-"}</div>
+                 <div className="font-medium text-gray-500">Driver Name</div>
+                 <div>{jobCard.currentCustomer?.driverName || jobCard.customer?.driverName || "-"}</div>
+                 <div className="font-medium text-gray-500">Driver Mobile</div>
+                 <div>{jobCard.currentCustomer?.driverMobile || jobCard.customer?.driverMobile || "-"}</div>
+              </div>
+            </div>
+
             {/* Vehicle Extra Info Panel */}
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Vehicle Extended Details</h3>
@@ -146,15 +159,21 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
                  <div className="font-medium text-gray-500">Year</div>
                  <div>{jobCard.vehicle?.manufactureYear || "-"}</div>
                  <div className="font-medium text-gray-500">Odometer</div>
-                 <div>{jobCard.vehicle?.currentOdometer ? `${jobCard.vehicle.currentOdometer} KM` : "-"}</div>
+                 <div>{jobCard.intakeOdometer ? `${jobCard.intakeOdometer} KM` : (jobCard.vehicle?.currentOdometer ? `${jobCard.vehicle.currentOdometer} KM` : "-")}</div>
                  <div className="font-medium text-gray-500">Battery</div>
                  <div className="text-xs">{jobCard.vehicle?.batteryDetails || "-"}</div>
-                 <div className="font-medium text-gray-500">Next Service</div>
+                 <div className="font-medium text-gray-500">Next Service Date</div>
                  <div>{jobCard.vehicle?.nextServiceDate ? new Date(jobCard.vehicle.nextServiceDate).toLocaleDateString() : "-"}</div>
-                 <div className="font-medium text-gray-500">Next Oil Change</div>
+                 <div className="font-medium text-gray-500">Next Oil Change (KM)</div>
+                 <div>{jobCard.vehicle?.nextOilChangeDistance ? `${jobCard.vehicle.nextOilChangeDistance} KM` : "-"}</div>
+                 <div className="font-medium text-gray-500">Next Oil Change Date</div>
                  <div>{jobCard.vehicle?.nextOilChangeDate ? new Date(jobCard.vehicle.nextOilChangeDate).toLocaleDateString() : "-"}</div>
-                 <div className="font-medium text-gray-500">Next PUC</div>
+                 <div className="font-medium text-gray-500">Next PUC Date</div>
                  <div>{jobCard.vehicle?.emissionInspectionExpiryDate ? new Date(jobCard.vehicle.emissionInspectionExpiryDate).toLocaleDateString() : "-"}</div>
+                 <div className="font-medium text-gray-500">Insurance Details</div>
+                 <div>{jobCard.vehicle?.insuranceDetails || "-"}</div>
+                 <div className="font-medium text-gray-500">Fuel Qty</div>
+                 <div>{jobCard.fuelLevel || "-"}</div>
               </div>
             </div>
           </div>

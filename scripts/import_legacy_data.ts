@@ -122,6 +122,8 @@ async function main() {
     const finalCustomerId = customerId ? `legacy-cust-${customerId}` : `legacy-cust-unknown`;
     
     try {
+      const nextOilChangeDistance = parseInt(row[27]);
+
       const vehicleData = {
           tenantId: tenant.id,
           registrationNumberRaw: lpn,
@@ -136,6 +138,7 @@ async function main() {
           batteryDetails: batteryDetails,
           nextServiceDate: nextServiceDate,
           nextOilChangeDate: nextOilChangeDate,
+          nextOilChangeDistance: isNaN(nextOilChangeDistance) ? null : nextOilChangeDistance,
           emissionInspectionExpiryDate: nextPucDate,
           currentOdometer: currentOdometer,
           notes: notes,
@@ -215,6 +218,8 @@ async function main() {
          });
       }
 
+      const odometerRaw = parseInt(row[25]);
+
       const jobCardData = {
           jobcardNumber: `LEGACY-${legacyId}`,
           tenantId: tenant.id,
@@ -222,7 +227,8 @@ async function main() {
           vehicleId: vehicle.id,
           status: 'closed',
           createdAt: dateIn,
-          internalNotes: internalNotes
+          internalNotes: internalNotes,
+          intakeOdometer: isNaN(odometerRaw) ? null : odometerRaw
       };
 
       await prisma.jobCard.upsert({
@@ -276,24 +282,43 @@ async function main() {
     const desc = row[22] || '';
     const rawQty = parseFloat(row[24] || '0');
     const qty = Math.abs(rawQty) || 1; 
-    const price = parseFloat(row[32] || '0');
+    const price = parseFloat(row[12] || '0');
+    const taxRateRaw = parseFloat(row[13] || '0');
+    const discountRaw = parseFloat(row[15] || '0');
+    
+    const taxRate = Math.abs(taxRateRaw) * 100;
+    const discountPercent = Math.abs(discountRaw) * 100;
     
     if (!legacyId || !worksheetId || !desc.trim()) continue;
     
     const jobCard = await prisma.jobCard.findUnique({ where: { jobcardNumber: `LEGACY-${worksheetId}` } });
     if (jobCard) {
-      const isLabour = /labour|service|charge|repair|fixing|open|fitment/i.test(desc);
+      const isLabour = /labour|service|charge|repair|fixing|open|fitment|alignment|balancing/i.test(desc);
       if (isLabour) {
         const existing = await prisma.jobCardLabour.findFirst({
           where: { jobcardId: jobCard.id, labourName: desc }
         });
-        if (!existing) {
+        if (existing) {
+          await prisma.jobCardLabour.update({
+            where: { id: existing.id },
+            data: {
+              sellingPrice: price,
+              quantity: qty,
+              taxRate: taxRate,
+              discountType: discountPercent > 0 ? 'percent' : null,
+              discountValue: discountPercent > 0 ? discountPercent : null,
+            }
+          });
+        } else {
           await prisma.jobCardLabour.create({
             data: {
               jobcardId: jobCard.id,
               labourName: desc,
               sellingPrice: price,
               quantity: qty,
+              taxRate: taxRate,
+              discountType: discountPercent > 0 ? 'percent' : null,
+              discountValue: discountPercent > 0 ? discountPercent : null,
               status: 'completed'
             }
           });
@@ -303,13 +328,29 @@ async function main() {
         const existing = await prisma.jobCardPart.findFirst({
           where: { jobcardId: jobCard.id, partName: desc }
         });
-        if (!existing) {
+        if (existing) {
+          await prisma.jobCardPart.update({
+            where: { id: existing.id },
+            data: {
+              sellingPrice: price,
+              quantityRequested: qty,
+              quantityUsed: qty,
+              taxRate: taxRate,
+              discountType: discountPercent > 0 ? 'percent' : null,
+              discountValue: discountPercent > 0 ? discountPercent : null,
+            }
+          });
+        } else {
           await prisma.jobCardPart.create({
             data: {
               jobcardId: jobCard.id,
               partName: desc,
               sellingPrice: price,
               quantityRequested: qty,
+              quantityUsed: qty,
+              taxRate: taxRate,
+              discountType: discountPercent > 0 ? 'percent' : null,
+              discountValue: discountPercent > 0 ? discountPercent : null,
               status: 'used'
             }
           });

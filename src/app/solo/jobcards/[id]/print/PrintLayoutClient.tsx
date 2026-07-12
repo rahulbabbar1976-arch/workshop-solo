@@ -147,13 +147,26 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
               <p className="font-bold text-gray-900">{jobCard.customer?.displayName || 'Unknown Customer'}</p>
               <p className="text-gray-700">{jobCard.customer?.primaryMobile || 'No Contact'}</p>
               <p className="text-gray-700">{jobCard.customer?.addressLine1}</p>
+              {(jobCard.customer?.driverName || jobCard.customer?.driverMobile) && (
+                <div className="mt-2 text-sm">
+                  <p className="text-gray-600"><strong>Driver:</strong> {jobCard.customer?.driverName || 'N/A'}</p>
+                  <p className="text-gray-600"><strong>Driver Ph:</strong> {jobCard.customer?.driverMobile || 'N/A'}</p>
+                </div>
+              )}
             </div>
             
             <div className="flex-1 bg-gray-50 p-4 rounded border border-gray-200 print:border-gray-300">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 pb-2 mb-2">Vehicle Details</h3>
               <p className="font-bold text-gray-900 text-lg">{jobCard.vehicle?.registrationNumberRaw || jobCard.vehicle?.registrationNumberNormalized || 'Unknown Vehicle'}</p>
               <p className="text-gray-700">{jobCard.vehicle?.manufacturer} {jobCard.vehicle?.model}</p>
-              <p className="text-gray-700">VIN: {jobCard.vehicle?.vin || 'N/A'}</p>
+              <div className="grid grid-cols-2 gap-1 mt-2 text-sm">
+                <p className="text-gray-600"><strong>VIN:</strong> {jobCard.vehicle?.vin || 'N/A'}</p>
+                <p className="text-gray-600"><strong>Odometer:</strong> {jobCard.intakeOdometer || jobCard.vehicle?.currentOdometer || 'N/A'} KM</p>
+                <p className="text-gray-600"><strong>Color:</strong> {jobCard.vehicle?.color || 'N/A'}</p>
+                <p className="text-gray-600"><strong>Year:</strong> {jobCard.vehicle?.manufactureYear || 'N/A'}</p>
+                <p className="text-gray-600"><strong>Next Svc:</strong> {jobCard.vehicle?.nextServiceDate ? new Date(jobCard.vehicle.nextServiceDate).toLocaleDateString() : 'N/A'}</p>
+                <p className="text-gray-600"><strong>Next Oil (KM):</strong> {jobCard.vehicle?.nextOilChangeDistance || 'N/A'} KM</p>
+              </div>
             </div>
           </div>
 
