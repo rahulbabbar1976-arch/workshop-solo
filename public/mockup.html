@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoShop OS — Minimal SaaS Theme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --graphite:#14171A;
+    --graphite-2:#1D2126;
+    --paper:#F7F8FA;
+    --card:#FFFFFF;
+    --amber:#4F46E5;
+    --amber-dark:#4338CA;
+    --teal:#16A34A;
+    --teal-bg:#EAF7EE;
+    --red:#DC2626;
+    --red-bg:#FDEAEA;
+    --ink:#111827;
+    --steel:#6B7280;
+    --steel-light:#9CA3AF;
+    --line:#E5E7EB;
+    --disp:'Inter',sans-serif;
+    --body:'Inter',sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:var(--body);
+    background:#0B0D0F;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:28px 12px 60px;
+  }
+  .toolbar{
+    display:flex; align-items:center; gap:14px; margin-bottom:22px;
+    background:var(--graphite-2); padding:10px 16px; border-radius:100px;
+    border:1px solid #2A2F36;
+  }
+  .toolbar .brand{
+    font-family:var(--disp); color:var(--paper); letter-spacing:.5px; font-size:13px; font-weight:600;
+    padding-right:10px; border-right:1px solid #333; margin-right:2px;
+  }
+  .toolbar .brand span{color:var(--amber);}
+  .devbtn{
+    font-family:var(--body); font-weight:600; font-size:12.5px; letter-spacing:.3px;
+    background:transparent; color:var(--steel-light); border:none; padding:8px 16px;
+    border-radius:100px; cursor:pointer; transition:all .15s ease;
+  }
+  .devbtn.active{background:var(--amber); color:#FFFFFF;}
+  .stage{width:100%; display:flex; justify-content:center;}
+
+  /* ============ DEVICE FRAMES ============ */
+  .frame{
+    background:var(--graphite);
+    border-radius:44px;
+    box-shadow:0 30px 70px rgba(0,0,0,.55);
+    padding:14px;
+    position:relative;
+  }
+  .frame.mobile{width:390px; height:844px;}
+  .frame.tablet{width:980px; height:735px; border-radius:28px; padding:12px;}
+  .screen{
+    background:var(--paper);
+    width:100%; height:100%;
+    border-radius:30px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+  .frame.tablet .screen{border-radius:18px; flex-direction:row;}
+  .notch{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:110px; height:22px; background:var(--graphite); border-radius:14px; z-index:50;
+  }
+  .frame.tablet .notch{display:none;}
+  .statusbar{
+    height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+    padding:0 26px; font-family:var(--mono); font-size:11px; font-weight:600; color:var(--ink);
+    background:var(--paper);
+  }
+  .frame.tablet .statusbar{display:none;}
+
+  /* ============ TOP APP BAR ============ */
+  .appbar{
+    padding:10px 18px 14px; background:var(--paper); flex-shrink:0;
+    display:flex; align-items:center; gap:12px;
+  }
+  .appbar h1{font-family:var(--disp); font-size:20px; letter-spacing:.3px; font-weight:600; flex:1;}
+  .iconbtn{
+    width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:var(--card);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink); flex-shrink:0;
+  }
+  .iconbtn:hover{border-color:var(--amber-dark);}
+  .avatar{
+    width:34px; height:34px; border-radius:10px; background:var(--graphite); color:var(--paper);
+    font-family:var(--disp); font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+
+  /* ============ SCROLLABLE CONTENT ============ */
+  .content{flex:1; overflow-y:auto; padding:0 18px 100px;}
+  .content::-webkit-scrollbar{width:0;}
+  .frame.tablet .content{padding-bottom:24px;}
+
+  /* ============ BOTTOM NAV (mobile) ============ */
+  .bottomnav{
+    position:absolute; bottom:0; left:0; right:0; height:78px;
+    background:var(--card); border-top:1px solid var(--line);
+    display:flex; align-items:flex-start; padding-top:10px; z-index:40;
+  }
+  .navitem{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    color:var(--steel-light); cursor:pointer; font-size:10.5px; font-weight:600;
+  }
+  .navitem.active{color:var(--amber-dark);}
+  .navitem svg{stroke:currentColor;}
+
+  /* ============ TABLET RAIL ============ */
+  .rail{
+    width:78px; flex-shrink:0; background:var(--graphite); display:flex; flex-direction:column;
+    align-items:center; padding:20px 0; gap:6px;
+  }
+  .rail .railbrand{width:34px; height:34px; border-radius:9px; background:var(--amber); margin-bottom:22px;
+    display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-weight:700; color:#FFFFFF; font-size:15px;}
+  .railitem{
+    width:54px; height:54px; border-radius:12px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:3px; color:#7A828E; cursor:pointer; font-size:9px; font-weight:600;
+  }
+  .railitem.active{background:#262B32; color:var(--amber);}
+  .railitem svg{stroke:currentColor;}
+
+  .tabletmain{flex:1; display:flex; flex-direction:column; min-width:0;}
+  .split{flex:1; display:flex; min-height:0;}
+  .pane-list{width:340px; flex-shrink:0; border-right:1px solid var(--line); overflow-y:auto; padding:14px 0 14px 0;}
+  .pane-detail{flex:1; overflow-y:auto; padding:0;}
+
+  /* ============ FAB ============ */
+  .fab{
+    position:absolute; right:20px; bottom:96px; width:54px; height:54px; border-radius:16px;
+    background:var(--amber); display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:0 10px 24px rgba(242,162,12,.45); z-index:41;
+  }
+  .frame.tablet .fab{display:none;}
+
+  /* ============ CARDS / COMPONENTS ============ */
+  .stats-row{display:flex; gap:10px; margin:14px 0 18px;}
+  .stat{
+    flex:1; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 10px;
+  }
+  .stat .num{font-family:var(--disp); font-size:24px; font-weight:600;}
+  .stat .lbl{font-size:10.5px; color:var(--steel); font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin-top:2px;}
+  .stat.amber .num{color:var(--amber-dark);}
+  .stat.teal .num{color:var(--teal);}
+  .stat.red .num{color:var(--red);}
+
+  .section-title{
+    font-family:var(--disp); font-size:13px; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--steel); margin:18px 0 10px; font-weight:600;
+  }
+
+  .searchbar{
+    display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; padding:9px 12px; margin-top:4px;
+  }
+  .searchbar input{border:none; background:transparent; outline:none; font-family:var(--body); font-size:13px; flex:1; color:var(--ink);}
+  .searchbar svg{stroke:var(--steel-light); flex-shrink:0;}
+
+  .chiprow{display:flex; gap:8px; margin:12px 0 4px; overflow-x:auto; padding-bottom:2px;}
+  .chip{
+    flex-shrink:0; padding:7px 13px; border-radius:100px; background:var(--card); border:1px solid var(--line);
+    font-size:12px; font-weight:600; color:var(--steel); cursor:pointer; white-space:nowrap;
+  }
+  .chip.active{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+
+  /* ticket-style job card */
+  .ticket{
+    background:var(--card); border-radius:14px; border:1px solid var(--line); margin-bottom:12px;
+    position:relative; cursor:pointer; overflow:hidden;
+  }
+  .ticket:hover{border-color:var(--amber-dark);}
+  .ticket-top{display:flex; align-items:flex-start; justify-content:space-between; padding:13px 14px 10px;}
+  .ticket-id{font-family:var(--mono); font-size:11px; color:var(--steel); font-weight:600;}
+  .ticket-plate{font-family:var(--mono); font-size:15px; font-weight:600; letter-spacing:.5px; margin-top:2px;}
+  .ticket-veh{font-size:12.5px; color:var(--steel); margin-top:1px;}
+  .stamp{
+    font-family:var(--disp); font-size:10.5px; font-weight:600; text-transform:none; letter-spacing:0;
+    padding:5px 11px; border-radius:100px; border:none; white-space:nowrap;
+  }
+  .stamp.in-progress{color:var(--amber-dark); border-color:var(--amber-dark); background:#ECEBFC;}
+  .stamp.awaiting-parts{color:var(--red); border-color:var(--red); background:var(--red-bg);}
+  .stamp.awaiting-approval{color:#7C5CBF; border-color:#7C5CBF; background:#EFEAFB;}
+  .stamp.ready-pickup{color:var(--teal); border-color:var(--teal); background:var(--teal-bg);}
+  .stamp.completed{color:var(--steel); border-color:var(--steel-light); background:#F0F0F0;}
+  .ticket-perf{border-top:1px solid var(--line); margin:0 14px; display:flex; align-items:center; justify-content:space-between; padding:9px 0 12px;}
+  .ticket-cust{font-size:12px; color:var(--ink); font-weight:600;}
+  .ticket-meta{font-size:11px; color:var(--steel-light); font-family:var(--mono);}
+  .punch{display:none;}
+  .punch.r{display:none;}
+
+  /* radial progress */
+  .dial{position:relative; width:64px; height:64px; flex-shrink:0;}
+  .dial svg{transform:rotate(-90deg);}
+  .dial .pct{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--disp); font-size:15px; font-weight:600;}
+
+  /* job detail header */
+  .jd-header{background:var(--graphite); color:var(--paper); padding:18px 18px 20px; flex-shrink:0;}
+  .jd-back{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--steel-light); font-weight:600; cursor:pointer; margin-bottom:12px;}
+  .jd-toprow{display:flex; justify-content:space-between; align-items:flex-start;}
+  .jd-plate{font-family:var(--mono); font-size:26px; font-weight:600; letter-spacing:1px;}
+  .jd-veh{font-size:13px; color:#9CA3AF; margin-top:2px;}
+  .jd-id{font-family:var(--mono); font-size:11px; color:var(--amber); margin-top:8px; font-weight:600;}
+  .jd-customer{display:flex; align-items:center; gap:10px; margin-top:14px; background:#1F242B; padding:10px 12px; border-radius:12px;}
+  .jd-customer .ci{width:36px; height:36px; border-radius:9px; background:var(--amber); color:#FFFFFF; font-family:var(--disp); font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .jd-customer .cn{font-size:13px; font-weight:600;}
+  .jd-customer .cp{font-size:11px; color:#9CA3AF; font-family:var(--mono);}
+  .callbtn{margin-left:auto; width:32px; height:32px; border-radius:9px; background:var(--teal); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+
+  .tabs{display:flex; gap:4px; background:var(--card); border-bottom:1px solid var(--line); padding:0 14px; overflow-x:auto; flex-shrink:0;}
+  .tabbtn{padding:13px 12px; font-size:12.5px; font-weight:600; color:var(--steel); cursor:pointer; border-bottom:2.5px solid transparent; white-space:nowrap;}
+  .tabbtn.active{color:var(--ink); border-color:var(--amber);}
+
+  .field-row{display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .field-row .k{color:var(--steel);}
+  .field-row .v{font-weight:600; text-align:right;}
+
+  .lineitem{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 13px; margin-bottom:9px;}
+  .li-top{display:flex; justify-content:space-between; font-size:13px; font-weight:600;}
+  .li-sub{display:flex; justify-content:space-between; font-size:11.5px; color:var(--steel); margin-top:5px; font-family:var(--mono);}
+  .li-total{font-family:var(--mono); font-weight:600;}
+
+  .addbtn{
+    display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:11px;
+    border:1.5px dashed var(--steel-light); border-radius:12px; color:var(--steel); font-size:12.5px; font-weight:600;
+    cursor:pointer; margin-top:4px;
+  }
+  .addbtn:hover{border-color:var(--amber-dark); color:var(--amber-dark);}
+
+  .totals-box{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:14px;}
+  .totals-box .field-row:last-child{border-bottom:none;}
+  .totals-box .grand{font-family:var(--disp); font-size:17px;}
+
+  .primary-btn{
+    width:100%; background:var(--ink); color:var(--paper); border:none; border-radius:12px; padding:13px;
+    font-family:var(--body); font-weight:700; font-size:13.5px; cursor:pointer; margin-top:12px; letter-spacing:.2px;
+  }
+  .primary-btn.amber{background:var(--amber); color:#FFFFFF;}
+  .primary-btn.outline{background:transparent; border:1.5px solid var(--ink); color:var(--ink);}
+  .btnrow{display:flex; gap:10px; margin-top:12px;}
+  .btnrow .primary-btn{margin-top:0;}
+
+  .status-pill{display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:100px; font-size:11px; font-weight:700;}
+  .status-pill.paid{background:var(--teal-bg); color:var(--teal);}
+  .status-pill.unpaid{background:#ECEBFC; color:var(--amber-dark);}
+  .status-pill.overdue{background:var(--red-bg); color:var(--red);}
+  .status-pill.sent{background:#EFEAFB; color:#7C5CBF;}
+  .status-pill.approved{background:var(--teal-bg); color:var(--teal);}
+  .status-pill.draft{background:#F0F0F0; color:var(--steel);}
+
+  .customer-row{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); cursor:pointer;}
+  .customer-row .ci{width:42px; height:42px; border-radius:11px; background:var(--graphite); color:var(--paper); font-family:var(--disp); font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .customer-row .cn{font-size:14px; font-weight:600;}
+  .customer-row .cm{font-size:11.5px; color:var(--steel);}
+  .chev{stroke:var(--steel-light); flex-shrink:0; margin-left:auto;}
+
+  .vehicle-card{background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px; margin-bottom:10px; display:flex; align-items:center; gap:12px;}
+  .vehicle-card .vp{font-family:var(--mono); font-weight:600; font-size:14px;}
+  .vehicle-card .vm{font-size:11.5px; color:var(--steel); margin-top:1px;}
+  .vicon{width:40px; height:40px; border-radius:10px; background:#F1F2F4; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+
+  .timeline{position:relative; padding-left:18px; margin-top:6px;}
+  .tl-item{position:relative; padding-bottom:16px;}
+  .tl-item::before{content:''; position:absolute; left:-18px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--amber);}
+  .tl-item::after{content:''; position:absolute; left:-15px; top:12px; width:1px; bottom:-4px; background:var(--line);}
+  .tl-item:last-child::after{display:none;}
+  .tl-date{font-family:var(--mono); font-size:10.5px; color:var(--steel-light); font-weight:600;}
+  .tl-text{font-size:12.5px; font-weight:600; margin-top:2px;}
+  .tl-sub{font-size:11.5px; color:var(--steel); margin-top:1px;}
+
+  .step-track{display:flex; align-items:center; gap:4px; margin-bottom:6px;}
+  .step-dot{width:26px; height:26px; border-radius:50%; background:var(--card); border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; font-weight:600; color:var(--steel-light); flex-shrink:0;}
+  .step-dot.done{background:var(--teal); border-color:var(--teal); color:#fff;}
+  .step-dot.now{background:var(--amber); border-color:var(--amber); color:#FFFFFF;}
+  .step-line{flex:1; height:1.5px; background:var(--line);}
+  .step-line.done{background:var(--teal);}
+
+  .formgroup{margin-bottom:14px;}
+  .formgroup label{font-size:11.5px; font-weight:700; color:var(--steel); text-transform:uppercase; letter-spacing:.4px; display:block; margin-bottom:6px;}
+  .forminput{width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; background:var(--card); font-family:var(--body); font-size:13.5px; color:var(--ink);}
+  .scanrow{display:flex; gap:8px;}
+  .scanrow .forminput{flex:1;}
+  .scanbtn{width:44px; flex-shrink:0; border-radius:10px; background:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+
+  .checklist-item{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .cbx{width:19px; height:19px; border-radius:6px; border:1.5px solid var(--steel-light); flex-shrink:0;}
+  .cbx.on{background:var(--teal); border-color:var(--teal); display:flex; align-items:center; justify-content:center;}
+
+  .empty-msg{text-align:center; padding:40px 20px; color:var(--steel);}
+  .empty-msg .big{font-family:var(--disp); font-size:15px; color:var(--ink); margin-bottom:4px;}
+
+  .modal-overlay{position:absolute; inset:0; background:rgba(20,23,26,.5); z-index:60; display:flex; align-items:flex-end; justify-content:center;}
+  .frame.tablet .modal-overlay{align-items:center;}
+  .modal-sheet{background:var(--paper); width:100%; max-height:92%; border-radius:24px 24px 0 0; display:flex; flex-direction:column; overflow:hidden;}
+  .frame.tablet .modal-sheet{width:560px; max-height:640px; border-radius:20px;}
+  .modal-head{padding:16px 18px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--line); flex-shrink:0;}
+  .modal-head h2{font-family:var(--disp); font-size:16px; flex:1;}
+  .modal-body{flex:1; overflow-y:auto; padding:16px 18px 24px;}
+
+  .photo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px;}
+  .photo-ph{aspect-ratio:1; border-radius:10px; background:#F1F2F4; display:flex; align-items:center; justify-content:center;}
+
+  .toggle-2{display:flex; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:3px; margin:14px 0 4px;}
+  .toggle-2 div{flex:1; text-align:center; padding:9px; border-radius:9px; font-size:12.5px; font-weight:700; color:var(--steel); cursor:pointer;}
+  .toggle-2 div.active{background:var(--ink); color:var(--paper);}
+
+  ::selection{background:var(--amber); color:#FFFFFF;}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="brand">GARAGE<span>OS</span></div>
+  <button class="devbtn active" id="btn-mobile">📱 Mobile</button>
+  <button class="devbtn" id="btn-tablet">▭ Tablet</button>
+</div>
+
+<div class="stage"><div id="frame" class="frame mobile"><div class="notch"></div><div class="screen" id="screen"></div></div></div>
+
+<script>
+/* ============================================================
+   MOCK DATA
+   ============================================================ */
+const customers = [
+  {id:'c1', name:'Rohit Malhotra', phone:'+91 98110 22456', email:'rohit.m@gmail.com', since:'Mar 2022', ltv:'₹1,84,200', balance:'₹0', vehicles:['v1']},
+  {id:'c2', name:'Priya Nair', phone:'+91 99530 77812', email:'priya.nair@outlook.com', since:'Jul 2023', ltv:'₹62,400', balance:'₹8,500', vehicles:['v2']},
+  {id:'c3', name:'Fleet — Zomato Logistics', phone:'+91 90130 44210', email:'fleet.ops@zlog.in', since:'Jan 2021', ltv:'₹9,42,000', balance:'₹22,150', vehicles:['v3','v4']},
+  {id:'c4', name:'Arjun Verma', phone:'+91 97170 65310', email:'arjun.verma@yahoo.com', since:'Oct 2024', ltv:'₹14,300', balance:'₹0', vehicles:['v5']},
+];
+const vehicles = {
+  v1:{plate:'DL 3C AB 4021', make:'Hyundai', model:'Creta', year:'2021', vin:'MALC581CLMM102934', odo:'42,180 km'},
+  v2:{plate:'DL 5S BM 9982', make:'Honda', model:'City', year:'2020', vin:'MRHGM6640LP009821', odo:'61,050 km'},
+  v3:{plate:'HR 26 DK 7710', make:'Tata', model:'Ace Gold', year:'2022', vin:'MAT445019N2P44120', odo:'88,420 km'},
+  v4:{plate:'HR 26 DK 7711', make:'Tata', model:'Ace Gold', year:'2022', vin:'MAT445019N2P44210', odo:'79,050 km'},
+  v5:{plate:'DL 1R CT 5543', make:'Maruti Suzuki', model:'Swift', year:'2019', vin:'MA3EYD81S00512877', odo:'55,900 km'},
+};
+const jobs = [
+  {id:'JC-2419', vehicleId:'v1', customerId:'c1', status:'in-progress', complaint:'AC not cooling, rattling noise from front-left suspension', assigned:'Suresh (Bay 2)', opened:'09 Jul', due:'11 Jul', completion:55,
+    parts:[{name:'AC Compressor Relay',partNo:'HY-AC-1102',qty:1,unit:1450,total:1450},{name:'Front Stabilizer Link',partNo:'HY-SUS-2210',qty:2,unit:680,total:1360}],
+    labor:[{desc:'AC diagnostics & recharge',hrs:1.5,rate:900,total:1350},{desc:'Suspension link replacement',hrs:2,rate:900,total:1800}],
+    notes:[{author:'Suresh',time:'Today 10:20am',text:'Confirmed compressor clutch not engaging — relay faulty, ordered replacement.'},{author:'Front desk',time:'Yesterday 4:40pm',text:'Customer dropped vehicle, requested call before any work above ₹5,000.'}]},
+  {id:'JC-2417', vehicleId:'v3', customerId:'c3', status:'awaiting-parts', complaint:'Clutch slipping under load, gearbox oil leak', assigned:'Mahesh (Bay 1)', opened:'07 Jul', due:'12 Jul', completion:30,
+    parts:[{name:'Clutch Plate Kit',partNo:'TA-CL-5540',qty:1,unit:3200,total:3200}],
+    labor:[{desc:'Clutch assembly R&R',hrs:4,rate:850,total:3400}],
+    notes:[{author:'Mahesh',time:'Today 9:05am',text:'Clutch kit backordered from distributor, ETA tomorrow.'}]},
+  {id:'JC-2415', vehicleId:'v2', customerId:'c2', status:'awaiting-approval', complaint:'40,000 km service + brake pad check', assigned:'Suresh (Bay 2)', opened:'08 Jul', due:'10 Jul', completion:80,
+    parts:[{name:'Engine Oil 5W30 (4L)',partNo:'GEN-OIL-5W30',qty:1,unit:2100,total:2100},{name:'Oil Filter',partNo:'HO-OF-330',qty:1,unit:340,total:340},{name:'Front Brake Pads',partNo:'HO-BP-220',qty:1,unit:1850,total:1850}],
+    labor:[{desc:'Full service labor',hrs:2,rate:900,total:1800},{desc:'Brake pad replacement',hrs:1,rate:900,total:900}],
+    notes:[{author:'Priya (customer)',time:'Yesterday 6:15pm',text:'Asked to also check the front brake pads while it\'s in.'}]},
+  {id:'JC-2410', vehicleId:'v5', customerId:'c4', status:'ready-pickup', complaint:'Battery replacement, wheel alignment', assigned:'Deepak (Bay 3)', opened:'05 Jul', due:'09 Jul', completion:100,
+    parts:[{name:'Amaron Battery 35Ah',partNo:'AMR-35AH',qty:1,unit:4200,total:4200}],
+    labor:[{desc:'Battery fit + alignment',hrs:1,rate:900,total:900}],
+    notes:[{author:'Deepak',time:'Today 8:30am',text:'Alignment done, all four corners within spec. Ready for pickup.'}]},
+  {id:'JC-2402', vehicleId:'v4', customerId:'c3', status:'completed', complaint:'Tyre rotation, brake fluid top-up', assigned:'Mahesh (Bay 1)', opened:'02 Jul', due:'02 Jul', completion:100,
+    parts:[{name:'Brake Fluid DOT4 (1L)',partNo:'GEN-BF-DOT4',qty:1,unit:420,total:420}],
+    labor:[{desc:'Tyre rotation + top-up',hrs:0.5,rate:900,total:450}],
+    notes:[]},
+];
+const invoices = [
+  {id:'INV-1188', jobId:'JC-2410', customer:'Arjun Verma', vehicle:'DL 1R CT 5543', amount:'₹5,335', status:'unpaid', issued:'09 Jul', due:'16 Jul'},
+  {id:'INV-1186', jobId:'JC-2402', customer:'Fleet — Zomato Logistics', vehicle:'HR 26 DK 7711', amount:'₹497', status:'paid', issued:'02 Jul', due:'09 Jul'},
+  {id:'INV-1179', jobId:'JC-2395', customer:'Rohit Malhotra', vehicle:'DL 3C AB 4021', amount:'₹3,180', status:'overdue', issued:'22 Jun', due:'29 Jun'},
+];
+const estimates = [
+  {id:'EST-3041', jobId:'JC-2415', customer:'Priya Nair', vehicle:'DL 5S BM 9982', amount:'₹8,141', status:'sent'},
+  {id:'EST-3038', jobId:'JC-2417', customer:'Fleet — Zomato Logistics', vehicle:'HR 26 DK 7710', amount:'₹7,832', status:'approved'},
+  {id:'EST-3035', jobId:'JC-2419', customer:'Rohit Malhotra', vehicle:'DL 3C AB 4021', amount:'₹4,610', status:'draft'},
+];
+
+const statusLabel = {'in-progress':'In Progress','awaiting-parts':'Awaiting Parts','awaiting-approval':'Awaiting Approval','ready-pickup':'Ready for Pickup','completed':'Completed'};
+const initials = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+/* ============================================================
+   ICONS
+   ============================================================ */
+const ic = {
+  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+  job:'<rect x="4" y="6" width="16" height="15" rx="2"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M9 12h6M9 16h4"/>',
+  users:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c.5-4 2.7-6 5.5-6s5 2 5.5 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 13.2c2.3.3 3.8 2.1 4.2 5.3"/>',
+  bill:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 11.5h7M8.5 15h4"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  back:'<path d="M15 18l-6-6 6-6"/>',
+  phone:'<path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1v3.4c0 .6-.4 1-1 1C10.9 21 3 13.1 3 3.9c0-.6.4-1 1-1h3.4c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/>',
+  camera:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.3"/>',
+  check:'<path d="M4 12l6 6L20 6"/>',
+  chevR:'<path d="M9 6l6 6-6 6"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/>',
+  bell:'<path d="M6 17v-5.5a6 6 0 0 1 12 0V17l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/>',
+  qr:'<rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h3v3h-3zM19 14v6M14 19h6"/>',
+  car:'<path d="M4 16V12l2-5h12l2 5v4"/><path d="M4 16h16v2.5a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1V17h-9v1.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="16" r="1.5"/><circle cx="16.5" cy="16" r="1.5"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>',
+  wrench:'<path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4l-3.6 3.6-2-2z"/>',
+};
+const svg=(name,size=20,color='currentColor',sw=1.8)=>`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ic[name]}</svg>`;
+
+function dial(pct,color){
+  const r=26,c=2*Math.PI*r,off=c-(pct/100)*c;
+  return `<div class="dial"><svg width="64" height="64" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="${r}" stroke="#E5E7EB" stroke-width="6" fill="none"/>
+    <circle cx="32" cy="32" r="${r}" stroke="${color}" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/>
+    </svg><div class="pct">${pct}%</div></div>`;
+}
+const statusColor = {'in-progress':'#4F46E5','awaiting-parts':'#DC2626','awaiting-approval':'#7C5CBF','ready-pickup':'#16A34A','completed':'#9CA3AF'};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = {device:'mobile', tab:'home', jobId:null, jobTab:'overview', customerId:null, billingTab:'estimates', billingId:null, jobFilter:'all', modal:null, intakeStep:1};
+
+/* ============================================================
+   RENDER HELPERS — CONTENT BLOCKS
+   ============================================================ */
+function ticketCard(j){
+  const v=vehicles[j.vehicleId], c=customers.find(x=>x.id===j.customerId);
+  return `<div class="ticket" onclick="openJob('${j.id}')">
+    <div class="punch"></div><div class="punch r"></div>
+    <div class="ticket-top">
+      <div><div class="ticket-id">${j.id}</div><div class="ticket-plate">${v.plate}</div><div class="ticket-veh">${v.make} ${v.model} · ${v.year}</div></div>
+      <div class="stamp ${j.status}">${statusLabel[j.status]}</div>
+    </div>
+    <div class="ticket-perf"><div class="ticket-cust">${c.name}</div><div class="ticket-meta">opened ${j.opened} · due ${j.due}</div></div>
+  </div>`;
+}
+
+function renderHome(){
+  const active = jobs.filter(j=>j.status!=='completed').length;
+  const approval = jobs.filter(j=>j.status==='awaiting-approval').length;
+  const ready = jobs.filter(j=>j.status==='ready-pickup').length;
+  return `
+  <div class="stats-row">
+    <div class="stat amber"><div class="num">${active}</div><div class="lbl">Open Jobs</div></div>
+    <div class="stat" style="border-color:#7C5CBF33"><div class="num" style="color:#7C5CBF">${approval}</div><div class="lbl">Awaiting OK</div></div>
+    <div class="stat teal"><div class="num">${ready}</div><div class="lbl">Ready</div></div>
+  </div>
+  <div class="section-title">Today's Job Cards</div>
+  ${jobs.slice(0,4).map(ticketCard).join('')}
+  `;
+}
+
+function renderJobsList(){
+  const filters=[['all','All'],['in-progress','In Progress'],['awaiting-parts','Awaiting Parts'],['awaiting-approval','Awaiting Approval'],['ready-pickup','Ready'],['completed','Completed']];
+  const list = jobs.filter(j=> state.jobFilter==='all' || j.status===state.jobFilter);
+  return `
+  <div class="searchbar">${svg('search',16,'#9CA3AF')}<input placeholder="Search job card, plate, VIN…"></div>
+  <div class="chiprow">${filters.map(([k,l])=>`<div class="chip ${state.jobFilter===k?'active':''}" onclick="setJobFilter('${k}')">${l}</div>`).join('')}</div>
+  <div style="margin-top:12px">${list.length?list.map(ticketCard).join(''):`<div class="empty-msg"><div class="big">No job cards here</div>Try a different filter.</div>`}</div>
+  `;
+}
+
+function jobDetailHTML(j){
+  const v=vehicles[j.vehicleId], c=customers.find(x=>x.id===j.customerId);
+  const partsTotal=j.parts.reduce((s,p)=>s+p.total,0), laborTotal=j.labor.reduce((s,l)=>s+l.total,0);
+  const sub=partsTotal+laborTotal, tax=Math.round(sub*0.18), grand=sub+tax;
+  let body='';
+  if(j.jobTab===undefined) j.jobTab='overview';
+  const activeTab = state._jobTabOverride || 'overview';
+
+  return {header:`
+    <div class="jd-header">
+      <div class="jd-back" onclick="backToJobs()">${svg('back',16,'#9CA3AF')} Job Cards</div>
+      <div class="jd-toprow">
+        <div><div class="jd-plate">${v.plate}</div><div class="jd-veh">${v.make} ${v.model} · ${v.year} · ${v.odo}</div><div class="jd-id">${j.id} · ${statusLabel[j.status]}</div></div>
+        ${dial(j.completion,statusColor[j.status])}
+      </div>
+      <div class="jd-customer">
+        <div class="ci">${initials(c.name)}</div>
+        <div><div class="cn">${c.name}</div><div class="cp">${c.phone}</div></div>
+        <div class="callbtn">${svg('phone',15,'#fff')}</div>
+      </div>
+    </div>`,
+    partsTotal, laborTotal, sub, tax, grand, v, c};
+}
+
+function renderJobOverview(j){
+  const v=vehicles[j.vehicleId];
+  return `
+  <div class="section-title">Complaint / Service Requested</div>
+  <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;font-size:13px;line-height:1.5">${j.complaint}</div>
+  <div class="section-title">Job Info</div>
+  <div class="field-row"><div class="k">Assigned to</div><div class="v">${j.assigned}</div></div>
+  <div class="field-row"><div class="k">Opened</div><div class="v">${j.opened}</div></div>
+  <div class="field-row"><div class="k">Promised by</div><div class="v">${j.due}</div></div>
+  <div class="field-row"><div class="k">Odometer at intake</div><div class="v">${v.odo}</div></div>
+  <div class="field-row"><div class="k">VIN</div><div class="v" style="font-family:var(--mono);font-size:11.5px">${v.vin}</div></div>
+  <div class="section-title">Intake Checklist</div>
+  <div class="checklist-item"><div class="cbx on">${svg('check',12,'#fff',3)}</div>Walkaround photos captured</div>
+  <div class="checklist-item"><div class="cbx on">${svg('check',12,'#fff',3)}</div>Fuel level &amp; odometer noted</div>
+  <div class="checklist-item"><div class="cbx"></div>Customer belongings logged</div>
+  `;
+}
+function renderJobParts(j){
+  const total=j.parts.reduce((s,p)=>s+p.total,0);
+  return `
+  <div class="section-title">Parts Used</div>
+  ${j.parts.map(p=>`<div class="lineitem"><div class="li-top"><span>${p.name}</span><span class="li-total">₹${p.total.toLocaleString('en-IN')}</span></div><div class="li-sub"><span>${p.partNo}</span><span>${p.qty} × ₹${p.unit}</span></div></div>`).join('')}
+  <div class="addbtn" onclick="openModal('addpart')">${svg('plus',15,'#6B7280',2.2)} Add part from catalog</div>
+  <div class="totals-box"><div class="field-row"><div class="k">Parts subtotal</div><div class="v">₹${total.toLocaleString('en-IN')}</div></div></div>
+  `;
+}
+function renderJobLabor(j){
+  const total=j.labor.reduce((s,l)=>s+l.total,0);
+  return `
+  <div class="section-title">Labor</div>
+  ${j.labor.map(l=>`<div class="lineitem"><div class="li-top"><span>${l.desc}</span><span class="li-total">₹${l.total.toLocaleString('en-IN')}</span></div><div class="li-sub"><span>${l.hrs} hrs</span><span>₹${l.rate}/hr</span></div></div>`).join('')}
+  <div class="addbtn" onclick="openModal('addlabor')">${svg('plus',15,'#6B7280',2.2)} Add labor line</div>
+  <div class="totals-box"><div class="field-row"><div class="k">Labor subtotal</div><div class="v">₹${total.toLocaleString('en-IN')}</div></div></div>
+  `;
+}
+function renderJobEstimate(j){
+  const partsTotal=j.parts.reduce((s,p)=>s+p.total,0), laborTotal=j.labor.reduce((s,l)=>s+l.total,0);
+  const sub=partsTotal+laborTotal, tax=Math.round(sub*0.18), grand=sub+tax;
+  return `
+  <div class="section-title">Estimate Summary</div>
+  <div class="totals-box">
+    <div class="field-row"><div class="k">Parts</div><div class="v">₹${partsTotal.toLocaleString('en-IN')}</div></div>
+    <div class="field-row"><div class="k">Labor</div><div class="v">₹${laborTotal.toLocaleString('en-IN')}</div></div>
+    <div class="field-row"><div class="k">GST (18%)</div><div class="v">₹${tax.toLocaleString('en-IN')}</div></div>
+    <div class="field-row"><div class="k grand">Total Estimate</div><div class="v grand">₹${grand.toLocaleString('en-IN')}</div></div>
+  </div>
+  <div class="section-title">Customer Approval</div>
+  <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;display:flex;align-items:center;gap:10px">
+    <span class="status-pill sent">${svg('check',11,'#7C5CBF',2.5)} Sent for approval</span>
+    <span style="font-size:11px;color:var(--steel);margin-left:auto">via WhatsApp · 9:42am</span>
+  </div>
+  <div class="btnrow"><button class="primary-btn outline" onclick="openModal('sendest')">Resend Link</button><button class="primary-btn amber" onclick="openModal('convertinv')">Convert to Invoice</button></div>
+  `;
+}
+function renderJobNotes(j){
+  return `
+  <div class="section-title">Photos</div>
+  <div class="photo-grid">${Array(3).fill(0).map(()=>`<div class="photo-ph">${svg('camera',20,'#B0B7BF')}</div>`).join('')}<div class="photo-ph" style="border:1.5px dashed #D1D5DB;background:transparent">${svg('plus',18,'#9CA3AF')}</div></div>
+  <div class="section-title">Activity &amp; Notes</div>
+  <div class="timeline">${j.notes.length? j.notes.map(n=>`<div class="tl-item"><div class="tl-date">${n.time}</div><div class="tl-text">${n.author}</div><div class="tl-sub">${n.text}</div></div>`).join('') : `<div class="tl-sub">No notes yet.</div>`}</div>
+  <div class="addbtn" onclick="openModal('addnote')">${svg('plus',15,'#6B7280',2.2)} Add note</div>
+  `;
+}
+function jobTabContent(j,tab){
+  if(tab==='overview') return renderJobOverview(j);
+  if(tab==='parts') return renderJobParts(j);
+  if(tab==='labor') return renderJobLabor(j);
+  if(tab==='estimate') return renderJobEstimate(j);
+  if(tab==='notes') return renderJobNotes(j);
+}
+
+function renderCustomersList(){
+  return `
+  <div class="searchbar">${svg('search',16,'#9CA3AF')}<input placeholder="Search customers…"></div>
+  <div class="section-title">All Customers (${customers.length})</div>
+  ${customers.map(c=>`<div class="customer-row" onclick="openCustomer('${c.id}')">
+    <div class="ci">${initials(c.name)}</div>
+    <div><div class="cn">${c.name}</div><div class="cm">${c.vehicles.length} vehicle${c.vehicles.length>1?'s':''} · customer since ${c.since}</div></div>
+    ${svg('chevR',18,'#9CA3AF')}
+  </div>`).join('')}
+  `;
+}
+function customerDetailHTML(c){
+  const jobHist = jobs.filter(j=>j.customerId===c.id);
+  return `
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+    <div class="ci" style="width:56px;height:56px;border-radius:14px;font-size:18px">${initials(c.name)}</div>
+    <div><div style="font-family:var(--disp);font-size:18px;font-weight:600">${c.name}</div><div style="font-size:12px;color:var(--steel);font-family:var(--mono)">${c.phone}</div></div>
+  </div>
+  <div class="btnrow" style="margin-top:0"><button class="primary-btn outline" style="display:flex;align-items:center;justify-content:center;gap:6px">${svg('phone',14)} Call</button><button class="primary-btn amber" style="display:flex;align-items:center;justify-content:center;gap:6px" onclick="openModal('newjob')">${svg('plus',14,'#FFFFFF',2.4)} New Job</button></div>
+  <div class="stats-row"><div class="stat"><div class="num" style="font-size:16px">${c.ltv}</div><div class="lbl">Lifetime Value</div></div><div class="stat ${c.balance!=='₹0'?'red':''}"><div class="num" style="font-size:16px">${c.balance}</div><div class="lbl">Balance Due</div></div></div>
+  <div class="section-title">Vehicles</div>
+  ${c.vehicles.map(vid=>{const v=vehicles[vid]; return `<div class="vehicle-card"><div class="vicon">${svg('car',20,'#6B7280')}</div><div><div class="vp">${v.plate}</div><div class="vm">${v.make} ${v.model} · ${v.year} · ${v.odo}</div></div></div>`}).join('')}
+  <div class="section-title">Service History</div>
+  <div class="timeline">${jobHist.map(j=>`<div class="tl-item"><div class="tl-date">${j.opened}</div><div class="tl-text">${j.id} — ${statusLabel[j.status]}</div><div class="tl-sub">${j.complaint}</div></div>`).join('') || '<div class="tl-sub">No jobs yet.</div>'}</div>
+  `;
+}
+
+function renderBilling(){
+  const isEst = state.billingTab==='estimates';
+  const rows = isEst ? estimates : invoices;
+  return `
+  <div class="toggle-2"><div class="${isEst?'active':''}" onclick="setBillingTab('estimates')">Estimates</div><div class="${!isEst?'active':''}" onclick="setBillingTab('invoices')">Invoices</div></div>
+  <div class="section-title">${isEst?'Estimates':'Invoices'} (${rows.length})</div>
+  ${rows.map(r=>`<div class="ticket" style="cursor:pointer" onclick="openBillingItem('${r.id}')">
+    <div class="ticket-top">
+      <div><div class="ticket-id">${r.id}</div><div class="ticket-plate" style="font-size:13.5px">${r.customer}</div><div class="ticket-veh">${r.vehicle}</div></div>
+      <div style="text-align:right"><div style="font-family:var(--mono);font-weight:700;font-size:15px">${r.amount}</div><div style="margin-top:6px"><span class="status-pill ${r.status}">${r.status.charAt(0).toUpperCase()+r.status.slice(1)}</span></div></div>
+    </div>
+  </div>`).join('')}
+  `;
+}
+function billingDetailHTML(r,isEst){
+  return `
+  <div class="jd-header">
+    <div class="jd-back" onclick="backToBilling()">${svg('back',16,'#9CA3AF')} ${isEst?'Estimates':'Invoices'}</div>
+    <div class="jd-toprow"><div><div class="jd-plate" style="font-size:20px">${r.id}</div><div class="jd-veh">${r.customer} · ${r.vehicle}</div></div><span class="status-pill ${r.status}" style="margin-top:4px">${r.status}</span></div>
+  </div>
+  <div class="content" style="padding-top:16px">
+    <div class="totals-box">
+      <div class="field-row"><div class="k">${isEst?'Estimate':'Invoice'} No.</div><div class="v">${r.id}</div></div>
+      <div class="field-row"><div class="k">Linked Job Card</div><div class="v">${r.jobId}</div></div>
+      <div class="field-row"><div class="k">${isEst?'Created':'Issued'}</div><div class="v">${isEst?'—':r.issued}</div></div>
+      ${!isEst?`<div class="field-row"><div class="k">Due Date</div><div class="v">${r.due}</div></div>`:''}
+      <div class="field-row"><div class="k grand">Amount</div><div class="v grand">${r.amount}</div></div>
+    </div>
+    <div class="section-title">Actions</div>
+    ${isEst? `
+      <div class="btnrow"><button class="primary-btn outline">Share Link</button><button class="primary-btn amber">Mark Approved</button></div>
+      <button class="primary-btn">Convert to Invoice</button>
+    ` : `
+      <div class="btnrow"><button class="primary-btn outline">Download PDF</button><button class="primary-btn outline">Send Reminder</button></div>
+      <button class="primary-btn amber">Record Payment</button>
+    `}
+  </div>`;
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function newJobModal(){
+  const steps=['Customer','Vehicle','Job Details','Review'];
+  const s=state.intakeStep;
+  let body='';
+  if(s===1){
+    body=`
+    <div class="searchbar">${svg('search',16,'#9CA3AF')}<input placeholder="Search existing customer…"></div>
+    <div class="section-title">Recent Customers</div>
+    ${customers.slice(0,3).map(c=>`<div class="customer-row"><div class="ci">${initials(c.name)}</div><div><div class="cn">${c.name}</div><div class="cm">${c.phone}</div></div></div>`).join('')}
+    <div class="addbtn">${svg('plus',15,'#6B7280',2.2)} New customer</div>`;
+  } else if(s===2){
+    body=`
+    <div class="formgroup"><label>Scan Number Plate</label><div class="scanrow"><input class="forminput" placeholder="DL 3C AB 4021" value="DL 3C AB 4021"><div class="scanbtn">${svg('qr',18,'#4F46E5')}</div></div></div>
+    <div class="formgroup"><label>Make &amp; Model</label><input class="forminput" value="Hyundai Creta"></div>
+    <div class="formgroup"><label>Year</label><input class="forminput" value="2021"></div>
+    <div class="formgroup"><label>Current Odometer</label><input class="forminput" value="42,180 km"></div>`;
+  } else if(s===3){
+    body=`
+    <div class="formgroup"><label>Complaint / Service Requested</label><input class="forminput" placeholder="e.g. AC not cooling, brake noise…"></div>
+    <div class="formgroup"><label>Assign Mechanic</label><input class="forminput" value="Suresh (Bay 2)"></div>
+    <div class="section-title">Walkaround Photos</div>
+    <div class="photo-grid">${Array(4).fill(0).map(()=>`<div class="photo-ph" style="border:1.5px dashed #D1D5DB;background:transparent">${svg('camera',18,'#9CA3AF')}</div>`).join('')}</div>
+    <div class="section-title">Pre-Intake Checklist</div>
+    <div class="checklist-item"><div class="cbx on">${svg('check',12,'#fff',3)}</div>Spare tyre &amp; jack present</div>
+    <div class="checklist-item"><div class="cbx"></div>Customer belongings logged</div>`;
+  } else {
+    body=`
+    <div class="field-row"><div class="k">Customer</div><div class="v">Rohit Malhotra</div></div>
+    <div class="field-row"><div class="k">Vehicle</div><div class="v">DL 3C AB 4021</div></div>
+    <div class="field-row"><div class="k">Complaint</div><div class="v" style="text-align:right;max-width:60%">AC not cooling, brake noise</div></div>
+    <div class="field-row"><div class="k">Assigned</div><div class="v">Suresh (Bay 2)</div></div>
+    <div style="background:var(--teal-bg);color:var(--teal);border-radius:12px;padding:12px;font-size:12.5px;font-weight:600;margin-top:14px;display:flex;gap:8px;align-items:center">${svg('check',15,'#16A34A',2.4)} Ready to open job card JC-2420</div>`;
+  }
+  return `
+  <div class="modal-head"><div class="iconbtn" onclick="closeModal()">${svg('close',16)}</div><h2>New Job Card</h2></div>
+  <div class="modal-body">
+    <div class="step-track">${steps.map((_,i)=>`<div class="step-dot ${i+1<s?'done':i+1===s?'now':''}">${i+1<s?svg('check',11,'#fff',3):i+1}</div>${i<steps.length-1?`<div class="step-line ${i+1<s?'done':''}"></div>`:''}`).join('')}</div>
+    <div style="display:flex;gap:14px;font-size:10.5px;font-weight:700;color:var(--steel);text-transform:uppercase;letter-spacing:.3px;margin-bottom:16px">${steps.map(t=>`<div style="flex:1;text-align:center">${t}</div>`).join('')}</div>
+    ${body}
+    <div class="btnrow" style="margin-top:20px">
+      ${s>1?`<button class="primary-btn outline" onclick="intakeStep(${s-1})">Back</button>`:''}
+      ${s<4?`<button class="primary-btn amber" onclick="intakeStep(${s+1})">Continue</button>`:`<button class="primary-btn amber" onclick="closeModal()">Open Job Card</button>`}
+    </div>
+  </div>`;
+}
+function simpleModal(title,text,cta){
+  return `<div class="modal-head"><div class="iconbtn" onclick="closeModal()">${svg('close',16)}</div><h2>${title}</h2></div>
+  <div class="modal-body"><div style="font-size:13px;color:var(--steel);line-height:1.6;margin-bottom:16px">${text}</div>
+  <div class="formgroup"><label>Item Name</label><input class="forminput" placeholder="Search catalog…"></div>
+  <div class="formgroup"><label>Quantity / Hours</label><input class="forminput" placeholder="1"></div>
+  <div class="formgroup"><label>Rate (₹)</label><input class="forminput" placeholder="0.00"></div>
+  <button class="primary-btn amber" onclick="closeModal()">${cta}</button></div>`;
+}
+function modalContent(){
+  if(state.modal==='newjob') return newJobModal();
+  if(state.modal==='addpart') return simpleModal('Add Part','Search the parts catalog or enter a custom line item for this job card.','Add to Job Card');
+  if(state.modal==='addlabor') return simpleModal('Add Labor Line','Log the work performed and time spent so it flows straight into the estimate.','Add Labor');
+  if(state.modal==='addnote') return `<div class="modal-head"><div class="iconbtn" onclick="closeModal()">${svg('close',16)}</div><h2>Add Note</h2></div><div class="modal-body"><textarea class="forminput" style="height:110px;resize:none" placeholder="What happened…"></textarea><button class="primary-btn amber" style="margin-top:14px" onclick="closeModal()">Save Note</button></div>`;
+  if(state.modal==='sendest') return `<div class="modal-head"><div class="iconbtn" onclick="closeModal()">${svg('close',16)}</div><h2>Send Estimate</h2></div><div class="modal-body"><div class="checklist-item"><div class="cbx on">${svg('check',12,'#fff',3)}</div>WhatsApp</div><div class="checklist-item"><div class="cbx"></div>SMS</div><div class="checklist-item"><div class="cbx"></div>Email</div><button class="primary-btn amber" style="margin-top:14px" onclick="closeModal()">Send Now</button></div>`;
+  if(state.modal==='convertinv') return `<div class="modal-head"><div class="iconbtn" onclick="closeModal()">${svg('close',16)}</div><h2>Convert to Invoice</h2></div><div class="modal-body"><div style="font-size:13px;color:var(--steel);margin-bottom:14px;line-height:1.6">This creates a final invoice from the approved estimate, with parts, labor and tax carried over.</div><div class="formgroup"><label>Payment Terms</label><input class="forminput" value="Due on pickup"></div><button class="primary-btn amber" onclick="closeModal()">Generate Invoice</button></div>`;
+  return '';
+}
+
+/* ============================================================
+   TOP-LEVEL SCREEN ASSEMBLY
+   ============================================================ */
+function mobileNav(){
+  const items=[['home','home','Home'],['jobs','job','Jobs'],['customers','users','Customers'],['billing','bill','Billing']];
+  return `<div class="bottomnav">${items.map(([k,icon,l])=>`<div class="navitem ${state.tab===k?'active':''}" onclick="setTab('${k}')">${svg(icon,21)}<span>${l}</span></div>`).join('')}</div>`;
+}
+function railNav(){
+  const items=[['home','home','Home'],['jobs','job','Jobs'],['customers','users','Clients'],['billing','bill','Billing']];
+  return `<div class="rail"><div class="railbrand">G</div>${items.map(([k,icon,l])=>`<div class="railitem ${state.tab===k?'active':''}" onclick="setTab('${k}')">${svg(icon,20)}<span>${l}</span></div>`).join('')}</div>`;
+}
+
+function renderMobile(){
+  let inner='';
+  if(state.tab==='home'){
+    inner = `<div class="appbar"><h1>Good morning, Ravi</h1><div class="iconbtn">${svg('bell',17)}</div><div class="avatar">RA</div></div><div class="content">${renderHome()}</div>`;
+  } else if(state.tab==='jobs' && !state.jobId){
+    inner = `<div class="appbar"><h1>Job Cards</h1><div class="iconbtn">${svg('search',17)}</div></div><div class="content">${renderJobsList()}</div>`;
+  } else if(state.tab==='jobs' && state.jobId){
+    const j = jobs.find(x=>x.id===state.jobId);
+    const d = jobDetailHTML(j);
+    const tabs=[['overview','Overview'],['parts','Parts'],['labor','Labor'],['estimate','Estimate'],['notes','Notes']];
+    inner = `${d.header}<div class="tabs">${tabs.map(([k,l])=>`<div class="tabbtn ${state.jobTab===k?'active':''}" onclick="setJobTab('${k}')">${l}</div>`).join('')}</div><div class="content" style="padding-top:14px">${jobTabContent(j,state.jobTab)}</div>`;
+  } else if(state.tab==='customers' && !state.customerId){
+    inner = `<div class="appbar"><h1>Customers</h1><div class="iconbtn">${svg('plus',17)}</div></div><div class="content">${renderCustomersList()}</div>`;
+  } else if(state.tab==='customers' && state.customerId){
+    const c = customers.find(x=>x.id===state.customerId);
+    inner = `<div class="appbar"><div class="iconbtn" onclick="backToCustomers()">${svg('back',17)}</div><h1>Customer</h1></div><div class="content">${customerDetailHTML(c)}</div>`;
+  } else if(state.tab==='billing' && !state.billingId){
+    inner = `<div class="appbar"><h1>Billing</h1><div class="iconbtn">${svg('search',17)}</div></div><div class="content">${renderBilling()}</div>`;
+  } else if(state.tab==='billing' && state.billingId){
+    const isEst = state.billingTab==='estimates';
+    const r=(isEst?estimates:invoices).find(x=>x.id===state.billingId);
+    inner = billingDetailHTML(r,isEst);
+  }
+  const showFab = (state.tab==='home')||(state.tab==='jobs' && !state.jobId);
+  return `${inner}${mobileNav()}${showFab?`<div class="fab" onclick="openModal('newjob')">${svg('plus',22,'#FFFFFF',2.4)}</div>`:''}${state.modal?`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-sheet">${modalContent()}</div></div>`:''}`;
+}
+
+function renderTabletJobs(){
+  const list = jobs.filter(j=> state.jobFilter==='all' || j.status===state.jobFilter);
+  const j = jobs.find(x=>x.id===state.jobId) || jobs[0];
+  const filters=[['all','All'],['in-progress','Active'],['awaiting-parts','Parts'],['awaiting-approval','Approval'],['ready-pickup','Ready'],['completed','Done']];
+  const d = jobDetailHTML(j);
+  const tabs=[['overview','Overview'],['parts','Parts'],['labor','Labor'],['estimate','Estimate'],['notes','Notes']];
+  return `
+  <div class="pane-list">
+    <div style="padding:0 16px 10px"><div class="searchbar"><input placeholder="Search job cards…">${svg('search',16,'#9CA3AF')}</div>
+    <div class="chiprow">${filters.map(([k,l])=>`<div class="chip ${state.jobFilter===k?'active':''}" onclick="setJobFilter('${k}')">${l}</div>`).join('')}</div></div>
+    <div style="padding:0 16px">${list.map(x=>`<div onclick="openJob('${x.id}')" style="${x.id===j.id?'outline:2px solid #4F46E5;border-radius:14px':''}">${ticketCard(x)}</div>`).join('')}</div>
+  </div>
+  <div class="pane-detail">
+    ${d.header}
+    <div class="tabs">${tabs.map(([k,l])=>`<div class="tabbtn ${state.jobTab===k?'active':''}" onclick="setJobTab('${k}')">${l}</div>`).join('')}</div>
+    <div class="content" style="padding-top:14px;max-width:640px">${jobTabContent(j,state.jobTab)}</div>
+  </div>`;
+}
+function renderTabletCustomers(){
+  const c = customers.find(x=>x.id===state.customerId) || customers[0];
+  return `
+  <div class="pane-list"><div style="padding:0 16px"><div class="searchbar"><input placeholder="Search customers…">${svg('search',16,'#9CA3AF')}</div></div>
+    <div style="padding:0 16px">${customers.map(x=>`<div class="customer-row" style="${x.id===c.id?'background:#ECEBFC;border-radius:10px;padding-left:8px;padding-right:8px':''}" onclick="openCustomer('${x.id}')"><div class="ci">${initials(x.name)}</div><div><div class="cn">${x.name}</div><div class="cm">${x.vehicles.length} vehicle(s)</div></div>${svg('chevR',16,'#9CA3AF')}</div>`).join('')}</div>
+  </div>
+  <div class="pane-detail"><div class="content" style="padding-top:20px;max-width:600px">${customerDetailHTML(c)}</div></div>`;
+}
+function renderTabletBilling(){
+  const isEst = state.billingTab==='estimates';
+  const rows = isEst?estimates:invoices;
+  const r = rows.find(x=>x.id===state.billingId) || rows[0];
+  return `
+  <div class="pane-list">
+    <div style="padding:0 16px 8px"><div class="toggle-2" style="margin-top:0"><div class="${isEst?'active':''}" onclick="setBillingTab('estimates')">Estimates</div><div class="${!isEst?'active':''}" onclick="setBillingTab('invoices')">Invoices</div></div></div>
+    <div style="padding:0 16px">${rows.map(x=>`<div onclick="openBillingItem('${x.id}')" style="${x.id===r.id?'outline:2px solid #4F46E5;border-radius:14px':''}" class="ticket"><div class="ticket-top"><div><div class="ticket-id">${x.id}</div><div class="ticket-plate" style="font-size:13px">${x.customer}</div><div class="ticket-veh">${x.vehicle}</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-weight:700">${x.amount}</div><span class="status-pill ${x.status}" style="margin-top:6px">${x.status}</span></div></div></div>`).join('')}</div>
+  </div>
+  <div class="pane-detail">${billingDetailHTML(r,isEst)}</div>`;
+}
+function renderTabletHome(){
+  return `<div class="content" style="padding-top:18px;max-width:900px">
+    <div class="appbar" style="padding-left:0"><h1 style="font-size:24px">Good morning, Ravi</h1><div class="iconbtn">${svg('bell',17)}</div><div class="avatar">RA</div></div>
+    ${renderHome()}
+  </div>`;
+}
+function renderTablet(){
+  let main='';
+  if(state.tab==='home') main = renderTabletHome();
+  else if(state.tab==='jobs'){ main = `<div class="split">${renderTabletJobs()}</div>`; }
+  else if(state.tab==='customers'){ main = `<div class="split">${renderTabletCustomers()}</div>`; }
+  else if(state.tab==='billing'){ main = `<div class="split">${renderTabletBilling()}</div>`; }
+  return `${railNav()}<div class="tabletmain">${main}</div>${state.modal?`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-sheet">${modalContent()}</div></div>`:''}`;
+}
+
+function render(){
+  document.getElementById('screen').innerHTML = state.device==='mobile' ? `<div class="statusbar"><span>9:41</span><span>●●●● 5G 🔋92%</span></div>${renderMobile()}` : renderTablet();
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function setTab(t){state.tab=t; state.jobId=null; state.customerId=null; state.billingId=null; render();}
+function openJob(id){state.jobId=id; state.jobTab='overview'; state.tab='jobs'; render();}
+function backToJobs(){state.jobId=null; render();}
+function setJobTab(t){state.jobTab=t; render();}
+function setJobFilter(f){state.jobFilter=f; render();}
+function openCustomer(id){state.customerId=id; render();}
+function backToCustomers(){state.customerId=null; render();}
+function setBillingTab(t){state.billingTab=t; state.billingId=null; render();}
+function openBillingItem(id){state.billingId=id; render();}
+function backToBilling(){state.billingId=null; render();}
+function openModal(m){state.modal=m; state.intakeStep=1; render();}
+function closeModal(){state.modal=null; render();}
+function intakeStep(n){state.intakeStep=n; render();}
+
+document.getElementById('btn-mobile').onclick=()=>{state.device='mobile'; document.getElementById('btn-mobile').classList.add('active'); document.getElementById('btn-tablet').classList.remove('active'); document.getElementById('frame').className='frame mobile'; document.getElementById('frame').innerHTML='<div class="notch"></div><div class="screen" id="screen"></div>'; render();};
+document.getElementById('btn-tablet').onclick=()=>{state.device='tablet'; document.getElementById('btn-tablet').classList.add('active'); document.getElementById('btn-mobile').classList.remove('active'); document.getElementById('frame').className='frame tablet'; document.getElementById('frame').innerHTML='<div class="screen" id="screen"></div>'; render();};
+
+render();
+</script>
+</body>
+</html>
