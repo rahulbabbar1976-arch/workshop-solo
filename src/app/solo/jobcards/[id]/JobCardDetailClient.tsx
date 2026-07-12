@@ -280,6 +280,11 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     try {
       const partsArr = jobCard.partLines || [];
       const updatedParts = partsArr.map((p: any) => p.id === pId ? { ...p, isDeleted: true } : p);
+      
+      // Optimistic update
+      const previousJobCard = jobCard;
+      setJobCard({ ...jobCard, partLines: updatedParts });
+
       const res = await fetch(`/api/jobcards/${jobCard.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -290,6 +295,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         if(data.jobcard) setJobCard(data.jobcard);
         else router.refresh();
       } else {
+        setJobCard(previousJobCard);
         const data = await res.json();
         alert(data.error || "Failed to remove part");
       }
@@ -309,6 +315,11 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     try {
       const laborArr = jobCard.labourLines || [];
       const updatedLabor = laborArr.map((l: any) => l.id === lId ? { ...l, isDeleted: true } : l);
+
+      // Optimistic update
+      const previousJobCard = jobCard;
+      setJobCard({ ...jobCard, labourLines: updatedLabor });
+
       const res = await fetch(`/api/jobcards/${jobCard.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -319,6 +330,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         if(data.jobcard) setJobCard(data.jobcard);
         else router.refresh();
       } else {
+        setJobCard(previousJobCard);
         const data = await res.json();
         alert(data.error || "Failed to remove labor charge");
       }
