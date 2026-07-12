@@ -11,6 +11,7 @@ export default function PrintSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState("#0d9488"); // teal-600
   const [showLogo, setShowLogo] = useState(true);
   const [showTaxId, setShowTaxId] = useState(true);
+  const [showWorkshopHeader, setShowWorkshopHeader] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -48,6 +49,7 @@ export default function PrintSettingsPage() {
         setBaseFontSize(data.template.baseFontSize || "12px");
         setPrimaryColor(data.template.primaryColor || "#0d9488");
         setShowLogo(data.template.showLogo ?? true);
+        setShowWorkshopHeader(data.template.showWorkshopHeader ?? true);
         setFooterText(data.template.footerText || "");
         if (data.template.columnsConfig) {
           try {
@@ -89,6 +91,7 @@ export default function PrintSettingsPage() {
           baseFontSize,
           primaryColor,
           showLogo,
+          showWorkshopHeader,
           footerText,
           columnsConfig
         })
@@ -195,6 +198,17 @@ export default function PrintSettingsPage() {
                     className="flex-1 bg-gray-50 border border-gray-200 rounded p-2 text-sm text-gray-800 uppercase"
                   />
                 </div>
+              </div>
+              <div className="pt-2">
+                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={showWorkshopHeader} 
+                    onChange={(e) => setShowWorkshopHeader(e.target.checked)}
+                    className="rounded text-teal-500 focus:ring-teal-500 h-4 w-4"
+                  />
+                  <span>Show Workshop Details in Header</span>
+                </label>
               </div>
             </div>
           </div>

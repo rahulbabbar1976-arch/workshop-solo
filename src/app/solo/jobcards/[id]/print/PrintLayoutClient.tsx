@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { Printer, Settings2, ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 
-export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
+export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, workshopProfile?: any }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
   const [fontFamily, setFontFamily] = useState("Inter");
   const [baseFontSize, setBaseFontSize] = useState("12px");
+  const [showWorkshopHeader, setShowWorkshopHeader] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [cols, setCols] = useState<any>({ parts: [], labour: [] });
 
@@ -18,6 +19,7 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
         if (data.template) {
           setFontFamily(data.template.fontFamily || "Inter");
           setBaseFontSize(data.template.baseFontSize || "12px");
+          setShowWorkshopHeader(data.template.showWorkshopHeader ?? true);
           if (data.template.columnsConfig) {
             try {
               setCols(JSON.parse(data.template.columnsConfig));
@@ -145,6 +147,21 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
         <div className="bg-white shadow-xl print:shadow-none print:w-full w-full max-w-4xl text-black" style={{ fontFamily: fontFamily === 'serif' ? 'Times New Roman, serif' : `"${fontFamily}", sans-serif`, fontSize: baseFontSize, padding: '1cm 1.5cm' }}>
           
           {/* Header */}
+          {showWorkshopHeader && workshopProfile && (
+            <div className="mb-4 text-center">
+              <h1 className="text-2xl font-bold uppercase">{workshopProfile.workshopName}</h1>
+              {workshopProfile.addressLine1 && <div className="text-sm">{workshopProfile.addressLine1}</div>}
+              {workshopProfile.addressLine2 && <div className="text-sm">{workshopProfile.addressLine2}</div>}
+              <div className="text-sm">
+                {workshopProfile.city}{workshopProfile.state ? `, ${workshopProfile.state}` : ''} {workshopProfile.postalCode}
+              </div>
+              <div className="text-sm mt-1">
+                {workshopProfile.mobile && <span>Phone: {workshopProfile.mobile}</span>}
+                {workshopProfile.email && <span className="ml-4">Email: {workshopProfile.email}</span>}
+              </div>
+              {workshopProfile.salesTaxId && <div className="text-xs mt-1">GSTIN: {workshopProfile.salesTaxId}</div>}
+            </div>
+          )}
           <div className="text-center italic font-bold text-lg border-b border-black pb-1 mb-2">JOB CARD</div>
 
           {/* Customer */}

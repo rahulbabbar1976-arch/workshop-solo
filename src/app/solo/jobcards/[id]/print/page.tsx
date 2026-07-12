@@ -19,6 +19,9 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
     }
   });
 
+  // Fetch Workshop Profile
+  const workshopProfile = await prisma.workshopProfile.findFirst();
+
   if (!jobCard) {
     // Try by jobcardNumber (e.g. LEGACY-1)
     const legacyJobCard = await prisma.jobCard.findUnique({
@@ -35,8 +38,8 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
     if (!legacyJobCard) {
       return notFound();
     }
-    return <PrintLayoutClient jobCard={legacyJobCard} />;
+    return <PrintLayoutClient jobCard={legacyJobCard} workshopProfile={workshopProfile} />;
   }
 
-  return <PrintLayoutClient jobCard={jobCard} />;
+  return <PrintLayoutClient jobCard={jobCard} workshopProfile={workshopProfile} />;
 }
