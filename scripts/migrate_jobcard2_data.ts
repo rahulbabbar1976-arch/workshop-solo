@@ -40,24 +40,28 @@ async function migrateCustomers(csvFilePath: string) {
   console.log(`Found ${records.length} records in ${csvFilePath}`);
 
   let createdCount = 0;
+  let updatedCount = 0;
   for (const row of records) {
     const id = row['Id'];
-    const name = row['Name'];
+    // We shouldn't skip if the name is missing but we have an ID or phone
+    if (!id && !row['Name'] && !row['Phone number']) continue; 
     
-    if (!name) continue; // Skip invalid rows
+    const name = row['Name'] || `Unknown Customer (ID: ${id || 'N/A'})`;
 
     const primaryMobile = row['Phone number'] || row['Mobile Numer'] || '';
     const alternateMobile = row['Mobile Numer'] && row['Mobile Numer'] !== primaryMobile ? row['Mobile Numer'] : undefined;
     const email = row['E-mail']?.toLowerCase().trim();
 
-    // Let's do a simple findFirst and then create/update.
-    let existing = await prisma.customer.findFirst({
-      where: { sourceRecordId: id, sourceSystem: 'legacy_csv_partners' }
-    });
+    let existing = null;
+    if (id) {
+      existing = await prisma.customer.findFirst({
+        where: { sourceRecordId: id, sourceSystem: 'legacy_csv_partners' }
+      });
+    }
 
     const data = {
       sourceSystem: 'legacy_csv_partners',
-      sourceRecordId: id,
+      sourceRecordId: id || null,
       displayName: name,
       customerType: 'retail',
       primaryMobile: primaryMobile || null,
@@ -76,13 +80,14 @@ async function migrateCustomers(csvFilePath: string) {
 
     if (existing) {
       await prisma.customer.update({ where: { id: existing.id }, data });
+      updatedCount++;
     } else {
       await prisma.customer.create({ data });
       createdCount++;
     }
   }
 
-  console.log(`Customers migration complete. Created: ${createdCount}`);
+  console.log(`Customers migration complete. Created: ${createdCount}, Updated: ${updatedCount}`);
 }
 
 async function migrateVehicles(csvFilePath: string) {
@@ -94,12 +99,18 @@ async function migrateVehicles(csvFilePath: string) {
   console.log(`Found ${records.length} records in ${csvFilePath}`);
 
   let createdCount = 0;
+  let updatedCount = 0;
+
   for (const row of records) {
     const id = row['Id'];
     const rawLpn = row['LPN'];
-    if (!rawLpn) continue;
-
-    const normalizedLpn = normalizeRegNo(rawLpn);
+    const vin = row['VIN'];
+    
+    // Fallback if missing LPN but we have an ID or VIN
+    if (!rawLpn && !vin && !id) continue;
+    const finalLpn = rawLpn || `UNKNOWN-REG-${id || Math.floor(Math.random()*1000)}`;
+    const normalizedLpn = normalizeRegNo(finalLpn);
+    
     const customerLegacyId = row['Customer id.'];
 
     let customerId = undefined;
@@ -113,18 +124,30 @@ async function migrateVehicles(csvFilePath: string) {
     }
 
     if (!customerId) {
-      console.warn(`Could not resolve customer for vehicle ${rawLpn} (Customer legacy id: ${customerLegacyId})`);
-      // We must link to a customer, so we might skip or create a dummy. 
-      // The schema requires `currentCustomerId`. Let's skip if no customer found.
-      continue;
+      // Rather than skipping, we link to an Unassigned Owner
+      let fallbackCustomer = await prisma.customer.findFirst({
+         where: { sourceRecordId: 'FALLBACK_UNASSIGNED', sourceSystem: 'legacy_csv_auto' }
+      });
+      if (!fallbackCustomer) {
+         fallbackCustomer = await prisma.customer.create({
+           data: {
+              sourceSystem: 'legacy_csv_auto',
+              sourceRecordId: 'FALLBACK_UNASSIGNED',
+              displayName: 'Unassigned Vehicle Owner (Legacy Import)',
+              customerType: 'retail',
+              isActive: true,
+           }
+         });
+      }
+      customerId = fallbackCustomer.id;
     }
 
     const data = {
       sourceSystem: 'legacy_csv_auto',
-      sourceRecordId: id,
-      registrationNumberRaw: rawLpn,
+      sourceRecordId: id || null,
+      registrationNumberRaw: finalLpn,
       registrationNumberNormalized: normalizedLpn,
-      vin: row['VIN'] || null,
+      vin: vin || null,
       engineNumber: row['Engine number'] || null,
       manufacturer: row['Manufacturer'] || null,
       model: row['Model'] || null,
@@ -149,6 +172,7 @@ async function migrateVehicles(csvFilePath: string) {
 
     if (existing) {
       await prisma.vehicle.update({ where: { id: existing.id }, data });
+      updatedCount++;
     } else {
       const vehicle = await prisma.vehicle.create({ data });
       createdCount++;
@@ -164,7 +188,7 @@ async function migrateVehicles(csvFilePath: string) {
     }
   }
 
-  console.log(`Vehicles migration complete. Created: ${createdCount}`);
+  console.log(`Vehicles migration complete. Created: ${createdCount}, Updated: ${updatedCount}`);
 }
 
 async function main() {
