@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Wrench, Plus, Search, Edit2, X, ArrowLeft } from "lucide-react";
+import { Wrench, Plus, Search, Edit2, X, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -88,6 +88,22 @@ export default function LaborMasterPage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this labor task?")) return;
+    try {
+      const res = await fetch(`/api/labour/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || "Failed to delete labor task.");
+      } else {
+        fetchLabor();
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting labor task.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24 font-outfit">
       {/* Header */}
@@ -151,6 +167,12 @@ export default function LaborMasterPage() {
                     className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(labor.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>

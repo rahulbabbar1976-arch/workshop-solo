@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Plus, Search, Edit2, X, ArrowLeft } from "lucide-react";
+import { Package, Plus, Search, Edit2, X, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -100,6 +100,22 @@ export default function PartsMasterPage() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this part?")) return;
+    try {
+      const res = await fetch(`/api/inventory/parts/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || "Failed to delete part.");
+      } else {
+        fetchParts();
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting part.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24 font-outfit">
       {/* Header */}
@@ -164,6 +180,12 @@ export default function PartsMasterPage() {
                     className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(part.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>

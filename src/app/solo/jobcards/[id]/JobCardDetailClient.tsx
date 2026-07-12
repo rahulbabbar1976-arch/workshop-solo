@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2, Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,9 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const { saveContact } = useSaveContact();
 
   const [isPartModalOpen, setIsPartModalOpen] = useState(false);
+  const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
+  const [editingLaborId, setEditingLaborId] = useState<string | null>(null);
   
   const [newPartName, setNewPartName] = useState("");
   const [newPartQty, setNewPartQty] = useState(1);
@@ -77,30 +79,48 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         }
       }
 
-      const newPart = {
-        partMasterId: masterId || null,
-        partName: newPartName,
-        quantityRequested: newPartQty,
-        sellingPrice: parseFloat(newPartPrice),
-        status: "requested"
-      };
+      let updatedParts = [...(jobCard.partLines || [])];
+      
+      if (editingPartId) {
+        updatedParts = updatedParts.map(p => 
+          p.id === editingPartId 
+            ? { ...p, partMasterId: masterId || p.partMasterId, partName: newPartName, quantityRequested: newPartQty, sellingPrice: parseFloat(newPartPrice) } 
+            : p
+        );
+      } else {
+        updatedParts.push({
+          partMasterId: masterId || null,
+          partName: newPartName,
+          quantityRequested: newPartQty,
+          sellingPrice: parseFloat(newPartPrice),
+          status: "requested"
+        });
+      }
 
       const res = await fetch(`/api/jobcards/${jobCard.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          parts: [...jobCard.partLines, newPart]
+          parts: updatedParts
         })
       });
 
       if (res.ok) {
         const data = await res.json();
-        // Just refresh the page to get the updated data
-        router.refresh();
+        // Update local state instead of router.refresh() to ensure immediate UI update
+        if (data.jobcard) {
+          setJobCard(data.jobcard);
+        } else {
+          router.refresh();
+        }
         setIsPartModalOpen(false);
+        setEditingPartId(null);
         setNewPartName("");
         setNewPartQty(1);
         setNewPartPrice("");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to save part");
       }
     } catch (e) {
       console.error(e);
@@ -154,28 +174,47 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         }
       }
 
-      const newLabor = {
-        labourMasterId: masterId || null,
-        labourName: newLaborName,
-        quantity: newLaborQty,
-        sellingPrice: parseFloat(newLaborPrice),
-        status: "pending"
-      };
+      let updatedLabor = [...(jobCard.labourLines || [])];
+      
+      if (editingLaborId) {
+        updatedLabor = updatedLabor.map(l => 
+          l.id === editingLaborId 
+            ? { ...l, labourMasterId: masterId || l.labourMasterId, labourName: newLaborName, quantity: newLaborQty, sellingPrice: parseFloat(newLaborPrice) } 
+            : l
+        );
+      } else {
+        updatedLabor.push({
+          labourMasterId: masterId || null,
+          labourName: newLaborName,
+          quantity: newLaborQty,
+          sellingPrice: parseFloat(newLaborPrice),
+          status: "pending"
+        });
+      }
 
       const res = await fetch(`/api/jobcards/${jobCard.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          labour: [...jobCard.labourLines, newLabor]
+          labour: updatedLabor
         })
       });
 
       if (res.ok) {
-        router.refresh();
+        const data = await res.json();
+        if (data.jobcard) {
+          setJobCard(data.jobcard);
+        } else {
+          router.refresh();
+        }
         setIsLaborModalOpen(false);
+        setEditingLaborId(null);
         setNewLaborName("");
         setNewLaborQty(1);
         setNewLaborPrice("");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to save labor");
       }
     } catch (e) {
       console.error(e);
@@ -228,6 +267,64 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     }
   };
 
+  const handleEditPart = (p: any) => {
+    setEditingPartId(p.id);
+    setNewPartName(p.partName);
+    setNewPartQty(p.quantityRequested || 1);
+    setNewPartPrice(p.sellingPrice?.toString() || "");
+    setIsPartModalOpen(true);
+  };
+
+  const handleDeletePart = async (pId: string) => {
+    if (!confirm("Are you sure you want to remove this part?")) return;
+    try {
+      const partsArr = jobCard.partLines || [];
+      const updatedParts = partsArr.map((p: any) => p.id === pId ? { ...p, isDeleted: true } : p);
+      const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parts: updatedParts })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if(data.jobcard) setJobCard(data.jobcard);
+        else router.refresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to remove part");
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleEditLabor = (l: any) => {
+    setEditingLaborId(l.id);
+    setNewLaborName(l.labourName);
+    setNewLaborQty(l.quantity || 1);
+    setNewLaborPrice(l.sellingPrice?.toString() || "");
+    setIsLaborModalOpen(true);
+  };
+
+  const handleDeleteLabor = async (lId: string) => {
+    if (!confirm("Are you sure you want to remove this labor charge?")) return;
+    try {
+      const laborArr = jobCard.labourLines || [];
+      const updatedLabor = laborArr.map((l: any) => l.id === lId ? { ...l, isDeleted: true } : l);
+      const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labour: updatedLabor })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if(data.jobcard) setJobCard(data.jobcard);
+        else router.refresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to remove labor charge");
+      }
+    } catch (e) { console.error(e); }
+  };
+
   
   const customerName = jobCard.currentCustomer?.displayName || jobCard.customer?.displayName || "Unknown Customer";
   const mobile = jobCard.currentCustomer?.primaryMobile || jobCard.customer?.primaryMobile || "No Contact";
@@ -235,8 +332,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const vehicleName = jobCard.vehicle?.registrationNumberRaw || jobCard.vehicle?.registrationNumberNormalized || "Unknown Vehicle";
   const makeModel = `${jobCard.vehicle?.manufacturer || ""} ${jobCard.vehicle?.model || ""}`.trim() || "Unknown Make/Model";
 
-  const parts = jobCard.partLines || [];
-  const labor = jobCard.labourLines || [];
+  const parts = (jobCard.partLines || []).filter((p: any) => !p.isDeleted);
+  const labor = (jobCard.labourLines || []).filter((l: any) => !l.isDeleted);
   const complaints = jobCard.complaints || [];
 
   const getPartTotal = (p: any) => {
@@ -411,18 +508,28 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
             {parts.length === 0 && <div className="text-center py-8 text-gray-500">No parts added</div>}
             {parts.map((p: any) => (
-              <div key={p.id} className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex justify-between items-center">
-                <div>
+              <div key={p.id} className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex justify-between items-center group">
+                <div className="flex-1 pr-2">
                   <h4 className="font-bold text-gray-800 text-sm">{p.partName}</h4>
                   <p className="text-xs text-gray-500 mt-1">Qty: {p.quantityRequested} × ₹{p.sellingPrice?.toFixed(2) || '0.00'}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900">₹{getPartTotal(p).toFixed(2)}</p>
+                <div className="text-right flex flex-col items-end">
+                  <p className="font-bold text-gray-900 mb-2">₹{getPartTotal(p).toFixed(2)}</p>
+                  <div className="flex space-x-2">
+                    <button onClick={() => handleEditPart(p)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
+                    <button onClick={() => handleDeletePart(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
+                  </div>
                 </div>
               </div>
             ))}
             <button 
-              onClick={() => setIsPartModalOpen(true)}
+              onClick={() => {
+                setEditingPartId(null);
+                setNewPartName("");
+                setNewPartQty(1);
+                setNewPartPrice("");
+                setIsPartModalOpen(true);
+              }}
               className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
               Add Part
             </button>
@@ -433,18 +540,28 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
             {labor.length === 0 && <div className="text-center py-8 text-gray-500">No labor added</div>}
             {labor.map((l: any) => (
-              <div key={l.id} className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex justify-between items-center">
-                <div>
+              <div key={l.id} className="bg-white p-4 rounded-md shadow-sm border border-gray-200 flex justify-between items-center group">
+                <div className="flex-1 pr-2">
                   <h4 className="font-bold text-gray-800 text-sm">{l.labourName}</h4>
                   <p className="text-xs text-gray-500 mt-1">Qty: {l.quantity} × ₹{l.sellingPrice?.toFixed(2) || '0.00'}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900">₹{getLaborTotal(l).toFixed(2)}</p>
+                <div className="text-right flex flex-col items-end">
+                  <p className="font-bold text-gray-900 mb-2">₹{getLaborTotal(l).toFixed(2)}</p>
+                  <div className="flex space-x-2">
+                    <button onClick={() => handleEditLabor(l)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
+                    <button onClick={() => handleDeleteLabor(l.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
+                  </div>
                 </div>
               </div>
             ))}
             <button 
-              onClick={() => setIsLaborModalOpen(true)}
+              onClick={() => {
+                setEditingLaborId(null);
+                setNewLaborName("");
+                setNewLaborQty(1);
+                setNewLaborPrice("");
+                setIsLaborModalOpen(true);
+              }}
               className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
               Add Labor
             </button>

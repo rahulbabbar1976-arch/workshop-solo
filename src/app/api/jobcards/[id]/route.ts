@@ -276,6 +276,8 @@ export async function PUT(
             await tx.jobCardPart.update({
               where: { id: p.id },
               data: {
+                partMasterId: p.partMasterId,
+                partName: p.partName,
                 quantityRequested: p.quantityRequested !== undefined ? parseFloat(p.quantityRequested) : undefined,
                 status: p.status, // requested, approved, in_stock, ordered, used, etc.
                 mechanicNote: p.mechanicNote,
@@ -378,6 +380,8 @@ export async function PUT(
             await tx.jobCardLabour.update({
               where: { id: l.id },
               data: {
+                labourMasterId: l.labourMasterId,
+                labourName: l.labourName,
                 status: l.status, // pending, in_progress, completed, approved
                 mechanicNote: l.mechanicNote,
                 sellingPrice: l.sellingPrice !== undefined ? parseFloat(l.sellingPrice) : undefined,
