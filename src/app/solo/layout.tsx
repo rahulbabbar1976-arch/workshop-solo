@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Home, ClipboardList, Car, Settings, Plus } from "lucide-react";
 import { BottomNav } from "./BottomNav";
 
@@ -7,6 +10,17 @@ export default function SoloLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname() || "";
+  const isAuthRoute = pathname.includes("/solo/login") || pathname.includes("/solo/register") || pathname.includes("/solo/setup");
+
+  if (isAuthRoute) {
+    return (
+      <main className="flex flex-col min-h-screen font-outfit">
+        {children}
+      </main>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-16 font-outfit">
       {/* Main Content Area */}
