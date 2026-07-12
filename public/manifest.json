@@ -4,8 +4,8 @@
   "description": "Automobile Workshop Job Card and Billing System",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#111827",
+  "theme_color": "#111827",
   "icons": [
     {
       "src": "/icon.svg",

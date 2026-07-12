@@ -13,6 +13,7 @@ import {
   importLegacyItemsAction
 } from "@/app/actions/settingsActions";
 import Link from "next/link";
+import { AvatarUpload } from "@/components/AvatarUpload";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -176,10 +177,13 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Section 0: Printer Module */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-teal-500 p-4">
-            <h2 className="text-white font-bold flex items-center tracking-wide uppercase">
+        {/* Section 0: Profile Settings */}
+        <AvatarUpload />
+
+        {/* Section 0.5: Printer Module */}
+        <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+          <div className="bg-gray-800 p-4 border-b border-gray-700">
+            <h2 className="text-orange-500 font-bold flex items-center tracking-wide uppercase">
               <Printer className="w-5 h-5 mr-2" /> Printer Module
             </h2>
           </div>

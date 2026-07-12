@@ -16,18 +16,18 @@ export function TopNav() {
   };
 
   return (
-    <div className="bg-teal-600 text-white shadow-md relative z-50 print:hidden font-outfit">
+    <div className="bg-gray-900 text-white shadow-md relative z-50 print:hidden font-outfit">
       <div className="max-w-lg mx-auto w-full px-4 py-3 flex justify-between items-center">
-        <Link href="/solo/dashboard" className="font-bold text-lg tracking-wider">
-          WORKSHOP
+        <Link href="/solo/dashboard" className="font-black text-lg tracking-widest text-orange-500">
+          BABBARSONS
         </Link>
         
         <div className="relative">
           <button 
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center space-x-2 bg-teal-700/50 hover:bg-teal-700 rounded-full py-1.5 px-3 transition-colors focus:outline-none"
+            className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-full py-1.5 px-3 transition-colors focus:outline-none"
           >
-            <div className="w-7 h-7 bg-white text-teal-700 rounded-full flex items-center justify-center font-bold text-sm">
+            <div className="w-7 h-7 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
               <User className="w-4 h-4" />
             </div>
             <ChevronDown className={`w-4 h-4 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
@@ -49,21 +49,21 @@ export function TopNav() {
                   <Link 
                     href="/solo/inventory/parts" 
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors"
+                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                   >
                     <Package className="w-4 h-4 mr-3" /> Parts Master
                   </Link>
                   <Link 
                     href="/solo/inventory/labor" 
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors"
+                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                   >
                     <Wrench className="w-4 h-4 mr-3" /> Labor Master
                   </Link>
                   <Link 
                     href="/solo/settings" 
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors"
+                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                   >
                     <Settings className="w-4 h-4 mr-3" /> Settings
                   </Link>
