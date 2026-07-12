@@ -1,13 +1,145 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact } from "lucide-react";
+import { useState, useRef } from "react";
+import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
+import { useRouter } from "next/navigation";
 
-export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
+export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any }) {
+  const router = useRouter();
+  const [jobCard, setJobCard] = useState(initialJobCard);
   const [activeTab, setActiveTab] = useState("details");
   const { saveContact } = useSaveContact();
+
+  const [isPartModalOpen, setIsPartModalOpen] = useState(false);
+  const [isLaborModalOpen, setIsLaborModalOpen] = useState(false);
+  
+  const [newPartName, setNewPartName] = useState("");
+  const [newPartQty, setNewPartQty] = useState(1);
+  const [newPartPrice, setNewPartPrice] = useState("");
+
+  const [newLaborName, setNewLaborName] = useState("");
+  const [newLaborQty, setNewLaborQty] = useState(1);
+  const [newLaborPrice, setNewLaborPrice] = useState("");
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleSavePart = async () => {
+    if (!newPartName || !newPartPrice) return;
+    setIsSaving(true);
+    try {
+      const newPart = {
+        partName: newPartName,
+        quantityRequested: newPartQty,
+        sellingPrice: parseFloat(newPartPrice),
+        status: "requested"
+      };
+
+      const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parts: [...jobCard.partLines, newPart]
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Just refresh the page to get the updated data
+        router.refresh();
+        setIsPartModalOpen(false);
+        setNewPartName("");
+        setNewPartQty(1);
+        setNewPartPrice("");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveLabor = async () => {
+    if (!newLaborName || !newLaborPrice) return;
+    setIsSaving(true);
+    try {
+      const newLabor = {
+        labourName: newLaborName,
+        quantity: newLaborQty,
+        sellingPrice: parseFloat(newLaborPrice),
+        status: "pending"
+      };
+
+      const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          labour: [...jobCard.labourLines, newLabor]
+        })
+      });
+
+      if (res.ok) {
+        router.refresh();
+        setIsLaborModalOpen(false);
+        setNewLaborName("");
+        setNewLaborQty(1);
+        setNewLaborPrice("");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (uploadRes.ok) {
+        const { fileUrl, fileName, mimeType, fileSizeBytes } = await uploadRes.json();
+        
+        const newMedia = {
+          mediaType: "work_photo",
+          fileUrl: fileUrl,
+          fileName: fileName,
+          mimeType: mimeType,
+          fileSizeBytes: fileSizeBytes
+        };
+
+        const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            media: [...(jobCard.media || []), newMedia]
+          })
+        });
+
+        if (res.ok) {
+          router.refresh();
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   
   const customerName = jobCard.currentCustomer?.displayName || jobCard.customer?.displayName || "Unknown Customer";
   const mobile = jobCard.currentCustomer?.primaryMobile || jobCard.customer?.primaryMobile || "No Contact";
@@ -73,10 +205,10 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
 
       {/* Flat Action Tabs */}
       <div className="bg-white border-b-2 border-gray-200 sticky top-0 z-40">
-        <div className="flex">
+        <div className="flex overflow-x-auto hide-scrollbar">
           <button
             onClick={() => setActiveTab("details")}
-            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wide transition-all ${
+            className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all whitespace-nowrap ${
               activeTab === "details" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
             }`}
           >
@@ -84,7 +216,7 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
           </button>
           <button
             onClick={() => setActiveTab("parts")}
-            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center ${
+            className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center whitespace-nowrap ${
               activeTab === "parts" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
             }`}
           >
@@ -92,11 +224,19 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
           </button>
           <button
             onClick={() => setActiveTab("labor")}
-            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center ${
+            className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center whitespace-nowrap ${
               activeTab === "labor" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
             }`}
           >
             <Wrench className="w-4 h-4 mr-1.5" /> Labor
+          </button>
+          <button
+            onClick={() => setActiveTab("pictures")}
+            className={`flex-none px-6 py-3 text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center whitespace-nowrap ${
+              activeTab === "pictures" ? "text-teal-600 border-b-4 border-teal-500 bg-teal-50" : "text-gray-500"
+            }`}
+          >
+            <Camera className="w-4 h-4 mr-1.5" /> Pictures
           </button>
         </div>
       </div>
@@ -193,7 +333,9 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
                 </div>
               </div>
             ))}
-            <button className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
+            <button 
+              onClick={() => setIsPartModalOpen(true)}
+              className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
               Add Part
             </button>
           </div>
@@ -213,23 +355,166 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
                 </div>
               </div>
             ))}
-            <button className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
+            <button 
+              onClick={() => setIsLaborModalOpen(true)}
+              className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
               Add Labor
             </button>
           </div>
         )}
       </div>
 
+        {activeTab === "pictures" && (
+          <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="environment" 
+              className="hidden" 
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+            />
+            
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full py-6 bg-white border-2 border-dashed border-teal-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide mb-4">
+              {isUploading ? (
+                <Loader2 className="w-8 h-8 mb-2 animate-spin" />
+              ) : (
+                <Camera className="w-8 h-8 mb-2" />
+              )}
+              {isUploading ? "Uploading..." : "Take / Upload Photo"}
+            </button>
+
+            <div className="grid grid-cols-2 gap-3">
+              {(jobCard.media || []).map((m: any) => (
+                <div key={m.id} className="bg-white p-2 rounded-md shadow-sm border border-gray-200">
+                  <img src={m.fileUrl} alt="Jobcard Media" className="w-full h-32 object-cover rounded" />
+                </div>
+              ))}
+            </div>
+            {(!jobCard.media || jobCard.media.length === 0) && !isUploading && (
+              <div className="text-center py-8 text-gray-500">No pictures added</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Parts Modal */}
+      {isPartModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-in fade-in">
+          <div className="bg-white w-full sm:w-[400px] rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-8">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center"><Package className="w-5 h-5 mr-2 text-teal-600"/> Add Part</h3>
+              <button onClick={() => setIsPartModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Part Name</label>
+                <input 
+                  type="text" 
+                  value={newPartName}
+                  onChange={e => setNewPartName(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                  placeholder="e.g. Engine Oil"
+                />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Quantity</label>
+                  <input 
+                    type="number" 
+                    value={newPartQty}
+                    onChange={e => setNewPartQty(parseFloat(e.target.value))}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Price (₹)</label>
+                  <input 
+                    type="number" 
+                    value={newPartPrice}
+                    onChange={e => setNewPartPrice(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={handleSavePart}
+                disabled={isSaving || !newPartName || !newPartPrice}
+                className="w-full bg-teal-600 text-white font-bold py-3.5 rounded-md mt-2 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+              >
+                {isSaving ? "Saving..." : "Save Part"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Labor Modal */}
+      {isLaborModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-in fade-in">
+          <div className="bg-white w-full sm:w-[400px] rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-8">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center"><Wrench className="w-5 h-5 mr-2 text-teal-600"/> Add Labor</h3>
+              <button onClick={() => setIsLaborModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Labor Description</label>
+                <input 
+                  type="text" 
+                  value={newLaborName}
+                  onChange={e => setNewLaborName(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                  placeholder="e.g. General Service"
+                />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Quantity</label>
+                  <input 
+                    type="number" 
+                    value={newLaborQty}
+                    onChange={e => setNewLaborQty(parseFloat(e.target.value))}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Price (₹)</label>
+                  <input 
+                    type="number" 
+                    value={newLaborPrice}
+                    onChange={e => setNewLaborPrice(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={handleSaveLabor}
+                disabled={isSaving || !newLaborName || !newLaborPrice}
+                className="w-full bg-teal-600 text-white font-bold py-3.5 rounded-md mt-2 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+              >
+                {isSaving ? "Saving..." : "Save Labor"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sticky Bottom Total Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 md:hidden z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 md:hidden z-30">
         <div className="flex justify-between items-center">
           <div>
             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Est. Total</p>
             <p className="text-2xl font-black text-teal-600">₹{grandTotal.toFixed(2)}</p>
           </div>
-          <button className="bg-gray-900 text-white px-6 py-3 rounded font-bold shadow-md hover:bg-gray-800 transition-colors">
+          <Link href={`/solo/jobcards/${jobCard.id}/billing`} className="bg-gray-900 text-white px-6 py-3 rounded font-bold shadow-md hover:bg-gray-800 transition-colors">
             Pay Now
-          </button>
+          </Link>
         </div>
       </div>
     </div>
