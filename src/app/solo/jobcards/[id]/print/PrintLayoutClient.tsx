@@ -336,10 +336,12 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
             </tfoot>
           </table>
 
-          {/* Footer branding */}
-          <div className="mt-16 text-center text-[10px] text-gray-500">
-             Created with JobCard 2.9.4.9 | Home page: https://JobcardsSystems.com
-          </div>
+          {/* User Custom Footer */}
+          {footerText && (
+            <div className="mt-8 pt-4 border-t border-black text-[10px] text-center whitespace-pre-wrap">
+              {footerText}
+            </div>
+          )}
         </div>
       </div>
     </div>
