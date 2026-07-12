@@ -174,12 +174,12 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
               {workshopProfile.salesTaxId && <div className="text-xs mt-1">GSTIN: {workshopProfile.salesTaxId}</div>}
             </div>
           )}
-          <div className="text-center italic font-bold text-lg border-b border-black pb-1 mb-2">JOB CARD</div>
+          <div className="text-center italic font-bold text-xs border-b border-black pb-1 mb-2">JOB CARD</div>
 
           {/* Customer */}
           <div className="mb-2">
-            <div className="font-bold italic text-sm">CUSTOMER</div>
-            <div className="font-bold italic text-base">{jobCard.customer?.displayName || 'Unknown Customer'}</div>
+            <div className="font-bold italic text-xs">CUSTOMER</div>
+            <div className="font-bold italic text-xs">{jobCard.customer?.displayName || 'Unknown Customer'}</div>
           </div>
 
           <table className="w-full text-xs border-y border-black mb-4">
@@ -210,7 +210,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
           </div>
 
           {/* Services */}
-          <div className="font-bold italic text-sm mb-1">SERVICES</div>
+          <div className="font-bold italic text-xs mb-1">SERVICES</div>
           <table className="w-full text-xs mb-2">
             <thead>
               <tr className="italic border-b border-black font-bold">
@@ -260,7 +260,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
           </table>
 
           {/* Products */}
-          <div className="font-bold italic text-sm mt-4 mb-1">PRODUCTS</div>
+          <div className="font-bold italic text-xs mt-4 mb-1">PRODUCTS</div>
           <table className="w-full text-xs mb-4">
             <thead>
               <tr className="italic border-b border-black font-bold">
@@ -304,7 +304,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
           </table>
 
           {/* SUM */}
-          <div className="font-bold italic text-sm mb-1 mt-6">SUM</div>
+          <div className="font-bold italic text-xs mb-1 mt-6">SUM</div>
           <table className="w-full text-xs mb-1">
             <thead>
               <tr className="italic border-b border-black font-bold">
