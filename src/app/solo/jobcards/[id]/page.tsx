@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { JobCardDetailClient } from "./JobCardDetailClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function JobCardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
