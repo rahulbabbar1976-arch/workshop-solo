@@ -18,21 +18,67 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const [newPartName, setNewPartName] = useState("");
   const [newPartQty, setNewPartQty] = useState(1);
   const [newPartPrice, setNewPartPrice] = useState("");
+  const [partSearchResults, setPartSearchResults] = useState<any[]>([]);
+  const [showPartResults, setShowPartResults] = useState(false);
 
   const [newLaborName, setNewLaborName] = useState("");
   const [newLaborQty, setNewLaborQty] = useState(1);
   const [newLaborPrice, setNewLaborPrice] = useState("");
+  const [laborSearchResults, setLaborSearchResults] = useState<any[]>([]);
+  const [showLaborResults, setShowLaborResults] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const handlePartNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewPartName(val);
+    if (!val) {
+      setPartSearchResults([]);
+      setShowPartResults(false);
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/parts?q=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (data.success) {
+        setPartSearchResults(data.parts || []);
+        setShowPartResults(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectPart = (part: any) => {
+    setNewPartName(part.partName);
+    setNewPartPrice(part.defaultSellingPrice?.toString() || "");
+    setShowPartResults(false);
+  };
+
   const handleSavePart = async () => {
     if (!newPartName || !newPartPrice) return;
     setIsSaving(true);
     try {
+      let masterId = partSearchResults.find(p => p.partName.toLowerCase() === newPartName.toLowerCase())?.id;
+      
+      if (!masterId) {
+        const createRes = await fetch('/api/inventory/parts', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ partName: newPartName, defaultSellingPrice: parseFloat(newPartPrice) })
+        });
+        if (createRes.ok) {
+          const createData = await createRes.json();
+          masterId = createData.part?.id;
+        }
+      }
+
       const newPart = {
+        partMasterId: masterId || null,
         partName: newPartName,
         quantityRequested: newPartQty,
         sellingPrice: parseFloat(newPartPrice),
@@ -63,11 +109,53 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     }
   };
 
+  const handleLaborNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewLaborName(val);
+    if (!val) {
+      setLaborSearchResults([]);
+      setShowLaborResults(false);
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/labour?q=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (data.success) {
+        setLaborSearchResults(data.labour || []);
+        setShowLaborResults(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSelectLabor = (labor: any) => {
+    setNewLaborName(labor.labourName);
+    setNewLaborPrice(labor.defaultSellingPrice?.toString() || "");
+    setShowLaborResults(false);
+  };
+
   const handleSaveLabor = async () => {
     if (!newLaborName || !newLaborPrice) return;
     setIsSaving(true);
     try {
+      let masterId = laborSearchResults.find(l => l.labourName.toLowerCase() === newLaborName.toLowerCase())?.id;
+      
+      if (!masterId) {
+        const createRes = await fetch('/api/labour', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ labourName: newLaborName, defaultSellingPrice: parseFloat(newLaborPrice) })
+        });
+        if (createRes.ok) {
+          const createData = await createRes.json();
+          masterId = createData.labour?.id;
+        }
+      }
+
       const newLabor = {
+        labourMasterId: masterId || null,
         labourName: newLaborName,
         quantity: newLaborQty,
         sellingPrice: parseFloat(newLaborPrice),
@@ -409,15 +497,29 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
               <button onClick={() => setIsPartModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
             </div>
             <div className="space-y-4">
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Part Name</label>
                 <input 
                   type="text" 
                   value={newPartName}
-                  onChange={e => setNewPartName(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                  onChange={handlePartNameChange}
+                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
                   placeholder="e.g. Engine Oil"
                 />
+                {showPartResults && partSearchResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {partSearchResults.map(p => (
+                      <div 
+                        key={p.id} 
+                        className="px-4 py-2 hover:bg-teal-50 cursor-pointer text-sm text-gray-800"
+                        onClick={() => handleSelectPart(p)}
+                      >
+                        <div className="font-bold">{p.partName}</div>
+                        <div className="text-xs text-gray-500">₹{p.defaultSellingPrice || "0.00"}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
@@ -426,7 +528,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newPartQty}
                     onChange={e => setNewPartQty(parseFloat(e.target.value))}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
                   />
                 </div>
                 <div className="flex-1">
@@ -435,7 +537,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newPartPrice}
                     onChange={e => setNewPartPrice(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
                     placeholder="0.00"
                   />
                 </div>
@@ -461,15 +563,29 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
               <button onClick={() => setIsLaborModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6"/></button>
             </div>
             <div className="space-y-4">
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Labor Description</label>
                 <input 
                   type="text" 
                   value={newLaborName}
-                  onChange={e => setNewLaborName(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                  onChange={handleLaborNameChange}
+                  className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
                   placeholder="e.g. General Service"
                 />
+                {showLaborResults && laborSearchResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {laborSearchResults.map(l => (
+                      <div 
+                        key={l.id} 
+                        className="px-4 py-2 hover:bg-teal-50 cursor-pointer text-sm text-gray-800"
+                        onClick={() => handleSelectLabor(l)}
+                      >
+                        <div className="font-bold">{l.labourName}</div>
+                        <div className="text-xs text-gray-500">₹{l.defaultSellingPrice || "0.00"}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
@@ -478,7 +594,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newLaborQty}
                     onChange={e => setNewLaborQty(parseFloat(e.target.value))}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
                   />
                 </div>
                 <div className="flex-1">
@@ -487,7 +603,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     type="number" 
                     value={newLaborPrice}
                     onChange={e => setNewLaborPrice(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium"
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-teal-500 focus:ring-0 outline-none font-medium text-gray-900"
                     placeholder="0.00"
                   />
                 </div>
