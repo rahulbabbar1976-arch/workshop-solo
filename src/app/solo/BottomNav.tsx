@@ -22,7 +22,9 @@ export function BottomNav() {
           <ClipboardList className="h-6 w-6" />
         </Link>
         
-        <div className="w-16"></div> {/* Spacer for FAB */}
+        <Link href="/solo/jobcards/new" className="flex flex-col items-center justify-center w-full h-full bg-orange-500 text-white hover:bg-orange-600 transition-colors">
+           <Plus className="w-8 h-8" />
+        </Link>
         
         <Link href="/solo/vehicles" className="flex flex-col items-center justify-center w-full h-full hover:text-white transition-colors">
           <Car className="h-6 w-6" />
@@ -30,12 +32,6 @@ export function BottomNav() {
         
         <Link href="/solo/settings" className="flex flex-col items-center justify-center w-full h-full hover:text-white transition-colors">
           <Settings className="h-6 w-6" />
-        </Link>
-      </div>
-
-      <div className="absolute left-1/2 -top-6 -translate-x-1/2">
-        <Link href="/solo/jobcards/new" className="flex items-center justify-center w-14 h-14 rounded-full bg-orange-500 shadow-[0_4px_15px_rgba(249,115,22,0.4)] text-white hover:bg-orange-600 transition-transform active:scale-95">
-           <Plus className="w-8 h-8" />
         </Link>
       </div>
     </nav>
