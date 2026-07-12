@@ -19,11 +19,14 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
         if (data.template) {
           setFontFamily(data.template.fontFamily || "Inter");
           setBaseFontSize(data.template.baseFontSize || "12px");
-          setShowWorkshopHeader(data.template.showWorkshopHeader ?? true);
           if (data.template.columnsConfig) {
             try {
-              setCols(JSON.parse(data.template.columnsConfig));
-            } catch(e) {}
+              const parsedCols = JSON.parse(data.template.columnsConfig);
+              setCols(parsedCols);
+              setShowWorkshopHeader(parsedCols.showWorkshopHeader ?? true);
+            } catch (e) {
+              console.error(e);
+            }
           }
         }
       })

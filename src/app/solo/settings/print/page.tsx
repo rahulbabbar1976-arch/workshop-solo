@@ -294,10 +294,14 @@ export default function PrintSettingsPage() {
               {/* Preview Content */}
               <div className="border-b-2 pb-4 mb-4 flex justify-between items-start" style={{ borderColor: primaryColor }}>
                 <div>
-                  <h1 className="text-2xl font-bold" style={{ color: primaryColor }}>AUTOBOTS WORKSHOP</h1>
-                  <p className="text-xs text-gray-600 mt-1">123 Service Lane, Auto City</p>
-                  <p className="text-xs text-gray-600">Ph: +1 234 567 890</p>
-                  {showTaxId && <p className="text-xs text-gray-600">Tax ID: 98-7654321</p>}
+                  {showWorkshopHeader && (
+                    <>
+                      <h1 className="text-2xl font-bold" style={{ color: primaryColor }}>AUTOBOTS WORKSHOP</h1>
+                      <p className="text-xs text-gray-600 mt-1">123 Service Lane, Auto City</p>
+                      <p className="text-xs text-gray-600">Ph: +1 234 567 890</p>
+                      {showTaxId && <p className="text-xs text-gray-600">Tax ID: 98-7654321</p>}
+                    </>
+                  )}
                 </div>
                 <div className="text-right">
                   <h2 className="text-3xl font-black uppercase tracking-widest text-gray-200">
