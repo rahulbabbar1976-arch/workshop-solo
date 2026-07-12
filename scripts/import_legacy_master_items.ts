@@ -1,10 +1,8 @@
 import 'dotenv/config';
-import { getPrismaForDb } from '../src/lib/db';
+import prisma from '../src/lib/db';
 import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
-
-const prisma = getPrismaForDb('dev.db');
 const EXPORT_DIR = 'C:/Users/rahul/OneDrive/Desktop/JobCard-2-Windows (1)/JobCard-2-Windows/program';
 
 async function parseCSV(fileName: string): Promise<any[]> {
