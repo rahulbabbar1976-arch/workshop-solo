@@ -1,6 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import Papa from 'papaparse';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as Papa from 'papaparse';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -49,15 +49,6 @@ async function migrateCustomers(csvFilePath: string) {
     const primaryMobile = row['Phone number'] || row['Mobile Numer'] || '';
     const alternateMobile = row['Mobile Numer'] && row['Mobile Numer'] !== primaryMobile ? row['Mobile Numer'] : undefined;
     const email = row['E-mail']?.toLowerCase().trim();
-
-    try {
-      await prisma.customer.upsert({
-        where: { id: id || undefined }, // Usually we don't have UUIDs, so we'll match on some unique key if available, but upsert needs a unique key. We can't upsert safely on just name.
-        // Actually, we'll just create them since it's an initial import. 
-        // We'll use create instead of upsert to avoid unique constraint issues if source_record_id is not unique or missing.
-      });
-      // Fallback to create
-    } catch(e) { }
 
     // Let's do a simple findFirst and then create/update.
     let existing = await prisma.customer.findFirst({
