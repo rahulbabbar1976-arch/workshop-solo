@@ -223,6 +223,28 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     }
   };
 
+  const handleUpdateStatus = async (newStatus: string) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.jobcard) setJobCard(data.jobcard);
+        else router.refresh();
+      } else {
+        alert("Failed to update status");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
@@ -360,6 +382,10 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const totalLabor = labor.reduce((sum: number, l: any) => sum + getLaborTotal(l), 0);
   const grandTotal = totalParts + totalLabor;
 
+  const isLocked = ["ready_for_delivery", "delivered", "closed", "ready"].includes(jobCard.status?.toLowerCase());
+  
+  const displayStatus = jobCard.status === "waiting_for_estimate" || jobCard.status === "open" ? "OPEN JOBCARD" : jobCard.status?.replace(/_/g, ' ') || "OPEN";
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-36 font-outfit">
       {/* Flat Teal Header */}
@@ -469,8 +495,24 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Status</h3>
               <div className="flex space-x-2">
-                <span className="flex-1 text-center py-2 bg-amber-400 text-white rounded font-bold uppercase tracking-wider text-sm shadow-sm">{jobCard.status}</span>
-                <span className="flex-1 text-center py-2 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-wider text-sm hover:bg-teal-500 hover:text-white transition-colors cursor-pointer">Mark Ready</span>
+                <span className={`flex-1 text-center py-2 text-white rounded font-bold uppercase tracking-wider text-sm shadow-sm ${isLocked ? 'bg-emerald-500' : 'bg-amber-400'}`}>
+                  {displayStatus}
+                </span>
+                {isLocked ? (
+                  <button 
+                    onClick={() => handleUpdateStatus("open")}
+                    className="flex-1 text-center py-2 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-wider text-sm hover:bg-orange-500 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Mark Open
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => handleUpdateStatus("ready_for_delivery")}
+                    className="flex-1 text-center py-2 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-wider text-sm hover:bg-teal-500 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Mark Ready
+                  </button>
+                )}
               </div>
             </div>
 
@@ -527,24 +569,28 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <p className="font-bold text-gray-900 mb-2">₹{getPartTotal(p).toFixed(2)}</p>
-                  <div className="flex space-x-2">
-                    <button onClick={() => handleEditPart(p)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
-                    <button onClick={() => handleDeletePart(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
-                  </div>
+                  {!isLocked && (
+                    <div className="flex space-x-2">
+                      <button onClick={() => handleEditPart(p)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
+                      <button onClick={() => handleDeletePart(p.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
-            <button 
-              onClick={() => {
-                setEditingPartId(null);
-                setNewPartName("");
-                setNewPartQty(1);
-                setNewPartPrice("");
-                setIsPartModalOpen(true);
-              }}
-              className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
-              Add Part
-            </button>
+            {!isLocked && (
+              <button 
+                onClick={() => {
+                  setEditingPartId(null);
+                  setNewPartName("");
+                  setNewPartQty(1);
+                  setNewPartPrice("");
+                  setIsPartModalOpen(true);
+                }}
+                className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
+                Add Part
+              </button>
+            )}
           </div>
         )}
 
@@ -559,24 +605,28 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <p className="font-bold text-gray-900 mb-2">₹{getLaborTotal(l).toFixed(2)}</p>
-                  <div className="flex space-x-2">
-                    <button onClick={() => handleEditLabor(l)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
-                    <button onClick={() => handleDeleteLabor(l.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
-                  </div>
+                  {!isLocked && (
+                    <div className="flex space-x-2">
+                      <button onClick={() => handleEditLabor(l)} className="p-1.5 text-gray-400 hover:text-teal-600 bg-gray-50 hover:bg-teal-50 rounded transition-colors"><Edit2 className="w-4 h-4"/></button>
+                      <button onClick={() => handleDeleteLabor(l.id)} className="p-1.5 text-gray-400 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4"/></button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
-            <button 
-              onClick={() => {
-                setEditingLaborId(null);
-                setNewLaborName("");
-                setNewLaborQty(1);
-                setNewLaborPrice("");
-                setIsLaborModalOpen(true);
-              }}
-              className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
-              Add Labor
-            </button>
+            {!isLocked && (
+              <button 
+                onClick={() => {
+                  setEditingLaborId(null);
+                  setNewLaborName("");
+                  setNewLaborQty(1);
+                  setNewLaborPrice("");
+                  setIsLaborModalOpen(true);
+                }}
+                className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-teal-600 font-bold hover:bg-teal-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
+                Add Labor
+              </button>
+            )}
           </div>
         )}
 
