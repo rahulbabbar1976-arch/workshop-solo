@@ -82,8 +82,8 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
   
   // Tax aggregation
   let totalTaxSum = 0;
-  services.forEach(s => totalTaxSum += (s.calc.unitTax * s.calc.qty));
-  products.forEach(p => totalTaxSum += (p.calc.unitTax * p.calc.qty));
+  services.forEach((s: any) => totalTaxSum += (s.calc.unitTax * s.calc.qty));
+  products.forEach((p: any) => totalTaxSum += (p.calc.unitTax * p.calc.qty));
 
   const totalNetSum = grandGrossSum - totalTaxSum;
 
