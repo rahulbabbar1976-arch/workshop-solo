@@ -55,14 +55,8 @@ export default async function SoloDashboardPage() {
         <div className="bg-teal-500 rounded-xl shadow-md p-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
           
-          <div className="flex justify-between items-center mb-6 relative z-10">
-            <button className="text-white p-1 hover:bg-white/10 rounded-md transition-colors">
-              <Menu className="w-6 h-6" />
-            </button>
-            <h1 className="text-lg font-bold text-white uppercase tracking-wider">Dashboard</h1>
-            <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center text-white text-sm font-bold border border-white/40 shadow-sm">
-              RA
-            </div>
+          <div className="mb-6 relative z-10">
+            <h1 className="text-xl font-bold text-white uppercase tracking-wider">Dashboard Overview</h1>
           </div>
 
           {/* Revenue Section Inside Header */}

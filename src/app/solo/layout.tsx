@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { Home, ClipboardList, Car, Settings, Plus } from "lucide-react";
 import { BottomNav } from "./BottomNav";
 
+import { TopNav } from "./TopNav";
+
 export default function SoloLayout({
   children,
 }: {
@@ -23,6 +25,7 @@ export default function SoloLayout({
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 print:bg-white pb-16 print:pb-0 font-outfit">
+      <TopNav />
       {/* Main Content Area */}
       <main className="flex-1 w-full overflow-y-auto">
         {children}
