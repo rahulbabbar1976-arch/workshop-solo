@@ -1,11 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { Printer, Settings2, ChevronLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Printer, Settings2, ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+  const [fontFamily, setFontFamily] = useState("Inter");
+  const [baseFontSize, setBaseFontSize] = useState("12px");
+  const [isLoading, setIsLoading] = useState(true);
+  const [cols, setCols] = useState<any>({ parts: [], labour: [] });
+
+  useEffect(() => {
+    fetch('/api/settings/print?documentType=JOBCARD')
+      .then(res => res.json())
+      .then(data => {
+        if (data.template) {
+          setFontFamily(data.template.fontFamily || "Inter");
+          setBaseFontSize(data.template.baseFontSize || "12px");
+          if (data.template.columnsConfig) {
+            try {
+              setCols(JSON.parse(data.template.columnsConfig));
+            } catch(e) {}
+          }
+        }
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -87,6 +108,14 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
 
   const totalNetSum = grandGrossSum - totalTaxSum;
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex justify-center items-center">
+        <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
       {/* Settings Panel - Hidden when printing */}
@@ -113,7 +142,7 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
 
       {/* Print Preview Area */}
       <div className="flex-1 p-4 md:p-8 overflow-y-auto print:p-0 print:overflow-visible flex justify-center">
-        <div className="bg-white shadow-xl print:shadow-none print:w-full w-full max-w-4xl text-black" style={{ fontFamily: 'Arial, sans-serif', padding: '1cm 1.5cm' }}>
+        <div className="bg-white shadow-xl print:shadow-none print:w-full w-full max-w-4xl text-black" style={{ fontFamily: fontFamily === 'serif' ? 'Times New Roman, serif' : `"${fontFamily}", sans-serif`, fontSize: baseFontSize, padding: '1cm 1.5cm' }}>
           
           {/* Header */}
           <div className="text-center italic font-bold text-lg border-b border-black pb-1 mb-2">JOB CARD</div>
@@ -159,15 +188,15 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
                 <td className="text-left w-6">Id</td>
                 <td className="text-left">Name</td>
                 <td className="text-center w-10">Code</td>
-                <td className="text-right w-12">Quant.</td>
-                <td className="text-left w-8 pl-1">Unit</td>
-                <td className="text-right w-12">Disc.</td>
-                <td className="text-right w-12">Tax r.</td>
-                <td className="text-right w-20">Net unit pr.</td>
-                <td className="text-right w-16">Unit tax</td>
-                <td className="text-right w-24">Sum without disc.</td>
-                <td className="text-right w-20">Gr.disc.sum.</td>
-                <td className="text-right w-20">Gross sum</td>
+                {cols.labour?.includes('qty') && <td className="text-right w-12">Quant.</td>}
+                {cols.labour?.includes('qty') && <td className="text-left w-8 pl-1">Unit</td>}
+                {cols.labour?.includes('discount') && <td className="text-right w-12">Disc.</td>}
+                {cols.labour?.includes('tax') && <td className="text-right w-12">Tax r.</td>}
+                {cols.labour?.includes('rate') && <td className="text-right w-20">Net unit pr.</td>}
+                {cols.labour?.includes('tax') && <td className="text-right w-16">Unit tax</td>}
+                {cols.labour?.includes('discount') && <td className="text-right w-24">Sum without disc.</td>}
+                {cols.labour?.includes('discount') && <td className="text-right w-20">Gr.disc.sum.</td>}
+                {cols.labour?.includes('total') && <td className="text-right w-20">Gross sum</td>}
                 <td className="text-left w-8 pl-1">Cur.</td>
               </tr>
             </thead>
@@ -177,25 +206,25 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
                   <td className="text-right pr-2">{s.index}</td>
                   <td className="text-left whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{s.name}</td>
                   <td className="text-center"></td>
-                  <td className="text-right">{s.calc.qty}</td>
-                  <td className="text-left pl-1">pcs</td>
-                  <td className="text-right">{s.calc.discPercent > 0 ? `${s.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>
-                  <td className="text-right">{s.calc.taxPercent.toFixed(1)}%</td>
-                  <td className="text-right">{s.calc.netUnitPrice.toFixed(2)}</td>
-                  <td className="text-right">{s.calc.unitTax.toFixed(2)}</td>
-                  <td className="text-right">{s.calc.sumWithoutDisc.toFixed(2)}</td>
-                  <td className="text-right">{s.calc.grDiscSum.toFixed(2)}</td>
-                  <td className="text-right">{s.calc.grossSum.toFixed(2)}</td>
+                  {cols.labour?.includes('qty') && <td className="text-right">{s.calc.qty}</td>}
+                  {cols.labour?.includes('qty') && <td className="text-left pl-1">pcs</td>}
+                  {cols.labour?.includes('discount') && <td className="text-right">{s.calc.discPercent > 0 ? `${s.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}
+                  {cols.labour?.includes('tax') && <td className="text-right">{s.calc.taxPercent.toFixed(1)}%</td>}
+                  {cols.labour?.includes('rate') && <td className="text-right">{s.calc.netUnitPrice.toFixed(2)}</td>}
+                  {cols.labour?.includes('tax') && <td className="text-right">{s.calc.unitTax.toFixed(2)}</td>}
+                  {cols.labour?.includes('discount') && <td className="text-right">{s.calc.sumWithoutDisc.toFixed(2)}</td>}
+                  {cols.labour?.includes('discount') && <td className="text-right">{s.calc.grDiscSum.toFixed(2)}</td>}
+                  {cols.labour?.includes('total') && <td className="text-right">{s.calc.grossSum.toFixed(2)}</td>}
                   <td className="text-left pl-1">INR</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t border-black">
-                <td colSpan={9} className="text-left">Sum:</td>
-                <td className="text-right">{totalServicesWithoutDisc.toFixed(2)}</td>
-                <td className="text-right">{totalServicesDisc.toFixed(2)}</td>
-                <td className="text-right">{totalServicesGross.toFixed(2)}</td>
+                <td colSpan={3 + (cols.labour?.includes('qty') ? 2 : 0) + (cols.labour?.includes('tax') ? 2 : 0) + (cols.labour?.includes('rate') ? 1 : 0)} className="text-left">Sum:</td>
+                {cols.labour?.includes('discount') && <td className="text-right">{totalServicesWithoutDisc.toFixed(2)}</td>}
+                {cols.labour?.includes('discount') && <td className="text-right">{totalServicesDisc.toFixed(2)}</td>}
+                {cols.labour?.includes('total') && <td className="text-right">{totalServicesGross.toFixed(2)}</td>}
                 <td className="text-left pl-1">INR</td>
               </tr>
             </tfoot>
@@ -209,13 +238,13 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
                 <td className="text-left w-6">Id</td>
                 <td className="text-left">Name</td>
                 <td className="text-center w-10">Code</td>
-                <td className="text-right w-12">Quant.</td>
-                <td className="text-left w-8 pl-1">Unit</td>
-                <td className="text-right w-12">Disc.</td>
-                <td className="text-right w-12">Tax r.</td>
-                <td className="text-right w-20">Net unit pr.</td>
-                <td className="text-right w-16">Unit tax</td>
-                <td className="text-right w-24">Gross sum</td>
+                {cols.parts?.includes('qty') && <td className="text-right w-12">Quant.</td>}
+                {cols.parts?.includes('qty') && <td className="text-left w-8 pl-1">Unit</td>}
+                {cols.parts?.includes('discount') && <td className="text-right w-12">Disc.</td>}
+                {cols.parts?.includes('tax') && <td className="text-right w-12">Tax r.</td>}
+                {cols.parts?.includes('rate') && <td className="text-right w-20">Net unit pr.</td>}
+                {cols.parts?.includes('tax') && <td className="text-right w-16">Unit tax</td>}
+                {cols.parts?.includes('total') && <td className="text-right w-24">Gross sum</td>}
                 <td className="text-left w-8 pl-1">Cur.</td>
               </tr>
             </thead>
@@ -225,21 +254,21 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
                   <td className="text-right pr-2">{p.index}</td>
                   <td className="text-left whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{p.name}</td>
                   <td className="text-center"></td>
-                  <td className="text-right">{p.calc.qty}</td>
-                  <td className="text-left pl-1">pcs</td>
-                  <td className="text-right">{p.calc.discPercent > 0 ? `${p.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>
-                  <td className="text-right">{p.calc.taxPercent.toFixed(1)}%</td>
-                  <td className="text-right">{p.calc.netUnitPrice.toFixed(2)}</td>
-                  <td className="text-right">{p.calc.unitTax.toFixed(2)}</td>
-                  <td className="text-right">{p.calc.grossSum.toFixed(2)}</td>
+                  {cols.parts?.includes('qty') && <td className="text-right">{p.calc.qty}</td>}
+                  {cols.parts?.includes('qty') && <td className="text-left pl-1">pcs</td>}
+                  {cols.parts?.includes('discount') && <td className="text-right">{p.calc.discPercent > 0 ? `${p.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}
+                  {cols.parts?.includes('tax') && <td className="text-right">{p.calc.taxPercent.toFixed(1)}%</td>}
+                  {cols.parts?.includes('rate') && <td className="text-right">{p.calc.netUnitPrice.toFixed(2)}</td>}
+                  {cols.parts?.includes('tax') && <td className="text-right">{p.calc.unitTax.toFixed(2)}</td>}
+                  {cols.parts?.includes('total') && <td className="text-right">{p.calc.grossSum.toFixed(2)}</td>}
                   <td className="text-left pl-1">INR</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t border-black">
-                <td colSpan={9} className="text-left">Sum:</td>
-                <td className="text-right">{totalProductsGross.toFixed(2)}</td>
+                <td colSpan={3 + (cols.parts?.includes('qty') ? 2 : 0) + (cols.parts?.includes('tax') ? 2 : 0) + (cols.parts?.includes('rate') ? 1 : 0) + (cols.parts?.includes('discount') ? 1 : 0)} className="text-left">Sum:</td>
+                {cols.parts?.includes('total') && <td className="text-right">{totalProductsGross.toFixed(2)}</td>}
                 <td className="text-left pl-1">INR</td>
               </tr>
             </tfoot>

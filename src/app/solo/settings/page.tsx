@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Upload, Database, CheckCircle, AlertCircle } from "lucide-react";
+import { Download, Upload, Database, CheckCircle, AlertCircle, Printer } from "lucide-react";
 import Papa from "papaparse";
 import { 
   exportTenantDataAction, 
@@ -12,6 +12,7 @@ import {
   importLegacyProblemsAction,
   importLegacyItemsAction
 } from "@/app/actions/settingsActions";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -163,7 +164,7 @@ export default function SettingsPage() {
   return (
     <div className="bg-gray-100 min-h-screen pb-32">
       <div className="bg-amber-400 px-5 pt-8 pb-4 shadow-sm relative z-10">
-        <h1 className="text-xl font-bold text-white uppercase tracking-wider">Data Management</h1>
+        <h1 className="text-xl font-bold text-white uppercase tracking-wider">Settings & Data Management</h1>
       </div>
       
       <div className="p-5 space-y-6">
@@ -175,9 +176,28 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Section 1: Backup */}
+        {/* Section 0: Printer Module */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="bg-teal-500 p-4">
+            <h2 className="text-white font-bold flex items-center tracking-wide uppercase">
+              <Printer className="w-5 h-5 mr-2" /> Printer Module
+            </h2>
+          </div>
+          <div className="p-5">
+            <p className="text-sm text-gray-500 mb-4">Customize your printing layouts, fonts, and columns for Job Cards, Estimates, and Invoices.</p>
+            <Link href="/solo/settings/print">
+              <button
+                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg uppercase tracking-wider flex justify-center items-center"
+              >
+                <Printer className="w-5 h-5 mr-2" /> Configure Printouts
+              </button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Section 1: Backup */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-amber-400 p-4">
             <h2 className="text-white font-bold flex items-center tracking-wide uppercase">
               <Download className="w-5 h-5 mr-2" /> Backup Current Data
             </h2>

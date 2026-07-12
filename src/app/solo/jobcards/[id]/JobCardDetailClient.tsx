@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Settings, Wrench, Package, PenLine, Contact } from "lucide-react";
+import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
 
@@ -43,7 +43,7 @@ export function JobCardDetailClient({ jobCard }: { jobCard: any }) {
              <span className="text-xs font-bold uppercase tracking-wider">{jobCard.jobcardNumber}</span>
           </div>
           <Link href={`/solo/jobcards/${jobCard.id}/print`} className="p-2 hover:bg-teal-600 rounded-full transition-colors">
-            <Settings className="w-5 h-5" />
+            <Printer className="w-5 h-5" />
           </Link>
         </div>
         

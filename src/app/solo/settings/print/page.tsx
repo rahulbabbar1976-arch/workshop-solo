@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeft, Check, Printer, FileText, Image as ImageIcon, Settings2, FileSignature, Edit3 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Check, Printer, FileText, Image as ImageIcon, Settings2, FileSignature, Edit3, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function PrintSettingsPage() {
   const [activeTab, setActiveTab] = useState<"jobcard" | "estimate" | "invoice">("jobcard");
   const [fontFamily, setFontFamily] = useState("Inter");
+  const [baseFontSize, setBaseFontSize] = useState("12px");
   const [primaryColor, setPrimaryColor] = useState("#0d9488"); // teal-600
   const [showLogo, setShowLogo] = useState(true);
   const [showTaxId, setShowTaxId] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Field toggles
   const [fields, setFields] = useState({
@@ -31,6 +34,73 @@ export default function PrintSettingsPage() {
 
   const [footerText, setFooterText] = useState("Thank you for your business. All parts are subject to standard warranty.");
 
+  useEffect(() => {
+    loadSettings(activeTab.toUpperCase());
+  }, [activeTab]);
+
+  const loadSettings = async (docType: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/settings/print?documentType=${docType}`);
+      const data = await res.json();
+      if (data.template) {
+        setFontFamily(data.template.fontFamily || "Inter");
+        setBaseFontSize(data.template.baseFontSize || "12px");
+        setPrimaryColor(data.template.primaryColor || "#0d9488");
+        setShowLogo(data.template.showLogo ?? true);
+        setFooterText(data.template.footerText || "");
+        if (data.template.columnsConfig) {
+          try {
+            const cols = JSON.parse(data.template.columnsConfig);
+            setFields({
+              partNo: cols.parts?.includes("partNo") ?? true,
+              brand: cols.parts?.includes("brand") ?? true,
+              qty: cols.parts?.includes("qty") ?? true,
+              rate: cols.parts?.includes("rate") ?? true,
+              taxRate: cols.parts?.includes("tax") ?? true,
+              discount: cols.parts?.includes("discount") ?? true,
+              total: cols.parts?.includes("total") ?? true,
+            });
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      
+      const columnsConfig = {
+        labour: ["description", fields.qty ? "qty" : "", fields.rate ? "rate" : "", fields.taxRate ? "tax" : "", fields.discount ? "discount" : "", fields.total ? "total" : ""].filter(Boolean),
+        parts: ["partName", fields.partNo ? "partNo" : "", fields.brand ? "brand" : "", fields.qty ? "qty" : "", fields.rate ? "rate" : "", fields.taxRate ? "tax" : "", fields.discount ? "discount" : "", fields.total ? "total" : ""].filter(Boolean)
+      };
+
+      await fetch(`/api/settings/print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentType: activeTab.toUpperCase(),
+          fontFamily,
+          baseFontSize,
+          primaryColor,
+          showLogo,
+          footerText,
+          columnsConfig
+        })
+      });
+      alert('Settings saved successfully!');
+    } catch (err) {
+      alert('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleFieldToggle = (field: keyof typeof fields) => {
     setFields(prev => ({ ...prev, [field]: !prev[field] }));
   };
@@ -43,12 +113,16 @@ export default function PrintSettingsPage() {
     <div className="bg-gray-100 min-h-screen pb-24 font-outfit">
       {/* Header */}
       <div className="bg-teal-500 px-4 pt-6 pb-6 shadow-md relative z-10 flex items-center justify-between">
-        <Link href="/solo/dashboard" className="text-white p-2 -ml-2">
+        <Link href="/solo/settings" className="text-white p-2 -ml-2 hover:bg-teal-600 rounded-full transition-colors">
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <h1 className="text-lg font-bold text-white uppercase tracking-wider">Print Templates</h1>
-        <button className="text-white p-2">
-          <Check className="w-6 h-6" />
+        <button 
+          onClick={handleSave} 
+          disabled={isSaving || isLoading}
+          className="text-white p-2 bg-teal-600 hover:bg-teal-700 rounded-full transition-colors disabled:opacity-50 flex items-center"
+        >
+          {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
         </button>
       </div>
 
@@ -90,6 +164,19 @@ export default function PrintSettingsPage() {
                   <option value="Inter">Inter (Clean & Modern)</option>
                   <option value="Roboto">Roboto (Standard)</option>
                   <option value="serif">Times New Roman (Classic)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">Base Font Size</label>
+                <select 
+                  className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm text-gray-800 focus:ring-2 focus:ring-teal-500 outline-none"
+                  value={baseFontSize}
+                  onChange={(e) => setBaseFontSize(e.target.value)}
+                >
+                  <option value="10px">Small (10px)</option>
+                  <option value="12px">Medium (12px)</option>
+                  <option value="14px">Large (14px)</option>
+                  <option value="16px">Extra Large (16px)</option>
                 </select>
               </div>
               <div>
