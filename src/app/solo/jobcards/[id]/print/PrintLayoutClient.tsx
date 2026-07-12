@@ -172,7 +172,7 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
               </tr>
             </thead>
             <tbody>
-              {services.map((s) => (
+              {services.map((s: any) => (
                 <tr key={s.id}>
                   <td className="text-right pr-2">{s.index}</td>
                   <td className="text-left whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{s.name}</td>
@@ -220,7 +220,7 @@ export function PrintLayoutClient({ jobCard }: { jobCard: any }) {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
+              {products.map((p: any) => (
                 <tr key={p.id}>
                   <td className="text-right pr-2">{p.index}</td>
                   <td className="text-left whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{p.name}</td>
