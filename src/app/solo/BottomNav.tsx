@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ClipboardList, Car, Settings, Plus } from "lucide-react";
+import { Home, ClipboardList, Car, Settings, Plus, Users } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname() || "";
@@ -30,8 +30,8 @@ export function BottomNav() {
           <Car className="h-6 w-6" />
         </Link>
         
-        <Link href="/solo/settings" className="flex flex-col items-center justify-center w-full h-full hover:text-white transition-colors">
-          <Settings className="h-6 w-6" />
+        <Link href="/solo/customers" className="flex flex-col items-center justify-center w-full h-full hover:text-white transition-colors">
+          <Users className="h-6 w-6" />
         </Link>
       </div>
     </nav>
