@@ -1,42 +1,104 @@
 import { prisma } from "@/lib/db";
-import { Car } from "lucide-react";
+import { Car, Search } from "lucide-react";
+import Link from "next/link";
 
 export const revalidate = 0;
 
-export default async function VehiclesPage() {
-  const vehicles = await prisma.vehicle.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { currentCustomer: true },
-    take: 50 // limit for now
-  });
+export default async function VehiclesPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}) {
+  const params = await searchParams;
+  const q = typeof params.q === 'string' ? params.q : '';
+  const page = typeof params.page === 'string' ? parseInt(params.page) || 1 : 1;
+  const limit = 25;
+
+  const whereClause = q ? {
+    OR: [
+      { registrationNumberNormalized: { contains: q.replace(/\s+/g, '').toUpperCase() } },
+      { manufacturer: { contains: q, mode: 'insensitive' as any } },
+      { model: { contains: q, mode: 'insensitive' as any } }
+    ]
+  } : {};
+
+  // For sqlite fallback if mode: insensitive throws, we can just rely on standard contains.
+  // Actually, since this project uses PostgreSQL (pg adapter in package.json), mode: 'insensitive' is fully supported!
+
+  const [totalCount, vehicles] = await Promise.all([
+    prisma.vehicle.count({ where: whereClause }),
+    prisma.vehicle.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      include: { currentCustomer: true },
+      skip: (page - 1) * limit,
+      take: limit
+    })
+  ]);
+
+  const totalPages = Math.ceil(totalCount / limit) || 1;
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-32 font-outfit">
-      <div className="bg-gray-900 px-5 pt-8 pb-4 shadow-md relative z-10">
-        <h1 className="text-xl font-bold text-white uppercase tracking-wider flex items-center">
-          <Car className="w-5 h-5 mr-2 text-orange-500" />
-          Vehicles
-        </h1>
-      </div>
-      <div className="px-5 mt-6">
-        {vehicles.length === 0 ? (
-          <div className="text-center py-10 bg-white rounded-md shadow-sm border border-gray-200">
-            <p className="text-gray-500 font-medium">No vehicles found.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {vehicles.map(v => (
-              <div key={v.id} className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-                <h3 className="font-bold text-gray-800 text-lg uppercase">{v.registrationNumberNormalized || v.registrationNumberRaw}</h3>
-                <div className="flex flex-col mt-2 gap-1 text-sm text-gray-600">
-                  <span><span className="font-semibold text-gray-400">Make/Model:</span> {v.manufacturer || "-"} {v.model || ""}</span>
-                  <span><span className="font-semibold text-gray-400">Owner:</span> {v.currentCustomer?.displayName || "-"}</span>
+    <div className="content">
+      <div className="section-title">Vehicles Directory</div>
+      
+      <form method="GET" className="searchbar">
+        <Search className="w-4 h-4" />
+        <input 
+          type="search" 
+          name="q" 
+          defaultValue={q} 
+          placeholder="Search by plate, make, or model..." 
+        />
+        <input type="hidden" name="page" value="1" />
+      </form>
+
+      {vehicles.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--steel)' }}>
+          <p>No vehicles found.</p>
+        </div>
+      ) : (
+        <div style={{ marginTop: '12px' }}>
+          {vehicles.map(v => (
+            <div key={v.id} className="vehicle-card">
+              <div className="vicon">
+                <Car className="w-5 h-5 text-gray-400" />
+              </div>
+              <div>
+                <div className="vp">{v.registrationNumberNormalized || v.registrationNumberRaw}</div>
+                <div className="vm">
+                  {v.manufacturer || "Unknown Make"} {v.model || ""} 
+                  {v.currentCustomer?.displayName && ` • Owner: ${v.currentCustomer.displayName}`}
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalCount > 0 && (
+        <div className="pagination">
+          <Link 
+            href={`?q=${q}&page=${Math.max(1, page - 1)}`} 
+            className="pagination-btn"
+            style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1 }}
+          >
+            Previous
+          </Link>
+          <div className="pagination-info">
+            Page {page} of {totalPages} <br/>
+            <span style={{ fontSize: '10px' }}>({totalCount} records)</span>
           </div>
-        )}
-      </div>
+          <Link 
+            href={`?q=${q}&page=${Math.min(totalPages, page + 1)}`} 
+            className="pagination-btn"
+            style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1 }}
+          >
+            Next
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

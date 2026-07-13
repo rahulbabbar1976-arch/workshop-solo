@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { Search, Filter, Clock } from "lucide-react";
+import { Search } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 
-export default async function SoloJobcardsPage() {
+export default async function SoloJobcardsPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}) {
   const cookieStore = await cookies();
   const userId = cookieStore.get('workshop_user_id')?.value;
   
@@ -13,106 +17,119 @@ export default async function SoloJobcardsPage() {
     tenantId = user?.tenantId || null;
   }
 
-  const rawJobs = await prisma.jobCard.findMany({
-    where: { tenantId: tenantId || undefined },
-    orderBy: { createdAt: "desc" },
-    include: {
-      customer: true,
-      vehicle: true,
-    }
-  });
+  const params = await searchParams;
+  const q = typeof params.q === 'string' ? params.q : '';
+  const page = typeof params.page === 'string' ? parseInt(params.page) || 1 : 1;
+  const limit = 25;
 
-  const jobs = rawJobs.map(job => ({
-    id: job.jobcardNumber || 'UNKNOWN',
-    customer: job.customer?.displayName || 'Unknown',
-    vehicle: job.vehicle?.registrationNumberNormalized || 'UNKNOWN',
-    make: job.vehicle?.model || 'Unknown',
-    status: job.status || 'UNKNOWN',
-    date: job.createdAt ? job.createdAt.toLocaleDateString() : 'Unknown',
-    amount: 0 // Placeholder until invoices are ready
-  }));
+  const whereClause: any = {
+    tenantId: tenantId || undefined,
+  };
+
+  if (q) {
+    whereClause.OR = [
+      { jobcardNumber: { contains: q, mode: 'insensitive' } },
+      { customer: { displayName: { contains: q, mode: 'insensitive' } } },
+      { vehicle: { registrationNumberNormalized: { contains: q.replace(/\s+/g, '').toUpperCase() } } }
+    ];
+  }
+
+  const [totalCount, rawJobs] = await Promise.all([
+    prisma.jobCard.count({ where: whereClause }),
+    prisma.jobCard.findMany({
+      where: whereClause,
+      orderBy: { createdAt: "desc" },
+      include: {
+        customer: true,
+        vehicle: true,
+      },
+      skip: (page - 1) * limit,
+      take: limit
+    })
+  ]);
+
+  const totalPages = Math.ceil(totalCount / limit) || 1;
+
+  const getStatusStampClass = (status: string) => {
+    switch(status) {
+      case 'IN_PROGRESS': return 'in-progress';
+      case 'COMPLETED': return 'completed';
+      case 'DELIVERED': return 'ready-pickup';
+      default: return 'awaiting-approval';
+    }
+  };
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-32">
-      {/* Flat Mobile Header */}
-      <div className="bg-amber-400 px-5 pt-8 pb-4 shadow-sm relative z-10">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold text-white uppercase tracking-wider">Job Cards</h1>
+    <div className="content">
+      <div className="section-title">Job Cards</div>
+      
+      <form method="GET" className="searchbar">
+        <Search className="w-4 h-4" />
+        <input 
+          type="search" 
+          name="q" 
+          defaultValue={q} 
+          placeholder="Search JC#, Reg No, or Customer..." 
+        />
+        <input type="hidden" name="page" value="1" />
+      </form>
+
+      {rawJobs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--steel)' }}>
+          <p>No job cards found.</p>
         </div>
-
-        {/* Search & Filter */}
-        <div className="flex space-x-2">
-          <div className="relative flex-1 group">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-              <Search className="h-4 w-4" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-9 pr-3 py-2.5 bg-white rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm font-medium text-gray-700 placeholder-gray-400"
-              placeholder="Search reg no or customer..."
-              name="searchQuery"
-            />
-          </div>
-          <button className="flex items-center justify-center px-3 py-2.5 bg-white rounded-lg shadow-sm text-gray-600 hover:text-teal-600 active:scale-95 transition-all">
-            <Filter className="h-4 w-4" />
-          </button>
+      ) : (
+        <div style={{ marginTop: '12px' }}>
+          {rawJobs.map((job) => (
+            <Link key={job.id} href={`/solo/jobcards/${job.id}`} style={{ textDecoration: 'none' }}>
+              <div className="ticket">
+                <div className="ticket-top">
+                  <div>
+                    <div className="ticket-id">{job.jobcardNumber}</div>
+                    <div className="ticket-plate">
+                      {job.vehicle?.registrationNumberNormalized || 'UNKNOWN'}
+                    </div>
+                    <div className="ticket-veh">
+                      {job.vehicle?.manufacturer || ''} {job.vehicle?.model || ''}
+                    </div>
+                  </div>
+                  <div className={`stamp ${getStatusStampClass(job.status)}`}>
+                    {job.status.replace(/_/g, ' ')}
+                  </div>
+                </div>
+                <div className="ticket-perf">
+                  <div className="ticket-cust">{job.customer?.displayName || 'Unknown Customer'}</div>
+                  <div className="ticket-meta">{job.createdAt ? job.createdAt.toLocaleDateString() : ''}</div>
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* Job List */}
-      <div className="px-5 mt-6 space-y-4 relative z-0">
-        {jobs.length === 0 && (
-          <div className="text-center py-10 text-slate-500">No job cards found.</div>
-        )}
-        {jobs.map((job) => (
-          <Link key={job.id} href={`/solo/jobcards/${job.id}`} className="block bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 active:scale-[0.98] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-slate-300 transition-all group relative overflow-hidden">
-            
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex flex-col">
-                <span className="font-extrabold text-slate-900 text-xl tracking-tight">{job.vehicle}</span>
-                <span className="text-sm font-bold text-slate-500">{job.make}</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-extrabold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg mb-1 tracking-wider">
-                  {job.id}
-                </span>
-                <span className="text-xs font-bold text-slate-400 flex items-center">
-                   <Clock className="w-3 h-3 mr-1" /> {job.date}
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex items-center text-sm font-medium text-slate-600 mt-3 mb-4">
-               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mr-3 text-slate-500 font-bold">
-                  {job.customer.charAt(0)}
-               </div>
-               {job.customer}
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-              <span className={`text-xs font-extrabold px-3 py-1.5 rounded-xl flex items-center ${
-                job.status === "IN_PROGRESS" ? "bg-blue-50 text-blue-700 border border-blue-100" : 
-                job.status === "COMPLETED" || job.status === "DELIVERED" ? "bg-green-50 text-green-700 border border-green-100" :
-                "bg-amber-50 text-amber-700 border border-amber-100"
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                  job.status === "IN_PROGRESS" ? "bg-blue-600" : 
-                  job.status === "COMPLETED" || job.status === "DELIVERED" ? "bg-green-500" :
-                  "bg-amber-500"
-                }`}></span>
-                {job.status.replace(/_/g, ' ')}
-              </span>
-              {job.amount > 0 ? (
-                 <span className="text-base font-extrabold text-slate-900 tracking-tight">₹{job.amount.toLocaleString()}</span>
-              ) : (
-                 <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md">Est. Pending</span>
-              )}
-            </div>
+      {/* Pagination */}
+      {totalCount > 0 && (
+        <div className="pagination">
+          <Link 
+            href={`?q=${q}&page=${Math.max(1, page - 1)}`} 
+            className="pagination-btn"
+            style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1, textDecoration: 'none' }}
+          >
+            Previous
           </Link>
-        ))}
-      </div>
+          <div className="pagination-info" style={{ textAlign: 'center' }}>
+            Page {page} of {totalPages} <br/>
+            <span style={{ fontSize: '10px' }}>({totalCount} records)</span>
+          </div>
+          <Link 
+            href={`?q=${q}&page=${Math.min(totalPages, page + 1)}`} 
+            className="pagination-btn"
+            style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1, textDecoration: 'none' }}
+          >
+            Next
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

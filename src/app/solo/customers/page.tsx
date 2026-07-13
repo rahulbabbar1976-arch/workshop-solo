@@ -1,42 +1,101 @@
 import { prisma } from "@/lib/db";
-import { User } from "lucide-react";
+import { User, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
-export const revalidate = 0; // Ensure data is always fresh
+export const revalidate = 0;
 
-export default async function CustomersPage() {
-  const customers = await prisma.customer.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 50 // limit for now
-  });
+export default async function CustomersPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}) {
+  const params = await searchParams;
+  const q = typeof params.q === 'string' ? params.q : '';
+  const page = typeof params.page === 'string' ? parseInt(params.page) || 1 : 1;
+  const limit = 25;
+
+  const whereClause = q ? {
+    OR: [
+      { displayName: { contains: q } }, // Prisma does not support case-insensitive contains on sqlite easily but since they use Postgres, mode: 'insensitive' works
+      { primaryMobile: { contains: q } }
+    ]
+  } : {};
+
+  // For Postgres we can use mode: 'insensitive'. Let's check if it throws, worst case we rely on precise case. But Postgres supports mode.
+  // Actually, wait, let's just use standard contains.
+  if (q) {
+    (whereClause.OR![0] as any).displayName = { contains: q, mode: 'insensitive' };
+  }
+
+  const [totalCount, customers] = await Promise.all([
+    prisma.customer.count({ where: whereClause }),
+    prisma.customer.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
+    })
+  ]);
+
+  const totalPages = Math.ceil(totalCount / limit) || 1;
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-32 font-outfit">
-      <div className="bg-gray-900 px-5 pt-8 pb-4 shadow-md relative z-10">
-        <h1 className="text-xl font-bold text-white uppercase tracking-wider flex items-center">
-          <User className="w-5 h-5 mr-2 text-orange-500" />
-          Customers
-        </h1>
-      </div>
+    <div className="content">
+      <div className="section-title">Clients Directory</div>
       
-      <div className="px-5 mt-6">
-        {customers.length === 0 ? (
-          <div className="text-center py-10 bg-white rounded-md shadow-sm border border-gray-200">
-            <p className="text-gray-500 font-medium">No customers found.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {customers.map(c => (
-              <div key={c.id} className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-                <h3 className="font-bold text-gray-800 text-lg">{c.displayName}</h3>
-                <div className="flex flex-col mt-2 gap-1 text-sm text-gray-600">
-                  {c.primaryMobile && <span><span className="font-semibold text-gray-400">Mobile:</span> {c.primaryMobile}</span>}
-                  {c.addressLine1 && <span><span className="font-semibold text-gray-400">Address:</span> {c.addressLine1}</span>}
-                </div>
+      <form method="GET" className="searchbar">
+        <Search className="w-4 h-4" />
+        <input 
+          type="search" 
+          name="q" 
+          defaultValue={q} 
+          placeholder="Search by name or phone..." 
+        />
+        {/* Hidden page input to reset to page 1 on search */}
+        <input type="hidden" name="page" value="1" />
+      </form>
+
+      {customers.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--steel)' }}>
+          <p>No customers found.</p>
+        </div>
+      ) : (
+        <div style={{ marginTop: '12px' }}>
+          {customers.map(c => (
+            <div key={c.id} className="customer-row">
+              <div className="ci">{c.displayName.charAt(0).toUpperCase()}</div>
+              <div>
+                <div className="cn">{c.displayName}</div>
+                <div className="cm">{c.primaryMobile || 'No Mobile'} • {c.addressLine1 || 'No Address'}</div>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalCount > 0 && (
+        <div className="pagination">
+          <Link 
+            href={`?q=${q}&page=${Math.max(1, page - 1)}`} 
+            className="pagination-btn"
+            style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1 }}
+          >
+            Previous
+          </Link>
+          <div className="pagination-info">
+            Page {page} of {totalPages} <br/>
+            <span style={{ fontSize: '10px' }}>({totalCount} records)</span>
           </div>
-        )}
-      </div>
+          <Link 
+            href={`?q=${q}&page=${Math.min(totalPages, page + 1)}`} 
+            className="pagination-btn"
+            style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1 }}
+          >
+            Next
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
