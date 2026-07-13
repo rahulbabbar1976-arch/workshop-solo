@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, ThermometerSnowflake, Droplets, BatteryWarning, Volume2, Lightbulb, Camera, Save, ArrowRight, Contact } from "lucide-react";
 import Link from "next/link";
@@ -38,31 +38,59 @@ export default function SoloNewJobcardPage() {
     pollutionSafeDate: "",
   });
 
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleRegSearch = async (val: string) => {
     const uppercased = val.toUpperCase();
     setFormData({...formData, regNo: uppercased});
+    setShowDropdown(true);
     
-    if (uppercased.length >= 4) {
+    if (uppercased.length >= 2) { // Allow searching even earlier
       setSearching(true);
       try {
-        const data = await searchVehicleAction(uppercased);
-        if (data) {
-          setFormData(prev => ({
-            ...prev,
-            make: data.make || prev.make,
-            model: data.model || prev.model,
-            year: data.year || prev.year,
-            odometer: data.odometer || prev.odometer,
-            customerName: data.customerName || prev.customerName,
-            mobile: data.mobile || prev.mobile,
-            address: data.address || prev.address
-          }));
+        const res = await fetch(`/api/vehicles?q=${uppercased}`);
+        const data = await res.json();
+        if (data.success && data.vehicles) {
+          setSearchResults(data.vehicles);
+        } else {
+          setSearchResults([]);
         }
       } catch(e) {
         console.error("Error searching vehicle", e);
+        setSearchResults([]);
       }
       setSearching(false);
+    } else {
+      setSearchResults([]);
     }
+  };
+
+  const handleSelectVehicle = (v: any) => {
+    setFormData(prev => ({
+      ...prev,
+      regNo: v.registrationNumberRaw || v.registrationNumberNormalized,
+      make: v.manufacturer || prev.make,
+      model: v.model || prev.model,
+      year: v.manufactureYear?.toString() || prev.year,
+      color: v.color || prev.color,
+      odometer: v.currentOdometer?.toString() || prev.odometer,
+      customerName: v.currentCustomer?.displayName || prev.customerName,
+      mobile: v.currentCustomer?.primaryMobile || prev.mobile,
+      address: v.currentCustomer?.addressLine1 || prev.address
+    }));
+    setShowDropdown(false);
   };
 
   const handleSaveToContacts = async () => {
@@ -205,7 +233,7 @@ export default function SoloNewJobcardPage() {
             <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
               <h2 className="text-lg font-bold text-orange-500 border-b-2 border-orange-500 pb-2 mb-4 uppercase">Identity & Vehicle</h2>
               
-              <div className="space-y-1">
+              <div className="space-y-1" ref={dropdownRef}>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Reg No / Phone <span className="text-red-500">*</span></label>
                 <div className="flex gap-2 relative">
                   <input 
@@ -213,9 +241,44 @@ export default function SoloNewJobcardPage() {
                     placeholder="Registration Number" 
                     value={formData.regNo}
                     onChange={(e) => handleRegSearch(e.target.value)}
+                    onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
                     className="w-full p-4 border-2 border-gray-200 rounded focus:border-orange-500 font-bold text-gray-800 uppercase focus:ring-0"
                   />
-                  {searching && <span className="absolute right-6 top-4 animate-pulse text-amber-500 font-bold">...</span>}
+                  {searching && <span className="absolute right-4 top-4 animate-pulse text-amber-500 font-bold text-sm">Searching...</span>}
+                  
+                  {/* Autocomplete Dropdown */}
+                  {showDropdown && formData.regNo.length >= 2 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-60 overflow-y-auto">
+                      {searchResults.length > 0 ? (
+                        <ul>
+                          {searchResults.map((v, i) => (
+                            <li 
+                              key={i} 
+                              className="px-4 py-3 hover:bg-orange-50 border-b border-gray-100 cursor-pointer transition-colors"
+                              onClick={() => handleSelectVehicle(v)}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-gray-800">{v.registrationNumberNormalized || v.registrationNumberRaw}</span>
+                                <span className="text-xs font-semibold px-2 py-1 bg-gray-100 rounded text-gray-600">{v.manufacturer} {v.model}</span>
+                              </div>
+                              <div className="text-sm text-gray-500 mt-1">
+                                {v.currentCustomer?.displayName || "No Owner"} {v.currentCustomer?.primaryMobile ? `• ${v.currentCustomer.primaryMobile}` : ""}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="px-4 py-4 text-center text-sm text-gray-500">
+                          {searching ? "Searching database..." : (
+                            <div>
+                              No match found. <br />
+                              <span className="font-bold text-orange-500 mt-1 inline-block">Will create as new vehicle.</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -1,42 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Upload, Database, CheckCircle, AlertCircle, Printer } from "lucide-react";
-import Papa from "papaparse";
-import { 
-  exportTenantDataAction, 
-  restoreTenantDataAction, 
-  importLegacyCustomersAction,
-  importLegacyVehiclesAction,
-  importLegacyWorksheetsAction,
-  importLegacyProblemsAction,
-  importLegacyItemsAction
-} from "@/app/actions/settingsActions";
-import Link from "next/link";
-import { AvatarUpload } from "@/components/AvatarUpload";
+import { Download, Upload, CheckCircle, AlertCircle, Trash2, Printer } from "lucide-react";
+import { exportTenantDataAction, restoreTenantDataAction } from "@/app/actions/settingsActions";
+import { factoryResetAction } from "./actions";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
-  const [progressMsg, setProgressMsg] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  const [legacyFiles, setLegacyFiles] = useState<{
-    customer: File | null;
-    address: File | null;
-    thing: File | null;
-    worksheet: File | null;
-    problem: File | null;
-    item: File | null;
-  }>({
-    customer: null,
-    address: null,
-    thing: null,
-    worksheet: null,
-    problem: null,
-    item: null,
-  });
-
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [showFactoryReset, setShowFactoryReset] = useState(false);
+  const [password, setPassword] = useState("");
 
   const handleExport = async () => {
     try {
@@ -84,92 +58,34 @@ export default function SettingsPage() {
     }
   };
 
-  const parseCsvFile = (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-      Papa.parse(file, {
-        header: false,
-        skipEmptyLines: true,
-        complete: (results) => resolve(results.data),
-        error: (err) => reject(err)
-      });
-    });
-  };
-
-  const chunkArray = (array: any[], size: number) => {
-    const chunked = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunked.push(array.slice(i, i + size));
-    }
-    return chunked;
-  };
-
-  const handleLegacyImport = async () => {
-    if (!legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet || !legacyFiles.problem || !legacyFiles.item) {
-      setMessage({ type: "error", text: "Please select all six legacy CSV files." });
+  const handleFactoryReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password) {
+      setMessage({ type: "error", text: "Password is required for Factory Reset." });
       return;
     }
+    const confirmDelete = window.confirm("WARNING: This will permanently delete ALL jobcards, vehicles, and customers. Proceed?");
+    if (!confirmDelete) return;
 
     try {
       setLoading(true);
       setMessage(null);
-      
-      setProgressMsg("Parsing files...");
-      const customersRaw = await parseCsvFile(legacyFiles.customer);
-      const addressesRaw = await parseCsvFile(legacyFiles.address);
-      const thingsRaw = await parseCsvFile(legacyFiles.thing);
-      const worksheetsRaw = await parseCsvFile(legacyFiles.worksheet);
-      const problemsRaw = await parseCsvFile(legacyFiles.problem);
-      const itemsRaw = await parseCsvFile(legacyFiles.item);
-
-      setProgressMsg("Importing Customers...");
-      const custChunks = chunkArray(customersRaw, 1000);
-      for (let i = 0; i < custChunks.length; i++) {
-        await importLegacyCustomersAction(custChunks[i], addressesRaw);
-      }
-
-      setProgressMsg("Importing Vehicles...");
-      const thingChunks = chunkArray(thingsRaw, 1000);
-      for (let i = 0; i < thingChunks.length; i++) {
-        await importLegacyVehiclesAction(thingChunks[i]);
-      }
-
-      setProgressMsg("Importing Job Cards...");
-      const wsChunks = chunkArray(worksheetsRaw, 1000);
-      for (let i = 0; i < wsChunks.length; i++) {
-        await importLegacyWorksheetsAction(wsChunks[i]);
-      }
-
-      setProgressMsg("Importing Complaints...");
-      const probChunks = chunkArray(problemsRaw, 1000);
-      for (let i = 0; i < probChunks.length; i++) {
-        await importLegacyProblemsAction(probChunks[i]);
-      }
-
-      setProgressMsg("Importing Parts and Labor...");
-      const itemChunks = chunkArray(itemsRaw, 1000);
-      for (let i = 0; i < itemChunks.length; i++) {
-        setProgressMsg(`Importing Parts and Labor (${i + 1} of ${itemChunks.length})...`);
-        await importLegacyItemsAction(itemChunks[i]);
-      }
-
-      setMessage({ type: "success", text: "Legacy data imported successfully!" });
-      setLegacyFiles({ customer: null, address: null, thing: null, worksheet: null, problem: null, item: null });
+      await factoryResetAction(password);
+      setMessage({ type: "success", text: "Factory Reset complete. All pre-existing data has been wiped." });
+      setShowFactoryReset(false);
+      setPassword("");
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to import legacy data." });
+      setMessage({ type: "error", text: err.message || "Failed to factory reset." });
     } finally {
       setLoading(false);
-      setProgressMsg("");
     }
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-32">
-      <div className="bg-amber-400 px-5 pt-8 pb-4 shadow-sm relative z-10">
-        <h1 className="text-xl font-bold text-white uppercase tracking-wider">Settings & Data Management</h1>
-      </div>
+    <div className="content">
+      <div className="section-title">Data Backup & Restore</div>
       
-      <div className="p-5 space-y-6">
-        
+      <div className="space-y-6 mt-4">
         {message && (
           <div className={`p-4 rounded-lg flex items-start shadow-sm border ${message.type === 'success' ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
             {message.type === 'success' ? <CheckCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5" /> : <AlertCircle className="w-5 h-5 mr-3 shrink-0 mt-0.5" />}
@@ -177,155 +93,90 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Section 0: Profile Settings */}
-        <AvatarUpload />
-
-        {/* Section 0.5: Printer Module */}
-        <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
-          <div className="bg-gray-800 p-4 border-b border-gray-700">
-            <h2 className="text-orange-500 font-bold flex items-center tracking-wide uppercase">
-              <Printer className="w-5 h-5 mr-2" /> Printer Module
-            </h2>
-          </div>
-          <div className="p-5">
-            <p className="text-sm text-gray-500 mb-4">Customize your printing layouts, fonts, and columns for Job Cards, Estimates, and Invoices.</p>
-            <Link href="/solo/settings/print">
-              <button
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg uppercase tracking-wider flex justify-center items-center"
-              >
-                <Printer className="w-5 h-5 mr-2" /> Configure Printouts
-              </button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Section 1: Backup */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-amber-400 p-4">
-            <h2 className="text-white font-bold flex items-center tracking-wide uppercase">
-              <Download className="w-5 h-5 mr-2" /> Backup Current Data
-            </h2>
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-gray-800 text-lg flex items-center">
+                <Download className="w-5 h-5 mr-2 text-teal-600" /> Export Backup
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Download a secure JSON copy of your workshop data.</p>
+            </div>
           </div>
-          <div className="p-5">
-            <p className="text-sm text-gray-500 mb-4">Download a complete snapshot of your Customers, Vehicles, and Job Cards as a JSON file.</p>
+          <div className="p-5 bg-gray-50">
             <button
               onClick={handleExport}
               disabled={loading}
-              className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg uppercase tracking-wider disabled:opacity-50"
+              className="primary-btn outline flex justify-center items-center m-0"
             >
-              {loading ? "Processing..." : "Download Backup"}
+              {loading ? "Processing..." : "Download JSON Backup"}
             </button>
           </div>
         </div>
 
-        {/* Section 2: Restore */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-teal-500 p-4">
-            <h2 className="text-white font-bold flex items-center tracking-wide uppercase">
-              <Upload className="w-5 h-5 mr-2" /> Restore Backup
-            </h2>
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-gray-800 text-lg flex items-center">
+                <Upload className="w-5 h-5 mr-2 text-orange-500" /> Restore Backup
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Upload a JSON backup to merge into your account.</p>
+            </div>
           </div>
-          <div className="p-5 space-y-4">
-            <p className="text-sm text-gray-500">Upload a previously downloaded JSON backup to merge into your current database.</p>
-            
+          <div className="p-5 bg-gray-50 flex flex-col gap-3">
             <input 
               type="file" 
               accept=".json"
               onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
             />
-            
             <button
               onClick={handleRestore}
               disabled={loading || !restoreFile}
-              className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg uppercase tracking-wider disabled:opacity-50 mt-2"
+              className="primary-btn amber m-0"
             >
               {loading ? "Processing..." : "Restore Data"}
             </button>
           </div>
         </div>
 
-        {/* Section 3: Legacy Import */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-teal-500 p-4">
-            <h2 className="text-white font-bold flex items-center tracking-wide uppercase">
-              <Database className="w-5 h-5 mr-2" /> Legacy Data Import
-            </h2>
-          </div>
-          <div className="p-5 space-y-4">
-            <p className="text-sm text-gray-500">Upload CSV files from Jobcard2 to integrate into your Solo account.</p>
-            
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Customer.csv</label>
-                <input 
-                  type="file" 
-                  accept=".csv"
-                  onChange={(e) => setLegacyFiles({...legacyFiles, customer: e.target.files?.[0] || null})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Address.csv</label>
-                <input 
-                  type="file" 
-                  accept=".csv"
-                  onChange={(e) => setLegacyFiles({...legacyFiles, address: e.target.files?.[0] || null})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Thing.csv (Vehicles)</label>
-                <input 
-                  type="file" 
-                  accept=".csv"
-                  onChange={(e) => setLegacyFiles({...legacyFiles, thing: e.target.files?.[0] || null})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Worksheet.csv (Job Cards)</label>
-                <input 
-                  type="file" 
-                  accept=".csv"
-                  onChange={(e) => setLegacyFiles({...legacyFiles, worksheet: e.target.files?.[0] || null})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Problem.csv (Complaints)</label>
-                <input 
-                  type="file" 
-                  accept=".csv"
-                  onChange={(e) => setLegacyFiles({...legacyFiles, problem: e.target.files?.[0] || null})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Item.csv (Parts & Labor)</label>
-                <input 
-                  type="file" 
-                  accept=".csv"
-                  onChange={(e) => setLegacyFiles({...legacyFiles, item: e.target.files?.[0] || null})}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-                />
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
+          <div className="p-5 border-b border-red-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-red-600 text-lg flex items-center">
+                <Trash2 className="w-5 h-5 mr-2" /> Factory Reset
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Permanently wipe all customers, vehicles, and job cards.</p>
             </div>
-            
-            <button
-              onClick={handleLegacyImport}
-              disabled={loading || !legacyFiles.customer || !legacyFiles.address || !legacyFiles.thing || !legacyFiles.worksheet || !legacyFiles.problem || !legacyFiles.item}
-              className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg uppercase tracking-wider disabled:opacity-50 mt-4 relative"
-            >
-              {loading ? (
-                <span>{progressMsg || "Processing..."}</span>
-              ) : "Import Legacy Data"}
-            </button>
+          </div>
+          <div className="p-5 bg-red-50">
+            {!showFactoryReset ? (
+              <button
+                onClick={() => setShowFactoryReset(true)}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg tracking-wide transition-colors"
+              >
+                Initiate Factory Reset
+              </button>
+            ) : (
+              <form onSubmit={handleFactoryReset} className="space-y-3">
+                <p className="text-red-800 text-sm font-medium">Please enter your login password to confirm data deletion.</p>
+                <input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter Password" 
+                  required
+                  className="w-full p-3 rounded-lg border border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" disabled={loading} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg tracking-wide">
+                    {loading ? "Wiping..." : "Confirm Wipe"}
+                  </button>
+                  <button type="button" onClick={() => setShowFactoryReset(false)} className="px-4 py-3 bg-white text-gray-600 border border-gray-300 font-bold rounded-lg">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
 

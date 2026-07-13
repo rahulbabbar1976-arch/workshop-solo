@@ -60,18 +60,20 @@ export default async function VehiclesPage({
       ) : (
         <div style={{ marginTop: '12px' }}>
           {vehicles.map(v => (
-            <div key={v.id} className="vehicle-card">
-              <div className="vicon">
-                <Car className="w-5 h-5 text-gray-400" />
-              </div>
-              <div>
-                <div className="vp">{v.registrationNumberNormalized || v.registrationNumberRaw}</div>
-                <div className="vm">
-                  {v.manufacturer || "Unknown Make"} {v.model || ""} 
-                  {v.currentCustomer?.displayName && ` • Owner: ${v.currentCustomer.displayName}`}
+            <Link key={v.id} href={`/solo/vehicles/${v.id}`} className="block">
+              <div className="vehicle-card hover:border-orange-400 hover:shadow-md transition-all cursor-pointer">
+                <div className="vicon">
+                  <Car className="w-5 h-5 text-gray-400 group-hover:text-orange-500" />
+                </div>
+                <div>
+                  <div className="vp">{v.registrationNumberNormalized || v.registrationNumberRaw}</div>
+                  <div className="vm">
+                    {v.manufacturer || "Unknown Make"} {v.model || ""} 
+                    {v.currentCustomer?.displayName && ` • Owner: ${v.currentCustomer.displayName}`}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

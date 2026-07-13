@@ -62,11 +62,26 @@ export default async function CustomersPage({
       ) : (
         <div style={{ marginTop: '12px' }}>
           {customers.map(c => (
-            <div key={c.id} className="customer-row">
+            <div key={c.id} className="customer-row relative group">
               <div className="ci">{c.displayName.charAt(0).toUpperCase()}</div>
-              <div>
-                <div className="cn">{c.displayName}</div>
-                <div className="cm">{c.primaryMobile || 'No Mobile'} • {c.addressLine1 || 'No Address'}</div>
+              <div className="flex-1">
+                <Link href={`/solo/customers/${c.id}`} className="cn block after:absolute after:inset-0 group-hover:text-orange-600 transition-colors">
+                  {c.displayName}
+                </Link>
+                <div className="cm relative z-10 flex gap-3 mt-1 items-center">
+                  {c.primaryMobile ? (
+                    <>
+                      <a href={`tel:${c.primaryMobile}`} className="text-gray-600 font-medium hover:text-orange-500 transition-colors flex items-center gap-1">
+                        Call {c.primaryMobile}
+                      </a>
+                      <a href={`https://wa.me/${c.primaryMobile.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 font-medium hover:text-teal-500 transition-colors">
+                        WhatsApp
+                      </a>
+                    </>
+                  ) : 'No Mobile'} 
+                  <span className="text-gray-300">|</span> 
+                  <span className="truncate max-w-[150px] sm:max-w-[300px]">{c.addressLine1 || 'No Address'}</span>
+                </div>
               </div>
             </div>
           ))}
