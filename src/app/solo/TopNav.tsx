@@ -65,7 +65,7 @@ export function TopNav() {
                   <User className="w-4 h-4 mr-3" /> Profile
                 </Link>
                 <Link href="/solo/settings" onClick={() => setMenuOpen(false)} className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600">
-                  <Settings className="w-4 h-4 mr-3" /> Backup & Restore
+                  <Settings className="w-4 h-4 mr-3" /> Settings
                 </Link>
                 <div className="border-t border-gray-100 my-1"></div>
                 <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 text-left">

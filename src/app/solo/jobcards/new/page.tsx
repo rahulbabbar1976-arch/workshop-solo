@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, ThermometerSnowflake, Droplets, BatteryWarning, Volume2, Lightbulb, Camera, Save, ArrowRight, Contact } from "lucide-react";
+import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, ThermometerSnowflake, Droplets, BatteryWarning, Volume2, Lightbulb, Camera, Save, ArrowRight, Contact, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useContactPicker } from "@/hooks/useContactPicker";
 import { useSaveContact } from "@/hooks/useSaveContact";
@@ -17,6 +17,10 @@ export default function SoloNewJobcardPage() {
   const [searching, setSearching] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   
+  const [media, setMedia] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const [formData, setFormData] = useState({
     regNo: "",
     make: "",
@@ -170,6 +174,33 @@ export default function SoloNewJobcardPage() {
     { icon: <Volume2 className="w-5 h-5 text-slate-500" />, label: "Horn", text: "Horn not working" },
   ];
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    setIsUploading(true);
+    try {
+      const formUpload = new FormData();
+      formUpload.append('file', file);
+      
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formUpload,
+      });
+      
+      if (uploadRes.ok) {
+        const { fileUrl, fileName, mimeType, fileSizeBytes } = await uploadRes.json();
+        setMedia(prev => [...prev, { fileUrl, fileName, mimeType, fileSizeBytes }]);
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert("Failed to upload image.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     
@@ -183,6 +214,7 @@ export default function SoloNewJobcardPage() {
     data.append("year", formData.year);
     data.append("odometer", formData.odometer);
     data.append("complaint", formData.complaint);
+    data.append("media", JSON.stringify(media));
 
     try {
       const res = await createJobCardAction(data);
@@ -389,9 +421,28 @@ export default function SoloNewJobcardPage() {
               </div>
               
               <div className="pt-2">
-                 <button className="w-full py-3 bg-gray-100 text-gray-600 border-2 border-gray-200 border-dashed rounded font-bold flex justify-center items-center hover:bg-gray-200">
-                    <Camera className="w-5 h-5 mr-2" /> Capture Vehicle Pictures
+                 <input 
+                   type="file" 
+                   accept="image/*" 
+                   className="hidden" 
+                   ref={fileInputRef}
+                   onChange={handleFileUpload}
+                 />
+                 <button 
+                   onClick={() => fileInputRef.current?.click()}
+                   disabled={isUploading}
+                   className="w-full py-3 bg-gray-100 text-gray-600 border-2 border-gray-200 border-dashed rounded font-bold flex justify-center items-center hover:bg-gray-200 disabled:opacity-50"
+                 >
+                    {isUploading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Camera className="w-5 h-5 mr-2" />}
+                    {isUploading ? "Uploading..." : "Capture / Upload Vehicle Pictures"}
                  </button>
+                 {media.length > 0 && (
+                   <div className="grid grid-cols-4 gap-2 mt-2">
+                     {media.map((m, idx) => (
+                       <img key={idx} src={m.fileUrl} className="w-full h-16 object-cover rounded border border-gray-200" alt="Upload Preview" />
+                     ))}
+                   </div>
+                 )}
               </div>
 
               <button

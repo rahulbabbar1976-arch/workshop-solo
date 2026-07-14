@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Download, Upload, CheckCircle, AlertCircle, Trash2, Printer } from "lucide-react";
 import { exportTenantDataAction, restoreTenantDataAction } from "@/app/actions/settingsActions";
 import { factoryResetAction } from "./actions";
+import PrintSettingsForm from "./PrintSettingsForm";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -138,6 +139,8 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        <PrintSettingsForm />
 
         <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
           <div className="p-5 border-b border-red-100 flex items-center justify-between">

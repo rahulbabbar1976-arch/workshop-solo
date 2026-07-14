@@ -101,7 +101,7 @@ export async function createJobCardAction(formData: FormData) {
     const jobCard = await tx.jobCard.create({
       data: {
         jobcardNumber,
-        status: "WAITING_FOR_ESTIMATE",
+        status: "open",
         externalNotes: complaint,
         intakeOdometer: odometer,
         tenantId,
@@ -118,6 +118,28 @@ export async function createJobCardAction(formData: FormData) {
         tenantId
       }
     });
+
+    const mediaStr = formData.get("media") as string;
+    if (mediaStr) {
+      try {
+        const mediaArr = JSON.parse(mediaStr);
+        if (Array.isArray(mediaArr)) {
+          for (const m of mediaArr) {
+            await tx.jobCardMedia.create({
+              data: {
+                jobcardId: jobCard.id,
+                mediaType: 'intake_photo',
+                phase: 'intake',
+                fileUrl: m.fileUrl,
+                fileName: m.fileName || null,
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse media", e);
+      }
+    }
 
     return jobCard;
   });

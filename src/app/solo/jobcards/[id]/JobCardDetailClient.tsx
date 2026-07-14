@@ -274,7 +274,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            media: [...(jobCard.media || []), newMedia]
+            media: [newMedia]
           })
         });
 
@@ -635,7 +635,6 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
             <input 
               type="file" 
               accept="image/*" 
-              capture="environment" 
               className="hidden" 
               ref={fileInputRef}
               onChange={handleFileUpload}

@@ -149,11 +149,18 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
 
       {/* Print Preview Area */}
       <style dangerouslySetInnerHTML={{ __html: `
+        @page {
+          size: A4;
+          margin: 10mm;
+        }
         @media print {
           * {
             color: black !important;
             background: transparent !important;
             box-shadow: none !important;
+          }
+          nav, footer, header, .bottomnav {
+            display: none !important;
           }
         }
       `}} />
