@@ -104,6 +104,7 @@ export function TopNav() {
           </>
         )}
       </div>
+      </div>
     </div>
   );
 }
