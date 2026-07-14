@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { User, Package, Wrench, Settings, LogOut } from "lucide-react";
+import { User, Package, Wrench, Settings, LogOut, Download } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { getMyProfile } from "./actions";
 
@@ -32,20 +32,48 @@ export function TopNav() {
   else if (pathname.includes("/solo/profile")) title = "Profile";
   else if (pathname.includes("/solo/settings")) title = "Settings";
 
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    }
+  };
+
   return (
-    <div className="appbar">
-      <h1>{title}</h1>
-      <div className="relative">
-        <div 
-          className="avatar cursor-pointer overflow-hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {userProfile?.profilePhotoUrl ? (
-            <img src={userProfile.profilePhotoUrl} alt="Avatar" className="w-full h-full object-cover" />
-          ) : (
-            userProfile?.fullName ? userProfile.fullName.charAt(0).toUpperCase() : "U"
-          )}
-        </div>
+    <div className="appbar flex justify-between items-center px-4 py-3 bg-white border-b border-gray-100 shadow-sm">
+      <h1 className="text-xl font-extrabold text-gray-800">{title}</h1>
+      <div className="flex items-center">
+        {deferredPrompt && (
+          <button 
+            onClick={handleInstallClick} 
+            className="flex items-center px-3 py-1.5 mr-3 bg-orange-100 text-orange-700 rounded-full text-sm font-bold hover:bg-orange-200 transition-colors border border-orange-200"
+          >
+            <Download className="w-4 h-4 mr-1" /> Install App
+          </button>
+        )}
+        <div className="relative">
+          <div 
+            className="avatar cursor-pointer overflow-hidden bg-orange-100 text-orange-600 font-bold flex items-center justify-center w-10 h-10 rounded-full"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {userProfile?.profilePhotoUrl ? (
+              <img src={userProfile.profilePhotoUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              userProfile?.fullName ? userProfile.fullName.charAt(0).toUpperCase() : "U"
+            )}
+          </div>
 
         {menuOpen && (
           <>
