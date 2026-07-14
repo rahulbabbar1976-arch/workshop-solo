@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, ThermometerSnowflake, Droplets, BatteryWarning, Volume2, Lightbulb, Camera, Save, ArrowRight, Contact, Loader2 } from "lucide-react";
+import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, ThermometerSnowflake, Droplets, BatteryWarning, Volume2, Lightbulb, Camera, Save, ArrowRight, Contact, Loader2, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import { useContactPicker } from "@/hooks/useContactPicker";
 import { useSaveContact } from "@/hooks/useSaveContact";
@@ -19,7 +19,9 @@ export default function SoloNewJobcardPage() {
   
   const [media, setMedia] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     regNo: "",
@@ -198,6 +200,7 @@ export default function SoloNewJobcardPage() {
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (galleryInputRef.current) galleryInputRef.current.value = "";
     }
   };
 
@@ -424,12 +427,21 @@ export default function SoloNewJobcardPage() {
                  <input 
                    type="file" 
                    accept="image/*" 
+                   capture="environment"
                    className="hidden" 
                    ref={fileInputRef}
                    onChange={handleFileUpload}
                  />
+                 <input 
+                   type="file" 
+                   accept="image/*" 
+                   className="hidden" 
+                   ref={galleryInputRef}
+                   onChange={handleFileUpload}
+                 />
+                 
                  <button 
-                   onClick={() => fileInputRef.current?.click()}
+                   onClick={(e) => { e.preventDefault(); setIsPhotoModalOpen(true); }}
                    disabled={isUploading}
                    className="w-full py-3 bg-gray-100 text-gray-600 border-2 border-gray-200 border-dashed rounded font-bold flex justify-center items-center hover:bg-gray-200 disabled:opacity-50"
                  >
@@ -503,6 +515,32 @@ export default function SoloNewJobcardPage() {
           )}
         </div>
       </div>
+      {/* Photo Selection Modal */}
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-in fade-in">
+          <div className="bg-white w-full sm:w-[400px] rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl animate-in slide-in-from-bottom-8">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center"><Camera className="w-5 h-5 mr-2 text-orange-500"/> Add Photo</h3>
+              <button onClick={() => setIsPhotoModalOpen(false)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={(e) => { e.preventDefault(); setIsPhotoModalOpen(false); fileInputRef.current?.click(); }}
+                className="py-6 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 font-bold hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 transition-all flex flex-col items-center justify-center text-sm">
+                <Camera className="w-8 h-8 mb-2" />
+                Camera
+              </button>
+              <button 
+                onClick={(e) => { e.preventDefault(); setIsPhotoModalOpen(false); galleryInputRef.current?.click(); }}
+                className="py-6 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 font-bold hover:bg-teal-50 hover:border-teal-300 hover:text-teal-600 transition-all flex flex-col items-center justify-center text-sm">
+                <UploadCloud className="w-8 h-8 mb-2" />
+                Gallery
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
