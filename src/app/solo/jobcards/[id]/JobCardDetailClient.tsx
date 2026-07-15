@@ -351,9 +351,12 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
       if (data.success) {
         setVehiclePhotos(prev => [data.photo, ...prev]);
         setQuotaUsed(data.quota?.usedBytes || 0);
+      } else {
+        alert("Upload failed: " + data.error);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading vehicle photo:', error);
+      alert("Network error: " + error.message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current)   fileInputRef.current.value   = '';
