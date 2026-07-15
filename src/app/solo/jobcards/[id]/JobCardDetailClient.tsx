@@ -781,8 +781,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                       className="w-full h-36 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105"
                       onClick={() => setLightboxUrl(p.fileUrl)}
                     />
-                    {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                    {/* Overlay on hover (pointer-events-none allows clicks to pass through to the image) */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center pointer-events-none">
                       <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     {/* Footer bar */}
