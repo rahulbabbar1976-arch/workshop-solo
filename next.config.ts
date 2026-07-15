@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
     '192.168.1.183',
     'localhost'
   ],
-  serverExternalPackages: ['tesseract.js'],
+  serverExternalPackages: ['tesseract.js', 'sharp'],
 
   async headers() {
     return [
