@@ -366,6 +366,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
 
   const handleDeletePhoto = async (photoId: string) => {
     if (!vehicleId) return;
+    if (!confirm("Are you sure you want to manually delete this photo?")) return;
+    
     setDeletingId(photoId);
     try {
       const res  = await fetch(`/api/vehicles/${vehicleId}/photos`, {
