@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2, Edit2, Trash2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2, Edit2, Trash2, ZoomIn, ImageOff } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
 import { useRouter } from "next/navigation";
+
+const QUOTA_BYTES = 1_048_576; // 1 MB
 
 export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any }) {
   const router = useRouter();
@@ -35,6 +37,33 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  // Vehicle photo store
+  const [vehiclePhotos, setVehiclePhotos]   = useState<any[]>([]);
+  const [quotaUsed,     setQuotaUsed]       = useState(0);
+  const [photosLoaded,  setPhotosLoaded]    = useState(false);
+  const [lightboxUrl,   setLightboxUrl]     = useState<string | null>(null);
+  const [deletingId,    setDeletingId]      = useState<string | null>(null);
+
+  const vehicleId = jobCard.vehicle?.id || jobCard.vehicleId;
+
+  const fetchVehiclePhotos = useCallback(async () => {
+    if (!vehicleId) return;
+    try {
+      const res  = await fetch(`/api/vehicles/${vehicleId}/photos`);
+      const data = await res.json();
+      if (data.success) {
+        setVehiclePhotos(data.photos || []);
+        setQuotaUsed(data.quota?.usedBytes || 0);
+      }
+    } catch { /* ignore */ } finally {
+      setPhotosLoaded(true);
+    }
+  }, [vehicleId]);
+
+  useEffect(() => {
+    if (activeTab === 'pictures') fetchVehiclePhotos();
+  }, [activeTab, fetchVehiclePhotos]);
 
   const handlePartNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -291,51 +320,52 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const originalFile = e.target.files?.[0];
-    if (!originalFile) return;
-    
+    const file = e.target.files?.[0];
+    if (!file || !vehicleId) return;
+
     setIsUploading(true);
     try {
-      // Compress the image before uploading
-      const file = await compressImage(originalFile);
+      const form = new FormData();
+      form.append('file',        file);
+      form.append('jobcardId',   jobCard.id);
+      form.append('phase',       'work');
+      form.append('captureLabel', 'vehicle');
 
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (uploadRes.ok) {
-        const { fileUrl, fileName, mimeType, fileSizeBytes } = await uploadRes.json();
-        
-        const newMedia = {
-          mediaType: "work_photo",
-          fileUrl: fileUrl,
-          fileName: fileName,
-          mimeType: mimeType,
-          fileSizeBytes: fileSizeBytes
-        };
+      // → quota-aware vehicle photo API (compresses to ≤100 KB + enforces 1 MB)
+      const res  = await fetch(`/api/vehicles/${vehicleId}/photos`, { method: 'POST', body: form });
+      const data = await res.json();
 
-        const res = await fetch(`/api/jobcards/${jobCard.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            media: [newMedia]
-          })
-        });
-
-        if (res.ok) {
-          router.refresh();
-        }
+      if (data.success) {
+        setVehiclePhotos(prev => [data.photo, ...prev]);
+        setQuotaUsed(data.quota?.usedBytes || 0);
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('Error uploading vehicle photo:', error);
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      if (galleryInputRef.current) galleryInputRef.current.value = "";
+      if (fileInputRef.current)   fileInputRef.current.value   = '';
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!vehicleId) return;
+    setDeletingId(photoId);
+    try {
+      const res  = await fetch(`/api/vehicles/${vehicleId}/photos`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ photoId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVehiclePhotos(prev => prev.filter(p => p.id !== photoId));
+        setQuotaUsed(data.quota?.usedBytes || 0);
+      }
+    } catch (err) {
+      console.error('Error deleting photo:', err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -681,45 +711,99 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         )}
 
         {activeTab === "pictures" && (
-          <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment"
-              className="hidden" 
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-            />
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              ref={galleryInputRef}
-              onChange={handleFileUpload}
-            />
-            
-            <button 
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+            {/* Hidden file inputs */}
+            <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+            <input type="file" accept="image/*" className="hidden" ref={galleryInputRef} onChange={handleFileUpload} />
+
+            {/* Quota bar */}
+            {(() => {
+              const pct     = Math.min(100, Math.round((quotaUsed / QUOTA_BYTES) * 100));
+              const usedKB  = Math.round(quotaUsed / 1024);
+              const barColor = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-orange-400' : 'bg-teal-500';
+              return (
+                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vehicle Photo Storage</span>
+                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-500' : 'text-gray-600'}`}>
+                      {usedKB} KB / 1024 KB ({pct}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div className={`h-2 rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">Max 100 KB/photo · 1 MB total · oldest auto-removed when full</p>
+                </div>
+              );
+            })()}
+
+            {/* Upload button */}
+            <button
               onClick={() => setIsPhotoModalOpen(true)}
               disabled={isUploading}
-              className="w-full py-6 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide mb-4">
-              {isUploading ? (
-                <Loader2 className="w-8 h-8 mb-2 animate-spin" />
-              ) : (
-                <Camera className="w-8 h-8 mb-2" />
-              )}
-              {isUploading ? "Uploading..." : "Take / Upload Photo"}
+              className="w-full py-5 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide"
+            >
+              {isUploading ? <Loader2 className="w-7 h-7 mb-1.5 animate-spin" /> : <Camera className="w-7 h-7 mb-1.5" />}
+              {isUploading ? 'Compressing & Saving…' : 'Take / Upload Photo'}
             </button>
 
-            <div className="grid grid-cols-2 gap-3">
-              {(jobCard.media || []).map((m: any) => (
-                <div key={m.id} className="bg-white p-2 rounded-md shadow-sm border border-gray-200">
-                  <img src={m.fileUrl} alt="Jobcard Media" className="w-full h-32 object-cover rounded" />
-                </div>
-              ))}
-            </div>
-            {(!jobCard.media || jobCard.media.length === 0) && !isUploading && (
-              <div className="text-center py-8 text-gray-500">No pictures added</div>
+            {/* Gallery grid */}
+            {!photosLoaded ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+            ) : vehiclePhotos.length === 0 ? (
+              <div className="flex flex-col items-center py-10 text-gray-400">
+                <ImageOff className="w-10 h-10 mb-2" />
+                <p className="text-sm">No photos yet for this vehicle</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {vehiclePhotos.map((p: any) => (
+                  <div key={p.id} className="relative group bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                    <img
+                      src={p.fileUrl}
+                      alt={p.captureLabel || 'Vehicle photo'}
+                      className="w-full h-36 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105"
+                      onClick={() => setLightboxUrl(p.fileUrl)}
+                    />
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                      <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    {/* Footer bar */}
+                    <div className="flex items-center justify-between px-2 py-1.5 bg-white">
+                      <div>
+                        {p.captureLabel && <span className="text-xs font-semibold text-gray-600 capitalize">{p.captureLabel}</span>}
+                        <p className="text-xs text-gray-400">{Math.round(p.fileSizeBytes / 1024)} KB · {p.width ? `${p.width}px` : ''}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeletePhoto(p.id)}
+                        disabled={deletingId === p.id}
+                        className="p-1 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                      >
+                        {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    {/* Job card label */}
+                    {p.phase && (
+                      <span className="absolute top-2 left-2 bg-black/50 text-white text-[10px] font-bold px-1.5 py-0.5 rounded capitalize">{p.phase}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
+          </div>
+        )}
+
+        {/* Lightbox */}
+        {lightboxUrl && (
+          <div
+            className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={() => setLightboxUrl(null)}>
+              <X className="w-8 h-8" />
+            </button>
+            <img src={lightboxUrl} alt="Full view" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
           </div>
         )}
       </div>

@@ -46,6 +46,13 @@ export interface CompressionResult {
   height: number;
 }
 
+// Vehicle photo quota constants
+export const VEHICLE_PHOTO_QUOTA_BYTES = 1_048_576;  // 1 MB per vehicle
+export const VEHICLE_PHOTO_MAX_BYTES   = 100_000;    // 100 KB per photo
+// Higher resolution target for vehicle photos — more pixels within 100 KB
+export const VEHICLE_PHOTO_MAX_W = 1600;
+export const VEHICLE_PHOTO_MAX_H = 1200;
+
 // ─── Engine ──────────────────────────────────────────────────────────────────
 
 const SCREEN_MAX_W = 1280;
@@ -194,4 +201,80 @@ export async function compressFile(
 export function compressedFilename(original: string, ext: string): string {
   const base = path.basename(original, path.extname(original));
   return `${base}${ext}`;
+}
+
+/**
+ * Adaptive compression — guarantees output ≤ maxBytes.
+ *
+ * Strategy:
+ *  1. Resize to maxWidth × maxHeight (default: VEHICLE_PHOTO_MAX_W × VEHICLE_PHOTO_MAX_H)
+ *  2. Try encoding at startQuality (default 72)
+ *  3. If still over budget, step quality down by `step` each iteration
+ *  4. Floor at minQuality (default 20) — below this images look unusable
+ *
+ * This gives the highest possible resolution within the byte budget.
+ */
+export async function compressToMaxBytes(
+  inputBuffer: Buffer,
+  sourceMime: string,
+  maxBytes     = VEHICLE_PHOTO_MAX_BYTES,
+  maxWidth     = VEHICLE_PHOTO_MAX_W,
+  maxHeight    = VEHICLE_PHOTO_MAX_H,
+  startQuality = 72,
+  minQuality   = 20,
+  step         = 8,
+): Promise<CompressionResult> {
+  const originalBytes = inputBuffer.byteLength;
+
+  // Resize once — only the encode step is repeated
+  const resized = await sharp(inputBuffer, { failOn: 'none' })
+    .rotate()
+    .resize({ width: maxWidth, height: maxHeight, fit: 'inside', withoutEnlargement: true })
+    .withMetadata({})
+    .toBuffer();
+
+  let quality = startQuality;
+  let result!: { data: Buffer; info: { width: number; height: number; size: number; format: string } };
+
+  while (quality >= minQuality) {
+    result = await sharp(resized)
+      .jpeg({
+        quality,
+        mozjpeg:             true,
+        progressive:         true,
+        trellisQuantisation: true,
+        optimiseScans:       true,
+      })
+      .toBuffer({ resolveWithObject: true });
+
+    if (result.data.byteLength <= maxBytes) break;
+    quality -= step;
+  }
+
+  // If we hit the floor and it's still over, use the last attempt anyway
+  const compressedBuffer = result.data;
+  const compressedBytes  = compressedBuffer.byteLength;
+  const savingPercent    = Math.max(0, Math.round((1 - compressedBytes / originalBytes) * 100));
+
+  return {
+    buffer:         compressedBuffer,
+    mimeType:       'image/jpeg',
+    extension:      '.jpg',
+    originalBytes,
+    compressedBytes,
+    savingPercent,
+    width:          result.info.width,
+    height:         result.info.height,
+  };
+}
+
+/**
+ * Convenience wrapper: compressToMaxBytes from a Web API File.
+ */
+export async function compressFileToMaxBytes(
+  file: File,
+  maxBytes = VEHICLE_PHOTO_MAX_BYTES
+): Promise<CompressionResult> {
+  const buf = Buffer.from(await file.arrayBuffer());
+  return compressToMaxBytes(buf, file.type || 'image/jpeg', maxBytes);
 }
