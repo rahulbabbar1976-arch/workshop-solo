@@ -5,6 +5,7 @@ import { Download, Upload, CheckCircle, AlertCircle, Trash2, Printer } from "luc
 import { exportTenantDataAction, restoreTenantDataAction } from "@/app/actions/settingsActions";
 import { factoryResetAction } from "./actions";
 import PrintSettingsForm from "./PrintSettingsForm";
+import GeminiSettingsForm from "./GeminiSettingsForm";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -141,6 +142,8 @@ export default function SettingsPage() {
         </div>
 
         <PrintSettingsForm />
+
+        <GeminiSettingsForm />
 
         <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
           <div className="p-5 border-b border-red-100 flex items-center justify-between">

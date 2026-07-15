@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2, Edit2, Trash2, ZoomIn, ImageOff } from "lucide-react";
+import { ArrowLeft, Edit2, Camera, Car, Calendar, Package, Wrench, CheckCircle, Clock, Trash2, ZoomIn, X, Loader2, Save, Send, ShieldAlert, BadgeCheck, FileText, ChevronRight, PenLine, Phone, Contact, MessageCircle, Printer, Plus, UploadCloud, ImageOff } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
 import { compressInBrowser } from "@/hooks/useImageCompressor";
@@ -43,7 +43,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const [vehiclePhotos, setVehiclePhotos]   = useState<any[]>([]);
   const [quotaUsed,     setQuotaUsed]       = useState(0);
   const [photosLoaded,  setPhotosLoaded]    = useState(false);
-  const [lightboxUrl,   setLightboxUrl]     = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [deletingId,    setDeletingId]      = useState<string | null>(null);
 
   const vehicleId = jobCard.vehicle?.id || jobCard.vehicleId;
@@ -510,7 +511,9 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                </div>
                <div className="text-left">
                   <p className="text-sm font-bold">{customerName}</p>
-                  <p className="text-xs text-gray-400 font-medium">+91 {mobile}</p>
+                  <button onClick={() => setShowContactModal(true)} className="text-xs text-blue-400 font-bold hover:text-blue-300 flex items-center transition-colors">
+                    +91 {mobile} <ChevronRight className="w-3 h-3 ml-0.5" />
+                  </button>
                </div>
                <button 
                  onClick={() => saveContact({ name: customerName, phone: mobile })}
@@ -822,6 +825,29 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
               <X className="w-8 h-8" />
             </button>
             <img src={lightboxUrl} alt="Full view" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
+          </div>
+        )}
+
+        {/* Contact Modal */}
+        {showContactModal && (
+          <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center bg-black/50 backdrop-blur-sm" onClick={() => setShowContactModal(false)}>
+            <div className="bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-6 pb-8 transform transition-transform shadow-2xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Contact Customer</h3>
+                <button onClick={() => setShowContactModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <a href={`tel:${mobile}`} className="flex items-center justify-center w-full py-4 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl border border-blue-200 transition-colors">
+                  <Phone className="w-5 h-5 mr-3" /> Call +91 {mobile}
+                </a>
+                <a href={`https://wa.me/91${mobile}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-full py-4 bg-green-50 hover:bg-green-100 text-green-700 font-bold rounded-xl border border-green-200 transition-colors">
+                  <MessageCircle className="w-5 h-5 mr-3" /> WhatsApp
+                </a>
+              </div>
+            </div>
           </div>
         )}
       </div>

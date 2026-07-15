@@ -19,12 +19,21 @@ export default async function SoloJobcardsPage({
 
   const params = await searchParams;
   const q = typeof params.q === 'string' ? params.q : '';
+  const statusFilter = typeof params.status === 'string' ? params.status : '';
   const page = typeof params.page === 'string' ? parseInt(params.page) || 1 : 1;
   const limit = 25;
 
   const whereClause: any = {
     tenantId: tenantId || undefined,
   };
+
+  if (statusFilter) {
+    if (statusFilter === 'open') {
+      whereClause.status = { not: "closed" };
+    } else {
+      whereClause.status = statusFilter;
+    }
+  }
 
   if (q) {
     whereClause.OR = [
@@ -111,7 +120,7 @@ export default async function SoloJobcardsPage({
       {totalCount > 0 && (
         <div className="pagination">
           <Link 
-            href={`?q=${q}&page=${Math.max(1, page - 1)}`} 
+            href={`?q=${q}${statusFilter ? `&status=${statusFilter}` : ''}&page=${Math.max(1, page - 1)}`} 
             className="pagination-btn"
             style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1, textDecoration: 'none' }}
           >
@@ -122,7 +131,7 @@ export default async function SoloJobcardsPage({
             <span style={{ fontSize: '10px' }}>({totalCount} records)</span>
           </div>
           <Link 
-            href={`?q=${q}&page=${Math.min(totalPages, page + 1)}`} 
+            href={`?q=${q}${statusFilter ? `&status=${statusFilter}` : ''}&page=${Math.min(totalPages, page + 1)}`} 
             className="pagination-btn"
             style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1, textDecoration: 'none' }}
           >

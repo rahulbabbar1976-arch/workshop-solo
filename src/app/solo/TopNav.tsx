@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { User, Package, Wrench, Settings, LogOut, Download } from "lucide-react";
+import { User, Package, Wrench, Settings, LogOut, Download, BarChart, Calendar } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { getMyProfile } from "./actions";
 
@@ -92,6 +92,13 @@ export function TopNav() {
                 <Link href="/solo/profile" onClick={() => setMenuOpen(false)} className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600">
                   <User className="w-4 h-4 mr-3" /> Profile
                 </Link>
+                <Link href="/solo/reports" onClick={() => setMenuOpen(false)} className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600">
+                  <BarChart className="w-4 h-4 mr-3" /> Reports
+                </Link>
+                <Link href="/solo/reports/service-due" onClick={() => setMenuOpen(false)} className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600">
+                  <Calendar className="w-4 h-4 mr-3" /> Service Due
+                </Link>
+                <div className="border-t border-gray-100 my-1"></div>
                 <Link href="/solo/settings" onClick={() => setMenuOpen(false)} className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600">
                   <Settings className="w-4 h-4 mr-3" /> Settings
                 </Link>

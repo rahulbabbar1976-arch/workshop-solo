@@ -129,3 +129,31 @@ export async function savePrintSettingsAction(data: any) {
 
   return { success: true };
 }
+
+export async function getWorkshopProfileInfoAction() {
+  const profile = await prisma.workshopProfile.findFirst();
+  return { geminiApiKey: profile?.geminiApiKey || "" };
+}
+
+export async function saveGeminiApiKeyAction(apiKey: string) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('workshop_user_id')?.value;
+  if (!userId) throw new Error("Unauthorized");
+
+  let profile = await prisma.workshopProfile.findFirst();
+  if (!profile) {
+    profile = await prisma.workshopProfile.create({
+      data: {
+        workshopName: "My Workshop",
+        addressLine1: "",
+      }
+    });
+  }
+
+  await prisma.workshopProfile.update({
+    where: { id: profile.id },
+    data: { geminiApiKey: apiKey }
+  });
+
+  return { success: true };
+}

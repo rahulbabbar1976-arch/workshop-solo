@@ -84,18 +84,18 @@ export default async function SoloDashboardPage() {
         
         {/* Metric Boxes */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col items-center">
+          <Link href="/solo/jobcards?status=open" className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col items-center hover:border-blue-500 transition-colors">
             <span className="text-3xl font-black text-gray-900 mb-1">{openJobs}</span>
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Open Jobs</span>
-          </div>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col items-center">
+          </Link>
+          <Link href="/solo/jobcards?status=waiting_for_approval" className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col items-center hover:border-orange-500 transition-colors">
             <span className="text-3xl font-black text-orange-500 mb-1">{awaitingOk}</span>
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Awaiting OK</span>
-          </div>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col items-center">
+          </Link>
+          <Link href="/solo/jobcards?status=ready_for_delivery" className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col items-center hover:border-emerald-500 transition-colors">
             <span className="text-3xl font-black text-emerald-600 mb-1">{readyJobs}</span>
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Ready</span>
-          </div>
+          </Link>
         </div>
 
         {/* Section Header */}

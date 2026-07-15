@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Car, MapPin, Phone, User, Calendar, Settings, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import TransferOwnershipForm from "./TransferOwnershipForm";
+import VehicleBatteryEditor from "./VehicleBatteryEditor";
 import dayjs from "dayjs";
 
 export default async function VehicleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -73,10 +74,6 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
               <p className="text-gray-500 font-medium">Color</p>
               <p className="font-bold text-gray-800">{vehicle.color || "N/A"}</p>
             </div>
-            <div className="col-span-2">
-              <p className="text-gray-500 font-medium">Battery Details</p>
-              <p className="font-bold text-gray-800">{vehicle.batteryMake ? `${vehicle.batteryMake} ${vehicle.batterySerialNumber ? `(S/N: ${vehicle.batterySerialNumber})` : ''}` : "N/A"}</p>
-            </div>
             <div>
               <p className="text-gray-500 font-medium">Next Service</p>
               <p className="font-bold text-orange-600">
@@ -93,6 +90,9 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
             </div>
           </div>
         </div>
+
+        {/* Battery Editor Component */}
+        <VehicleBatteryEditor vehicle={vehicle} />
 
         {/* Current Owner */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
