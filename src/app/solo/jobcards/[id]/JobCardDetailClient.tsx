@@ -326,12 +326,20 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
 
     setIsUploading(true);
     try {
-      // Compress the image before uploading (so we don't send 15MB over network)
-      const compressed = await compressInBrowser(originalFile);
+      let fileToUpload: File | Blob = originalFile;
+      let filename = originalFile.name || 'photo.jpg';
+
+      try {
+        // Attempt client-side compression to save bandwidth
+        const compressed = await compressInBrowser(originalFile);
+        fileToUpload = compressed.blob;
+        filename = filename.replace(/\.[^.]+$/, '.jpg');
+      } catch (err) {
+        console.warn('Client compression failed (likely HEIC), falling back to raw upload:', err);
+      }
 
       const form = new FormData();
-      // append the blob, but give it a .jpg name so server knows it's an image
-      form.append('file', compressed.blob, originalFile.name.replace(/\.[^.]+$/, '.jpg'));
+      form.append('file', fileToUpload, filename);
       form.append('jobcardId',   jobCard.id);
       form.append('phase',       'work');
       form.append('captureLabel', 'vehicle');
