@@ -1,0 +1,1285 @@
+﻿diff --git a/next.config.ts b/next.config.ts
+index ac3586c..5649711 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
+     '192.168.1.183',
+     'localhost'
+   ],
+-  serverExternalPackages: ['tesseract.js'],
++  serverExternalPackages: ['tesseract.js', 'sharp'],
+ 
+   async headers() {
+     return [
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 937e961..9392284 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -312,10 +312,32 @@ model Vehicle {
+   jobCards           JobCard[]
+   reminderEvents     ReminderEvent[]
+   diagnosticsReports DiagnosticsReport[]
++  photos             VehiclePhoto[]
+   tenantId           String?
+   tenant             Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+ }
+ 
++// ======= VEHICLE PHOTO STORE =======
++// Stores compressed reference photos (Γëñ100 KB each) for a vehicle.
++// Total storage is capped at VEHICLE_PHOTO_QUOTA_BYTES (1 MB) per vehicle.
++// When the quota is exceeded the oldest photo is deleted automatically.
++
++model VehiclePhoto {
++  id            String   @id @default(uuid())
++  vehicleId     String
++  jobcardId     String?          // job card on which this photo was taken
++  fileUrl       String           // /uploads/v-photos/<filename>
++  fileName      String?
++  mimeType      String?
++  fileSizeBytes Int              // compressed size in bytes (target Γëñ 100 000)
++  captureLabel  String?          // "front" / "rear" / "engine" / etc.
++  phase         String?          // "intake" / "work" / "delivery"
++  capturedAt    DateTime @default(now())
++  createdAt     DateTime @default(now())
++
++  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
++}
++
+ model VehicleOwnershipHistory {
+   id            String    @id @default(uuid())
+   vehicleId     String
+diff --git a/scripts/migrate_vehicle_photos.ts b/scripts/migrate_vehicle_photos.ts
+new file mode 100644
+index 0000000..d298ad1
+--- /dev/null
++++ b/scripts/migrate_vehicle_photos.ts
+@@ -0,0 +1,47 @@
++/**
++ * Apply VehiclePhoto migration directly via the DIRECT_URL connection.
++ * This bypasses pgBouncer (which blocks schema DDL).
++ */
++import 'dotenv/config';
++import { Client } from 'pg';
++
++const sql = `
++CREATE TABLE IF NOT EXISTS "VehiclePhoto" (
++  "id"            TEXT NOT NULL,
++  "vehicleId"     TEXT NOT NULL,
++  "jobcardId"     TEXT,
++  "fileUrl"       TEXT NOT NULL,
++  "fileName"      TEXT,
++  "mimeType"      TEXT,
++  "fileSizeBytes" INTEGER NOT NULL,
++  "captureLabel"  TEXT,
++  "phase"         TEXT,
++  "capturedAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++
++  CONSTRAINT "VehiclePhoto_pkey" PRIMARY KEY ("id"),
++  CONSTRAINT "VehiclePhoto_vehicleId_fkey"
++    FOREIGN KEY ("vehicleId")
++    REFERENCES "Vehicle"("id")
++    ON DELETE CASCADE ON UPDATE CASCADE
++);
++
++CREATE INDEX IF NOT EXISTS "VehiclePhoto_vehicleId_idx" ON "VehiclePhoto"("vehicleId");
++CREATE INDEX IF NOT EXISTS "VehiclePhoto_createdAt_idx"  ON "VehiclePhoto"("createdAt");
++`;
++
++async function main() {
++  const directUrl = process.env.DIRECT_URL;
++  if (!directUrl) throw new Error('DIRECT_URL not set in .env');
++
++  const client = new Client({ connectionString: directUrl });
++  await client.connect();
++  console.log('Connected to Supabase (direct)');
++
++  await client.query(sql);
++  console.log('Γ£ö VehiclePhoto table created / already exists');
++
++  await client.end();
++}
++
++main().catch(err => { console.error(err); process.exit(1); });
+diff --git a/src/app/api/compress-image/route.ts b/src/app/api/compress-image/route.ts
+new file mode 100644
+index 0000000..0371dea
+--- /dev/null
++++ b/src/app/api/compress-image/route.ts
+@@ -0,0 +1,74 @@
++/**
++ * POST /api/compress-image
++ * ========================
++ * Accepts a multipart form upload, compresses the image through the
++ * image-compressor engine, and returns the compressed binary.
++ *
++ * Form fields:
++ *   file         {File}    required ΓÇö the image to compress
++ *   maxWidth     {number}  optional ΓÇö default 1280
++ *   maxHeight    {number}  optional ΓÇö default 960
++ *   quality      {number}  optional ΓÇö default 72  (1-100)
++ *   outputFormat {string}  optional ΓÇö 'original' | 'jpeg' | 'webp' | 'png' | 'avif'
++ *
++ * Returns a JSON envelope when saving fails, or the raw compressed
++ * binary (with appropriate Content-Type) on success.
++ */
++
++import { NextRequest, NextResponse } from 'next/server';
++import { compressFile, CompressOptions } from '@/lib/image-compressor';
++
++export async function POST(request: NextRequest) {
++  try {
++    const formData = await request.formData();
++    const file = formData.get('file') as File | null;
++
++    if (!file) {
++      return NextResponse.json(
++        { success: false, error: 'No file provided' },
++        { status: 400 }
++      );
++    }
++
++    // Validate it's an image
++    if (!file.type.startsWith('image/')) {
++      return NextResponse.json(
++        { success: false, error: 'Only image files are supported' },
++        { status: 415 }
++      );
++    }
++
++    const options: CompressOptions = {
++      maxWidth:     Number(formData.get('maxWidth'))  || 1280,
++      maxHeight:    Number(formData.get('maxHeight')) || 960,
++      quality:      Number(formData.get('quality'))   || 72,
++      outputFormat: (formData.get('outputFormat') as CompressOptions['outputFormat']) || 'original',
++      stripMetadata: true,
++    };
++
++    const result = await compressFile(file, options);
++
++    // Return the compressed image binary directly
++    // Cast Buffer ΓåÆ Uint8Array for BodyInit compatibility
++    return new NextResponse(new Uint8Array(result.buffer), {
++      status: 200,
++      headers: {
++        'Content-Type':   result.mimeType,
++        'Content-Length': String(result.compressedBytes),
++        // Pass stats as headers so callers can log them
++        'X-Original-Bytes':    String(result.originalBytes),
++        'X-Compressed-Bytes':  String(result.compressedBytes),
++        'X-Saving-Percent':    String(result.savingPercent),
++        'X-Image-Width':       String(result.width),
++        'X-Image-Height':      String(result.height),
++        'X-Image-Format':      result.mimeType,
++      },
++    });
++  } catch (error: any) {
++    console.error('[compress-image] Error:', error);
++    return NextResponse.json(
++      { success: false, error: error.message || 'Compression failed' },
++      { status: 500 }
++    );
++  }
++}
+diff --git a/src/app/api/upload/route.ts b/src/app/api/upload/route.ts
+index a2ea6c1..3e72a26 100644
+--- a/src/app/api/upload/route.ts
++++ b/src/app/api/upload/route.ts
+@@ -1,46 +1,89 @@
++/**
++ * POST /api/upload
++ * ================
++ * Accepts a multipart form upload and saves the file to /public/uploads.
++ * All image files are automatically compressed via the image-compressor
++ * engine before saving ΓÇö reducing storage & load times with zero effort
++ * from the caller.
++ *
++ * Non-image files (PDF, etc.) are saved as-is.
++ */
++
+ import { NextResponse } from 'next/server';
+ import { writeFile, mkdir } from 'fs/promises';
+ import path from 'path';
++import { compressFile } from '@/lib/image-compressor';
++
++const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
+ 
+ export async function POST(request: Request) {
+   try {
+     const formData = await request.formData();
+     const file = formData.get('file') as File;
+-    
++
+     if (!file) {
+       return NextResponse.json({ success: false, error: 'No file uploaded' }, { status: 400 });
+     }
+ 
+-    const bytes = await file.arrayBuffer();
+-    const buffer = Buffer.from(bytes);
+-
+-    // Create unique filename
+-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+-    const originalExt = path.extname(file.name) || '.jpg';
+-    const filename = `part-${uniqueSuffix}${originalExt}`;
+-    
+     // Ensure upload directory exists
+-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+-    try {
+-      await mkdir(uploadDir, { recursive: true });
+-    } catch (e) {
+-      // Ignore if exists
++    await mkdir(UPLOAD_DIR, { recursive: true });
++
++    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
++    const isImage      = file.type.startsWith('image/');
++
++    let buffer: Buffer;
++    let extension: string;
++    let mimeType: string;
++    let compressionStats: Record<string, number | string> = {};
++
++    if (isImage) {
++      // ΓöÇΓöÇ Compress image before saving ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++      const result = await compressFile(file, {
++        maxWidth:     1280,
++        maxHeight:    960,
++        quality:      72,
++        outputFormat: 'original',  // keep source format (JPEGΓåÆJPEG, PNGΓåÆPNG ΓÇª)
++        stripMetadata: true,
++      });
++
++      buffer    = result.buffer;
++      extension = result.extension;
++      mimeType  = result.mimeType;
++
++      compressionStats = {
++        originalBytes:   result.originalBytes,
++        compressedBytes: result.compressedBytes,
++        savingPercent:   result.savingPercent,
++        width:           result.width,
++        height:          result.height,
++      };
++    } else {
++      // ΓöÇΓöÇ Non-image: save raw ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++      const bytes = await file.arrayBuffer();
++      buffer    = Buffer.from(bytes);
++      extension = path.extname(file.name) || '';
++      mimeType  = file.type;
+     }
+ 
+-    const filepath = path.join(uploadDir, filename);
++    const filename = isImage
++      ? `img-${uniqueSuffix}${extension}`
++      : `file-${uniqueSuffix}${extension}`;
++
++    const filepath = path.join(UPLOAD_DIR, filename);
+     await writeFile(filepath, buffer);
+ 
+     const fileUrl = `/uploads/${filename}`;
+-    
+-    return NextResponse.json({ 
+-      success: true, 
++
++    return NextResponse.json({
++      success: true,
+       fileUrl,
+       fileName: filename,
+-      mimeType: file.type,
+-      fileSizeBytes: file.size
++      mimeType,
++      fileSizeBytes: buffer.byteLength,
++      ...(isImage ? { compression: compressionStats } : {}),
+     });
+   } catch (error: any) {
+-    console.error('Error uploading file:', error);
++    console.error('[upload] Error:', error);
+     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+   }
+ }
+diff --git a/src/app/api/vehicles/[id]/photos/route.ts b/src/app/api/vehicles/[id]/photos/route.ts
+new file mode 100644
+index 0000000..9851ec4
+--- /dev/null
++++ b/src/app/api/vehicles/[id]/photos/route.ts
+@@ -0,0 +1,221 @@
++/**
++ * Vehicle Photo Store ΓÇö Quota-managed image API
++ * ==============================================
++ *
++ * GET    /api/vehicles/:id/photos          List all photos + quota stats
++ * POST   /api/vehicles/:id/photos          Upload + compress to Γëñ100 KB + enforce 1 MB quota
++ * DELETE /api/vehicles/:id/photos/:photoId Delete one photo
++ *
++ * Quota rules (defaults from image-compressor constants):
++ *  - Each photo is compressed to Γëñ VEHICLE_PHOTO_MAX_BYTES (100 KB)
++ *  - Total per vehicle is Γëñ VEHICLE_PHOTO_QUOTA_BYTES (1 MB = 10 photos max)
++ *  - When adding a photo would exceed the quota, oldest photos are deleted
++ *    one-by-one (by createdAt ASC) until there is room for the new one.
++ *
++ * POST form fields:
++ *   file         {File}   required
++ *   jobcardId    {string} optional ΓÇö job card context
++ *   captureLabel {string} optional ΓÇö "front" / "rear" / "engine" etc.
++ *   phase        {string} optional ΓÇö "intake" / "work" / "delivery"
++ */
++
++import { NextRequest, NextResponse } from 'next/server';
++import { writeFile, mkdir, unlink } from 'fs/promises';
++import path from 'path';
++import prisma from '@/lib/db';
++import {
++  compressToMaxBytes,
++  VEHICLE_PHOTO_QUOTA_BYTES,
++  VEHICLE_PHOTO_MAX_BYTES,
++} from '@/lib/image-compressor';
++
++const PHOTO_DIR = path.join(process.cwd(), 'public', 'uploads', 'v-photos');
++
++// ΓöÇΓöÇΓöÇ GET ΓÇö list photos + quota stats ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export async function GET(
++  _req: NextRequest,
++  { params }: { params: Promise<{ id: string }> }
++) {
++  const { id: vehicleId } = await params;
++
++  try {
++    const photos = await prisma.vehiclePhoto.findMany({
++      where:   { vehicleId },
++      orderBy: { createdAt: 'desc' },
++    });
++
++    const usedBytes  = photos.reduce((sum, p) => sum + p.fileSizeBytes, 0);
++    const quotaBytes = VEHICLE_PHOTO_QUOTA_BYTES;
++    const usedPct    = Math.round((usedBytes / quotaBytes) * 100);
++
++    return NextResponse.json({
++      success: true,
++      photos,
++      quota: {
++        usedBytes,
++        quotaBytes,
++        usedPercent: usedPct,
++        remainingBytes: Math.max(0, quotaBytes - usedBytes),
++        maxPerPhotoBytes: VEHICLE_PHOTO_MAX_BYTES,
++      },
++    });
++  } catch (err: any) {
++    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
++  }
++}
++
++// ΓöÇΓöÇΓöÇ POST ΓÇö compress + quota-enforce + save ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export async function POST(
++  req: NextRequest,
++  { params }: { params: Promise<{ id: string }> }
++) {
++  const { id: vehicleId } = await params;
++
++  try {
++    // 1. Validate vehicle exists
++    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
++    if (!vehicle) {
++      return NextResponse.json({ success: false, error: 'Vehicle not found' }, { status: 404 });
++    }
++
++    const formData    = await req.formData();
++    const file        = formData.get('file') as File | null;
++    const jobcardId   = formData.get('jobcardId')   as string | null;
++    const captureLabel = formData.get('captureLabel') as string | null;
++    const phase        = formData.get('phase')        as string | null;
++
++    if (!file || !file.type.startsWith('image/')) {
++      return NextResponse.json(
++        { success: false, error: 'A valid image file is required' },
++        { status: 400 }
++      );
++    }
++
++    // 2. Compress to Γëñ 100 KB at highest possible resolution
++    const raw    = Buffer.from(await file.arrayBuffer());
++    const result = await compressToMaxBytes(raw, file.type);
++
++    // 3. Enforce 1 MB quota ΓÇö evict oldest photos one-by-one until there is room
++    const evictCandidate = async () => {
++      const oldest = await prisma.vehiclePhoto.findFirst({
++        where:   { vehicleId },
++        orderBy: { createdAt: 'asc' },
++      });
++      if (!oldest) return;
++
++      // Remove the file from disk (ignore if already gone)
++      try {
++        const diskPath = path.join(process.cwd(), 'public', oldest.fileUrl);
++        await unlink(diskPath);
++      } catch { /* file may already be missing */ }
++
++      await prisma.vehiclePhoto.delete({ where: { id: oldest.id } });
++    };
++
++    // Loop until there is enough room
++    while (true) {
++      const photos = await prisma.vehiclePhoto.findMany({ where: { vehicleId } });
++      const used   = photos.reduce((s, p) => s + p.fileSizeBytes, 0);
++      if (used + result.compressedBytes <= VEHICLE_PHOTO_QUOTA_BYTES) break;
++      await evictCandidate();
++    }
++
++    // 4. Save file to disk
++    await mkdir(PHOTO_DIR, { recursive: true });
++
++    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
++    const filename     = `vp-${vehicleId.slice(0, 8)}-${uniqueSuffix}.jpg`;
++    const filepath     = path.join(PHOTO_DIR, filename);
++    await writeFile(filepath, result.buffer);
++
++    const fileUrl = `/uploads/v-photos/${filename}`;
++
++    // 5. Persist DB record
++    const photo = await prisma.vehiclePhoto.create({
++      data: {
++        vehicleId,
++        jobcardId:    jobcardId   || null,
++        fileUrl,
++        fileName:     filename,
++        mimeType:     result.mimeType,
++        fileSizeBytes: result.compressedBytes,
++        captureLabel: captureLabel || null,
++        phase:        phase        || null,
++      },
++    });
++
++    // 6. Return with updated quota stats
++    const allPhotos  = await prisma.vehiclePhoto.findMany({ where: { vehicleId } });
++    const usedBytes  = allPhotos.reduce((s, p) => s + p.fileSizeBytes, 0);
++
++    return NextResponse.json({
++      success: true,
++      photo,
++      compression: {
++        originalBytes:   result.originalBytes,
++        compressedBytes: result.compressedBytes,
++        savingPercent:   result.savingPercent,
++        width:           result.width,
++        height:          result.height,
++      },
++      quota: {
++        usedBytes,
++        quotaBytes:      VEHICLE_PHOTO_QUOTA_BYTES,
++        usedPercent:     Math.round((usedBytes / VEHICLE_PHOTO_QUOTA_BYTES) * 100),
++        remainingBytes:  Math.max(0, VEHICLE_PHOTO_QUOTA_BYTES - usedBytes),
++      },
++    });
++  } catch (err: any) {
++    console.error('[vehicle-photos] POST error:', err);
++    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
++  }
++}
++
++// ΓöÇΓöÇΓöÇ DELETE ΓÇö remove one photo ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export async function DELETE(
++  req: NextRequest,
++  { params }: { params: Promise<{ id: string }> }
++) {
++  const { id: vehicleId } = await params;
++
++  try {
++    const { photoId } = await req.json();
++    if (!photoId) {
++      return NextResponse.json({ success: false, error: 'photoId required' }, { status: 400 });
++    }
++
++    const photo = await prisma.vehiclePhoto.findFirst({
++      where: { id: photoId, vehicleId },
++    });
++
++    if (!photo) {
++      return NextResponse.json({ success: false, error: 'Photo not found' }, { status: 404 });
++    }
++
++    // Remove from disk
++    try {
++      await unlink(path.join(process.cwd(), 'public', photo.fileUrl));
++    } catch { /* ignore */ }
++
++    await prisma.vehiclePhoto.delete({ where: { id: photoId } });
++
++    // Return updated quota
++    const allPhotos = await prisma.vehiclePhoto.findMany({ where: { vehicleId } });
++    const usedBytes = allPhotos.reduce((s, p) => s + p.fileSizeBytes, 0);
++
++    return NextResponse.json({
++      success: true,
++      quota: {
++        usedBytes,
++        quotaBytes:     VEHICLE_PHOTO_QUOTA_BYTES,
++        usedPercent:    Math.round((usedBytes / VEHICLE_PHOTO_QUOTA_BYTES) * 100),
++        remainingBytes: Math.max(0, VEHICLE_PHOTO_QUOTA_BYTES - usedBytes),
++      },
++    });
++  } catch (err: any) {
++    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
++  }
++}
+diff --git a/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx b/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
+index d4cfd2e..cb9a347 100644
+--- a/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
++++ b/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
+@@ -1,11 +1,13 @@
+ "use client";
+ 
+-import { useState, useRef } from "react";
+-import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2, Edit2, Trash2 } from "lucide-react";
++import { useState, useRef, useEffect, useCallback } from "react";
++import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2, Edit2, Trash2, ZoomIn, ImageOff } from "lucide-react";
+ import Link from "next/link";
+ import { useSaveContact } from "@/hooks/useSaveContact";
+ import { useRouter } from "next/navigation";
+ 
++const QUOTA_BYTES = 1_048_576; // 1 MB
++
+ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any }) {
+   const router = useRouter();
+   const [jobCard, setJobCard] = useState(initialJobCard);
+@@ -36,6 +38,33 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any
+   const [isUploading, setIsUploading] = useState(false);
+   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+ 
++  // Vehicle photo store
++  const [vehiclePhotos, setVehiclePhotos]   = useState<any[]>([]);
++  const [quotaUsed,     setQuotaUsed]       = useState(0);
++  const [photosLoaded,  setPhotosLoaded]    = useState(false);
++  const [lightboxUrl,   setLightboxUrl]     = useState<string | null>(null);
++  const [deletingId,    setDeletingId]      = useState<string | null>(null);
++
++  const vehicleId = jobCard.vehicle?.id || jobCard.vehicleId;
++
++  const fetchVehiclePhotos = useCallback(async () => {
++    if (!vehicleId) return;
++    try {
++      const res  = await fetch(`/api/vehicles/${vehicleId}/photos`);
++      const data = await res.json();
++      if (data.success) {
++        setVehiclePhotos(data.photos || []);
++        setQuotaUsed(data.quota?.usedBytes || 0);
++      }
++    } catch { /* ignore */ } finally {
++      setPhotosLoaded(true);
++    }
++  }, [vehicleId]);
++
++  useEffect(() => {
++    if (activeTab === 'pictures') fetchVehiclePhotos();
++  }, [activeTab, fetchVehiclePhotos]);
++
+   const handlePartNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+     const val = e.target.value;
+     setNewPartName(val);
+@@ -291,51 +320,52 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any
+   };
+ 
+   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+-    const originalFile = e.target.files?.[0];
+-    if (!originalFile) return;
+-    
++    const file = e.target.files?.[0];
++    if (!file || !vehicleId) return;
++
+     setIsUploading(true);
+     try {
+-      // Compress the image before uploading
+-      const file = await compressImage(originalFile);
+-
+-      const formData = new FormData();
+-      formData.append('file', file);
+-      
+-      const uploadRes = await fetch('/api/upload', {
+-        method: 'POST',
+-        body: formData,
+-      });
+-      
+-      if (uploadRes.ok) {
+-        const { fileUrl, fileName, mimeType, fileSizeBytes } = await uploadRes.json();
+-        
+-        const newMedia = {
+-          mediaType: "work_photo",
+-          fileUrl: fileUrl,
+-          fileName: fileName,
+-          mimeType: mimeType,
+-          fileSizeBytes: fileSizeBytes
+-        };
+-
+-        const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+-          method: "PUT",
+-          headers: { "Content-Type": "application/json" },
+-          body: JSON.stringify({
+-            media: [newMedia]
+-          })
+-        });
++      const form = new FormData();
++      form.append('file',        file);
++      form.append('jobcardId',   jobCard.id);
++      form.append('phase',       'work');
++      form.append('captureLabel', 'vehicle');
++
++      // ΓåÆ quota-aware vehicle photo API (compresses to Γëñ100 KB + enforces 1 MB)
++      const res  = await fetch(`/api/vehicles/${vehicleId}/photos`, { method: 'POST', body: form });
++      const data = await res.json();
+ 
+-        if (res.ok) {
+-          router.refresh();
+-        }
++      if (data.success) {
++        setVehiclePhotos(prev => [data.photo, ...prev]);
++        setQuotaUsed(data.quota?.usedBytes || 0);
+       }
+     } catch (error) {
+-      console.error('Error uploading file:', error);
++      console.error('Error uploading vehicle photo:', error);
+     } finally {
+       setIsUploading(false);
+-      if (fileInputRef.current) fileInputRef.current.value = "";
+-      if (galleryInputRef.current) galleryInputRef.current.value = "";
++      if (fileInputRef.current)   fileInputRef.current.value   = '';
++      if (galleryInputRef.current) galleryInputRef.current.value = '';
++    }
++  };
++
++  const handleDeletePhoto = async (photoId: string) => {
++    if (!vehicleId) return;
++    setDeletingId(photoId);
++    try {
++      const res  = await fetch(`/api/vehicles/${vehicleId}/photos`, {
++        method:  'DELETE',
++        headers: { 'Content-Type': 'application/json' },
++        body:    JSON.stringify({ photoId }),
++      });
++      const data = await res.json();
++      if (data.success) {
++        setVehiclePhotos(prev => prev.filter(p => p.id !== photoId));
++        setQuotaUsed(data.quota?.usedBytes || 0);
++      }
++    } catch (err) {
++      console.error('Error deleting photo:', err);
++    } finally {
++      setDeletingId(null);
+     }
+   };
+ 
+@@ -681,47 +711,101 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any
+         )}
+ 
+         {activeTab === "pictures" && (
+-          <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
+-            <input 
+-              type="file" 
+-              accept="image/*" 
+-              capture="environment"
+-              className="hidden" 
+-              ref={fileInputRef}
+-              onChange={handleFileUpload}
+-            />
+-            <input 
+-              type="file" 
+-              accept="image/*" 
+-              className="hidden" 
+-              ref={galleryInputRef}
+-              onChange={handleFileUpload}
+-            />
+-            
+-            <button 
++          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
++            {/* Hidden file inputs */}
++            <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
++            <input type="file" accept="image/*" className="hidden" ref={galleryInputRef} onChange={handleFileUpload} />
++
++            {/* Quota bar */}
++            {(() => {
++              const pct     = Math.min(100, Math.round((quotaUsed / QUOTA_BYTES) * 100));
++              const usedKB  = Math.round(quotaUsed / 1024);
++              const barColor = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-orange-400' : 'bg-teal-500';
++              return (
++                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
++                  <div className="flex justify-between items-center mb-1.5">
++                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vehicle Photo Storage</span>
++                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-500' : 'text-gray-600'}`}>
++                      {usedKB} KB / 1024 KB ({pct}%)
++                    </span>
++                  </div>
++                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
++                    <div className={`h-2 rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
++                  </div>
++                  <p className="text-xs text-gray-400 mt-1.5">Max 100 KB/photo ┬╖ 1 MB total ┬╖ oldest auto-removed when full</p>
++                </div>
++              );
++            })()}
++
++            {/* Upload button */}
++            <button
+               onClick={() => setIsPhotoModalOpen(true)}
+               disabled={isUploading}
+-              className="w-full py-6 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide mb-4">
+-              {isUploading ? (
+-                <Loader2 className="w-8 h-8 mb-2 animate-spin" />
+-              ) : (
+-                <Camera className="w-8 h-8 mb-2" />
+-              )}
+-              {isUploading ? "Uploading..." : "Take / Upload Photo"}
++              className="w-full py-5 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide"
++            >
++              {isUploading ? <Loader2 className="w-7 h-7 mb-1.5 animate-spin" /> : <Camera className="w-7 h-7 mb-1.5" />}
++              {isUploading ? 'Compressing & SavingΓÇª' : 'Take / Upload Photo'}
+             </button>
+ 
+-            <div className="grid grid-cols-2 gap-3">
+-              {(jobCard.media || []).map((m: any) => (
+-                <div key={m.id} className="bg-white p-2 rounded-md shadow-sm border border-gray-200">
+-                  <img src={m.fileUrl} alt="Jobcard Media" className="w-full h-32 object-cover rounded" />
+-                </div>
+-              ))}
+-            </div>
+-            {(!jobCard.media || jobCard.media.length === 0) && !isUploading && (
+-              <div className="text-center py-8 text-gray-500">No pictures added</div>
++            {/* Gallery grid */}
++            {!photosLoaded ? (
++              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
++            ) : vehiclePhotos.length === 0 ? (
++              <div className="flex flex-col items-center py-10 text-gray-400">
++                <ImageOff className="w-10 h-10 mb-2" />
++                <p className="text-sm">No photos yet for this vehicle</p>
++              </div>
++            ) : (
++              <div className="grid grid-cols-2 gap-3">
++                {vehiclePhotos.map((p: any) => (
++                  <div key={p.id} className="relative group bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
++                    <img
++                      src={p.fileUrl}
++                      alt={p.captureLabel || 'Vehicle photo'}
++                      className="w-full h-36 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105"
++                      onClick={() => setLightboxUrl(p.fileUrl)}
++                    />
++                    {/* Overlay on hover */}
++                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
++                      <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
++                    </div>
++                    {/* Footer bar */}
++                    <div className="flex items-center justify-between px-2 py-1.5 bg-white">
++                      <div>
++                        {p.captureLabel && <span className="text-xs font-semibold text-gray-600 capitalize">{p.captureLabel}</span>}
++                        <p className="text-xs text-gray-400">{Math.round(p.fileSizeBytes / 1024)} KB ┬╖ {p.width ? `${p.width}px` : ''}</p>
++                      </div>
++                      <button
++                        onClick={() => handleDeletePhoto(p.id)}
++                        disabled={deletingId === p.id}
++                        className="p-1 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
++                      >
++                        {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
++                      </button>
++                    </div>
++                    {/* Job card label */}
++                    {p.phase && (
++                      <span className="absolute top-2 left-2 bg-black/50 text-white text-[10px] font-bold px-1.5 py-0.5 rounded capitalize">{p.phase}</span>
++                    )}
++                  </div>
++                ))}
++              </div>
+             )}
+           </div>
+         )}
++
++        {/* Lightbox */}
++        {lightboxUrl && (
++          <div
++            className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
++            onClick={() => setLightboxUrl(null)}
++          >
++            <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={() => setLightboxUrl(null)}>
++              <X className="w-8 h-8" />
++            </button>
++            <img src={lightboxUrl} alt="Full view" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
++          </div>
++        )}
+       </div>
+ 
+       {/* Parts Modal */}
+diff --git a/src/hooks/useImageCompressor.ts b/src/hooks/useImageCompressor.ts
+new file mode 100644
+index 0000000..e22d8d1
+--- /dev/null
++++ b/src/hooks/useImageCompressor.ts
+@@ -0,0 +1,187 @@
++/**
++ * useImageCompressor ΓÇö React hook
++ * ================================
++ * Client-side helper that compresses an image in the browser BEFORE
++ * uploading it, using the Canvas API (zero dependencies, fully free).
++ *
++ * Two modes:
++ *  1. `compressInBrowser(file)`   ΓÇö compress locally using canvas (instant,
++ *     no network round-trip, good for camera captures)
++ *  2. `uploadCompressed(file)`    ΓÇö send raw file to /api/upload which will
++ *     run sharp server-side (higher quality, handles all formats including HEIC)
++ *
++ * Use mode 1 for camera captures.
++ * Use mode 2 for file uploads where quality matters more.
++ */
++
++'use client';
++
++import { useState, useCallback } from 'react';
++
++export interface CompressResult {
++  dataUrl:        string;   // base64 data URL for <img src=ΓÇª>
++  blob:           Blob;     // Blob for form submission
++  originalKB:     number;
++  compressedKB:   number;
++  savingPercent:  number;
++  width:          number;
++  height:         number;
++}
++
++export interface UploadResult {
++  fileUrl:        string;
++  fileName:       string;
++  mimeType:       string;
++  fileSizeBytes:  number;
++  compression?:   {
++    originalBytes:   number;
++    compressedBytes: number;
++    savingPercent:   number;
++    width:           number;
++    height:          number;
++  };
++}
++
++const MAX_W  = 1280;
++const MAX_H  = 960;
++const QUALITY = 0.72; // 0-1 for canvas API
++
++/**
++ * Resize + compress in the browser using the Canvas API.
++ * Outputs a JPEG blob regardless of input format.
++ */
++export function compressInBrowser(
++  file: File,
++  maxWidth  = MAX_W,
++  maxHeight = MAX_H,
++  quality   = QUALITY
++): Promise<CompressResult> {
++  return new Promise((resolve, reject) => {
++    const url = URL.createObjectURL(file);
++    const img  = new Image();
++
++    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
++    img.onload  = () => {
++      URL.revokeObjectURL(url);
++
++      // Calculate target dimensions (fit inside maxW├ùmaxH, never upscale)
++      let { naturalWidth: w, naturalHeight: h } = img;
++      if (w > maxWidth || h > maxHeight) {
++        const ratio = Math.min(maxWidth / w, maxHeight / h);
++        w = Math.round(w * ratio);
++        h = Math.round(h * ratio);
++      }
++
++      const canvas = document.createElement('canvas');
++      canvas.width  = w;
++      canvas.height = h;
++
++      const ctx = canvas.getContext('2d')!;
++      ctx.drawImage(img, 0, 0, w, h);
++
++      canvas.toBlob(
++        (blob) => {
++          if (!blob) { reject(new Error('Canvas toBlob returned null')); return; }
++
++          const reader = new FileReader();
++          reader.onload = () => {
++            const originalKB    = Math.round(file.size / 1024);
++            const compressedKB  = Math.round(blob.size / 1024);
++            const savingPercent = Math.max(0, Math.round((1 - blob.size / file.size) * 100));
++
++            resolve({
++              dataUrl:       reader.result as string,
++              blob,
++              originalKB,
++              compressedKB,
++              savingPercent,
++              width:  w,
++              height: h,
++            });
++          };
++          reader.onerror = reject;
++          reader.readAsDataURL(blob);
++        },
++        'image/jpeg',
++        quality
++      );
++    };
++
++    img.src = url;
++  });
++}
++
++// ΓöÇΓöÇΓöÇ Hook ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export function useImageCompressor() {
++  const [isCompressing, setIsCompressing] = useState(false);
++  const [isUploading,   setIsUploading]   = useState(false);
++  const [error,         setError]         = useState<string | null>(null);
++
++  /**
++   * Compress in browser then upload the compressed blob to /api/upload.
++   * Returns the server's upload result (fileUrl, etc.)
++   */
++  const compressAndUpload = useCallback(async (file: File): Promise<UploadResult | null> => {
++    setError(null);
++    setIsCompressing(true);
++
++    try {
++      // Step 1 ΓÇö compress locally first (fast, immediate preview)
++      const compressed = await compressInBrowser(file);
++      setIsCompressing(false);
++      setIsUploading(true);
++
++      // Step 2 ΓÇö upload the compressed blob
++      const form = new FormData();
++      form.append('file', compressed.blob, file.name.replace(/\.[^.]+$/, '.jpg'));
++
++      const res  = await fetch('/api/upload', { method: 'POST', body: form });
++      const json = await res.json();
++
++      if (!json.success) throw new Error(json.error || 'Upload failed');
++      return json as UploadResult;
++    } catch (err: any) {
++      setError(err.message);
++      return null;
++    } finally {
++      setIsCompressing(false);
++      setIsUploading(false);
++    }
++  }, []);
++
++  /**
++   * Upload raw file to /api/upload ΓÇö server will compress via sharp.
++   * Better quality, handles HEIC, but requires a server round-trip.
++   */
++  const uploadWithServerCompression = useCallback(async (file: File): Promise<UploadResult | null> => {
++    setError(null);
++    setIsUploading(true);
++
++    try {
++      const form = new FormData();
++      form.append('file', file);
++
++      const res  = await fetch('/api/upload', { method: 'POST', body: form });
++      const json = await res.json();
++
++      if (!json.success) throw new Error(json.error || 'Upload failed');
++      return json as UploadResult;
++    } catch (err: any) {
++      setError(err.message);
++      return null;
++    } finally {
++      setIsUploading(false);
++    }
++  }, []);
++
++  return {
++    isCompressing,
++    isUploading,
++    isBusy: isCompressing || isUploading,
++    error,
++    compressInBrowser,
++    compressAndUpload,
++    uploadWithServerCompression,
++  };
++}
+diff --git a/src/lib/image-compressor.ts b/src/lib/image-compressor.ts
+new file mode 100644
+index 0000000..b6f63eb
+--- /dev/null
++++ b/src/lib/image-compressor.ts
+@@ -0,0 +1,280 @@
++/**
++ * Image Compression Engine
++ * ========================
++ * Uses `sharp` (MIT License ΓÇö free for commercial use)
++ * https://github.com/lovell/sharp
++ *
++ * Compresses any uploaded or captured image to the minimum size
++ * suitable for on-screen reference viewing while retaining clarity.
++ *
++ * Strategy:
++ *  - Resize to max 1280├ù960 (enough for any HD screen reference)
++ *  - JPEG: quality 72 (visually lossless for reference photos)
++ *  - PNG:  palette reduction + compression level 9
++ *  - WebP: quality 72, lossless=false (best ratio for web)
++ *  - AVIF: quality 55  (smallest modern format)
++ *  - GIF/other: convert to WebP
++ */
++
++import sharp from 'sharp';
++import path from 'path';
++
++// ΓöÇΓöÇΓöÇ Configuration ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++export interface CompressOptions {
++  /** Maximum width in pixels (default: 1280) */
++  maxWidth?: number;
++  /** Maximum height in pixels (default: 960) */
++  maxHeight?: number;
++  /** JPEG / WebP / AVIF quality 1-100 (default: 72) */
++  quality?: number;
++  /** Output format. 'original' keeps the source format (default) */
++  outputFormat?: 'jpeg' | 'webp' | 'png' | 'avif' | 'original';
++  /** Strip all metadata (EXIF, GPS, ICC ΓÇª) to save bytes (default: true) */
++  stripMetadata?: boolean;
++}
++
++export interface CompressionResult {
++  buffer: Buffer;
++  mimeType: string;
++  extension: string;
++  originalBytes: number;
++  compressedBytes: number;
++  /** Percentage reduction e.g. 68 means 68 % smaller */
++  savingPercent: number;
++  width: number;
++  height: number;
++}
++
++// Vehicle photo quota constants
++export const VEHICLE_PHOTO_QUOTA_BYTES = 1_048_576;  // 1 MB per vehicle
++export const VEHICLE_PHOTO_MAX_BYTES   = 100_000;    // 100 KB per photo
++// Higher resolution target for vehicle photos ΓÇö more pixels within 100 KB
++export const VEHICLE_PHOTO_MAX_W = 1600;
++export const VEHICLE_PHOTO_MAX_H = 1200;
++
++// ΓöÇΓöÇΓöÇ Engine ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++
++const SCREEN_MAX_W = 1280;
++const SCREEN_MAX_H = 960;
++const DEFAULT_QUALITY = 72;
++
++/**
++ * Detect the output format based on the original MIME type
++ * if the caller chose 'original'.
++ */
++function resolveFormat(
++  mime: string,
++  choice: CompressOptions['outputFormat']
++): 'jpeg' | 'webp' | 'png' | 'avif' {
++  if (choice && choice !== 'original') return choice;
++
++  // Map source MIME ΓåÆ best compressed format
++  if (mime.includes('png'))  return 'png';
++  if (mime.includes('webp')) return 'webp';
++  if (mime.includes('avif')) return 'avif';
++  // JPEG, BMP, TIFF, GIF, HEIC ΓåÆ JPEG (widest support, smallest for photos)
++  return 'jpeg';
++}
++
++function formatToMime(fmt: 'jpeg' | 'webp' | 'png' | 'avif'): string {
++  const map: Record<string, string> = {
++    jpeg: 'image/jpeg',
++    webp: 'image/webp',
++    png:  'image/png',
++    avif: 'image/avif',
++  };
++  return map[fmt] ?? 'image/jpeg';
++}
++
++function formatToExt(fmt: 'jpeg' | 'webp' | 'png' | 'avif'): string {
++  return fmt === 'jpeg' ? '.jpg' : `.${fmt}`;
++}
++
++/**
++ * Main compression function.
++ *
++ * @param inputBuffer  - Raw binary of the original image
++ * @param sourceMime   - MIME type reported by the browser (e.g. "image/jpeg")
++ * @param options      - Tuning parameters
++ */
++export async function compressImage(
++  inputBuffer: Buffer,
++  sourceMime: string,
++  options: CompressOptions = {}
++): Promise<CompressionResult> {
++  const {
++    maxWidth       = SCREEN_MAX_W,
++    maxHeight      = SCREEN_MAX_H,
++    quality        = DEFAULT_QUALITY,
++    outputFormat   = 'original',
++    stripMetadata  = true,
++  } = options;
++
++  const originalBytes = inputBuffer.byteLength;
++  const targetFormat  = resolveFormat(sourceMime, outputFormat);
++
++  // Build the sharp pipeline
++  let pipeline = sharp(inputBuffer, { failOn: 'none' })
++    .rotate()                              // auto-rotate from EXIF orientation
++    .resize({
++      width:  maxWidth,
++      height: maxHeight,
++      fit:    'inside',                    // keep aspect ratio, never upscale
++      withoutEnlargement: true,
++    });
++
++  if (stripMetadata) {
++    pipeline = pipeline.withMetadata({});  // keep only orientation; drop GPS/EXIF
++  }
++
++  // Format-specific encoding
++  switch (targetFormat) {
++    case 'jpeg':
++      pipeline = pipeline.jpeg({
++        quality,
++        mozjpeg:       true,   // use mozjpeg encoder for ~10% extra saving
++        progressive:   true,   // progressive JPEG loads faster on slow links
++        trellisQuantisation: true,
++        optimiseScans: true,
++      });
++      break;
++
++    case 'webp':
++      pipeline = pipeline.webp({
++        quality,
++        effort:  6,            // 0-6; higher = smaller file but slower
++        lossless: false,
++      });
++      break;
++
++    case 'png':
++      pipeline = pipeline.png({
++        compressionLevel: 9,   // maximum zlib compression
++        effort:           10,  // oxipng-style effort
++        palette:          true, // quantise to 256-colour palette where possible
++        quality,               // used only with palette mode
++      });
++      break;
++
++    case 'avif':
++      pipeline = pipeline.avif({
++        quality,
++        effort: 7,             // 0-9; higher = smaller but much slower
++        lossless: false,
++      });
++      break;
++  }
++
++  const { data: compressedBuffer, info } = await pipeline.toBuffer({ resolveWithObject: true });
++
++  const compressedBytes = compressedBuffer.byteLength;
++  const savingPercent   = Math.round((1 - compressedBytes / originalBytes) * 100);
++
++  return {
++    buffer:          compressedBuffer,
++    mimeType:        formatToMime(targetFormat),
++    extension:       formatToExt(targetFormat),
++    originalBytes,
++    compressedBytes,
++    savingPercent:   Math.max(0, savingPercent),
++    width:           info.width,
++    height:          info.height,
++  };
++}
++
++/**
++ * Convenience wrapper: compress from a Web API `File` or `Blob`.
++ */
++export async function compressFile(
++  file: File,
++  options?: CompressOptions
++): Promise<CompressionResult> {
++  const arrayBuffer = await file.arrayBuffer();
++  const buffer      = Buffer.from(arrayBuffer);
++  return compressImage(buffer, file.type || 'image/jpeg', options);
++}
++
++/**
++ * Derive a compressed filename from the original, replacing its extension.
++ */
++export function compressedFilename(original: string, ext: string): string {
++  const base = path.basename(original, path.extname(original));
++  return `${base}${ext}`;
++}
++
++/**
++ * Adaptive compression ΓÇö guarantees output Γëñ maxBytes.
++ *
++ * Strategy:
++ *  1. Resize to maxWidth ├ù maxHeight (default: VEHICLE_PHOTO_MAX_W ├ù VEHICLE_PHOTO_MAX_H)
++ *  2. Try encoding at startQuality (default 72)
++ *  3. If still over budget, step quality down by `step` each iteration
++ *  4. Floor at minQuality (default 20) ΓÇö below this images look unusable
++ *
++ * This gives the highest possible resolution within the byte budget.
++ */
++export async function compressToMaxBytes(
++  inputBuffer: Buffer,
++  sourceMime: string,
++  maxBytes     = VEHICLE_PHOTO_MAX_BYTES,
++  maxWidth     = VEHICLE_PHOTO_MAX_W,
++  maxHeight    = VEHICLE_PHOTO_MAX_H,
++  startQuality = 72,
++  minQuality   = 20,
++  step         = 8,
++): Promise<CompressionResult> {
++  const originalBytes = inputBuffer.byteLength;
++
++  // Resize once ΓÇö only the encode step is repeated
++  const resized = await sharp(inputBuffer, { failOn: 'none' })
++    .rotate()
++    .resize({ width: maxWidth, height: maxHeight, fit: 'inside', withoutEnlargement: true })
++    .withMetadata({})
++    .toBuffer();
++
++  let quality = startQuality;
++  let result!: { data: Buffer; info: { width: number; height: number; size: number; format: string } };
++
++  while (quality >= minQuality) {
++    result = await sharp(resized)
++      .jpeg({
++        quality,
++        mozjpeg:             true,
++        progressive:         true,
++        trellisQuantisation: true,
++        optimiseScans:       true,
++      })
++      .toBuffer({ resolveWithObject: true });
++
++    if (result.data.byteLength <= maxBytes) break;
++    quality -= step;
++  }
++
++  // If we hit the floor and it's still over, use the last attempt anyway
++  const compressedBuffer = result.data;
++  const compressedBytes  = compressedBuffer.byteLength;
++  const savingPercent    = Math.max(0, Math.round((1 - compressedBytes / originalBytes) * 100));
++
++  return {
++    buffer:         compressedBuffer,
++    mimeType:       'image/jpeg',
++    extension:      '.jpg',
++    originalBytes,
++    compressedBytes,
++    savingPercent,
++    width:          result.info.width,
++    height:         result.info.height,
++  };
++}
++
++/**
++ * Convenience wrapper: compressToMaxBytes from a Web API File.
++ */
++export async function compressFileToMaxBytes(
++  file: File,
++  maxBytes = VEHICLE_PHOTO_MAX_BYTES
++): Promise<CompressionResult> {
++  const buf = Buffer.from(await file.arrayBuffer());
++  return compressToMaxBytes(buf, file.type || 'image/jpeg', maxBytes);
++}

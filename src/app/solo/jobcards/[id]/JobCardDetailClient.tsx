@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowLeft, Printer, Wrench, Package, PenLine, Contact, Camera, Plus, X, UploadCloud, Loader2, Edit2, Trash2, ZoomIn, ImageOff } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
+import { compressInBrowser } from "@/hooks/useImageCompressor";
 import { useRouter } from "next/navigation";
 
 const QUOTA_BYTES = 1_048_576; // 1 MB
@@ -320,13 +321,17 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !vehicleId) return;
+    const originalFile = e.target.files?.[0];
+    if (!originalFile || !vehicleId) return;
 
     setIsUploading(true);
     try {
+      // Compress the image before uploading (so we don't send 15MB over network)
+      const compressed = await compressInBrowser(originalFile);
+
       const form = new FormData();
-      form.append('file',        file);
+      // append the blob, but give it a .jpg name so server knows it's an image
+      form.append('file', compressed.blob, originalFile.name.replace(/\.[^.]+$/, '.jpg'));
       form.append('jobcardId',   jobCard.id);
       form.append('phase',       'work');
       form.append('captureLabel', 'vehicle');
