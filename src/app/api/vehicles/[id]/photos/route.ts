@@ -104,13 +104,6 @@ export async function POST(
         orderBy: { createdAt: 'asc' },
       });
       if (!oldest) return;
-
-      // Remove the file from disk (ignore if already gone)
-      try {
-        const diskPath = path.join(process.cwd(), 'public', oldest.fileUrl);
-        await unlink(diskPath);
-      } catch { /* file may already be missing */ }
-
       await prisma.vehiclePhoto.delete({ where: { id: oldest.id } });
     };
 
@@ -122,15 +115,9 @@ export async function POST(
       await evictCandidate();
     }
 
-    // 4. Save file to disk
-    await mkdir(PHOTO_DIR, { recursive: true });
-
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const filename     = `vp-${vehicleId.slice(0, 8)}-${uniqueSuffix}.jpg`;
-    const filepath     = path.join(PHOTO_DIR, filename);
-    await writeFile(filepath, result.buffer);
-
-    const fileUrl = `/uploads/v-photos/${filename}`;
+    // 4. Bypass Vercel read-only filesystem by converting the tiny 100KB image to Base64
+    const fileUrl = `data:${result.mimeType};base64,${result.buffer.toString('base64')}`;
+    const filename = `vp-${vehicleId.slice(0, 8)}-${Date.now()}.jpg`;
 
     // 5. Persist DB record
     const photo = await prisma.vehiclePhoto.create({
@@ -194,11 +181,6 @@ export async function DELETE(
     if (!photo) {
       return NextResponse.json({ success: false, error: 'Photo not found' }, { status: 404 });
     }
-
-    // Remove from disk
-    try {
-      await unlink(path.join(process.cwd(), 'public', photo.fileUrl));
-    } catch { /* ignore */ }
 
     await prisma.vehiclePhoto.delete({ where: { id: photoId } });
 
