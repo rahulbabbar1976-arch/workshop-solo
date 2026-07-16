@@ -52,6 +52,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const [billingSearchQuery, setBillingSearchQuery] = useState("");
   const [billingSearchResults, setBillingSearchResults] = useState<any[]>([]);
   const [selectedBillingCustomer, setSelectedBillingCustomer] = useState<any>(jobCard.billingCustomer || null);
+  const [isPushingToZoho, setIsPushingToZoho] = useState(false);
 
   const vehicleId = jobCard.vehicle?.id || jobCard.vehicleId;
 
@@ -281,6 +282,33 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
       console.error(e);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePushToZoho = async () => {
+    setIsPushingToZoho(true);
+    try {
+      const res = await fetch("/api/integrations/zoho/push-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobCardId: jobCard.id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setJobCard({
+          ...jobCard,
+          zohoInvoiceId: data.invoiceId,
+          zohoInvoiceNumber: data.invoiceNumber,
+          zohoInvoiceUrl: data.invoiceUrl
+        });
+      } else {
+        alert("Zoho Push Failed: " + (data.error || "Unknown error"));
+      }
+    } catch (e) {
+      alert("Network error pushing to Zoho");
+      console.error(e);
+    } finally {
+      setIsPushingToZoho(false);
     }
   };
 
@@ -685,6 +713,35 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 )}
               </div>
             </div>
+
+            {/* Zoho Integration Actions */}
+            {isLocked && (
+              <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Invoice & Accounting</h3>
+                {jobCard.zohoInvoiceId ? (
+                  <div className="flex flex-col space-y-2">
+                    <div className="text-sm text-emerald-600 font-bold flex items-center">
+                      <CheckCircle2 className="w-4 h-4 mr-1" /> Synced to Zoho Books
+                    </div>
+                    {jobCard.zohoInvoiceNumber && <div className="text-sm text-gray-700">Invoice #: <span className="font-mono">{jobCard.zohoInvoiceNumber}</span></div>}
+                    {jobCard.zohoInvoiceUrl && (
+                      <a href={jobCard.zohoInvoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm font-medium">
+                        View Invoice in Zoho ↗
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handlePushToZoho}
+                    disabled={isPushingToZoho}
+                    className="w-full bg-[#0d87e1] text-white py-3 rounded-lg font-bold shadow hover:bg-[#0b74c2] transition-colors flex items-center justify-center disabled:opacity-50"
+                  >
+                    {isPushingToZoho ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Generate Invoice in Zoho
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Customer Details Panel */}
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">

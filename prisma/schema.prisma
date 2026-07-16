@@ -73,6 +73,20 @@ model WorkshopProfile {
   documentTemplates DocumentTemplate[]
 }
 
+model ZohoIntegration {
+  id            String    @id @default(uuid())
+  clientId      String
+  clientSecret  String
+  orgId         String
+  accessToken   String?
+  refreshToken  String?
+  tokenExpiry   DateTime?
+  isConnected   Boolean   @default(false)
+  connectedEmail String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
 model DocumentTemplate {
   id                String   @id @default(uuid())
   workshopProfileId String
@@ -476,6 +490,9 @@ model JobCard {
   placeOfSupplyState        String?
   paymentStatus             String?   @default("unpaid") // unpaid / partial / paid
   zohoSyncStatus            String?
+  zohoInvoiceId             String?
+  zohoInvoiceUrl            String?
+  zohoInvoiceNumber         String?
   sourceSystem              String?
   sourceRecordId            String?
   createdAt                 DateTime  @default(now())

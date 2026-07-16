@@ -1,36 +1,98 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeft, Check, Server, FileJson, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Check, CheckCircle2, Link as LinkIcon, Unlink, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function IntegrationWizardPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [software, setSoftware] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
-  const [orgId, setOrgId] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const searchParams = useSearchParams();
+  
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  const [status, setStatus] = useState({
+    configured: false,
+    connected: false,
+    connectedEmail: '',
+    hasClientId: false
+  });
+  
+  const [creds, setCreds] = useState({
+    clientId: '',
+    clientSecret: '',
+    orgId: ''
+  });
 
-  // Mock payload for preview
-  const mockPayload = {
-    customer_name: "John Doe (Billing Name)",
-    gst_no: "27ABCDE1234F1Z5",
-    line_items: [
-      { name: "Engine Oil", hsn_code: "2710", quantity: 1, rate: 1500 },
-      { name: "General Service", sac_code: "9987", quantity: 1, rate: 2000 }
-    ],
-    total: 3500
+  const [message, setMessage] = useState({ text: '', type: '' });
+
+  useEffect(() => {
+    // Check URL params for oauth callback status
+    const err = searchParams?.get('error');
+    const success = searchParams?.get('success');
+    if (err) setMessage({ text: `OAuth Error: ${err}`, type: 'error' });
+    if (success) setMessage({ text: 'Zoho Books Connected Successfully!', type: 'success' });
+
+    fetchStatus();
+  }, [searchParams]);
+
+  const fetchStatus = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/integrations/zoho/status');
+      const data = await res.json();
+      setStatus(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFinish = async () => {
-    setIsSaving(true);
-    // Mock save delay
-    await new Promise(r => setTimeout(r, 1000));
-    setIsSaving(false);
-    router.push("/solo/settings");
+  const handleSaveCreds = async () => {
+    setSaving(true);
+    setMessage({ text: '', type: '' });
+    try {
+      const res = await fetch('/api/integrations/zoho/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(creds)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ text: 'Credentials saved! You can now connect.', type: 'success' });
+        setStatus(prev => ({ ...prev, configured: true, hasClientId: true }));
+      } else {
+        setMessage({ text: data.error || 'Failed to save credentials', type: 'error' });
+      }
+    } catch (e: any) {
+      setMessage({ text: 'Network error', type: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const handleDisconnect = async () => {
+    setSaving(true);
+    try {
+      await fetch('/api/auth/zoho/disconnect', { method: 'POST' });
+      await fetchStatus();
+      setMessage({ text: 'Disconnected successfully', type: 'success' });
+    } catch (e) {
+      setMessage({ text: 'Failed to disconnect', type: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="content bg-gray-50 min-h-screen pb-32">
@@ -39,128 +101,108 @@ export default function IntegrationWizardPage() {
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Integration Setup</h1>
-          <p className="text-gray-500 text-sm">Step {step} of 3</p>
+          <h1 className="text-xl font-bold text-gray-900">Zoho Books Integration</h1>
+          <p className="text-gray-500 text-sm">Automate your invoicing</p>
         </div>
       </div>
 
-      <div className="p-5 max-w-2xl mx-auto mt-4">
+      <div className="p-5 max-w-2xl mx-auto mt-4 space-y-6">
         
-        {step === 1 && (
-          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <div>
-              <h2 className="text-lg font-bold text-gray-800">Select Accounting Software</h2>
-              <p className="text-sm text-gray-500 mt-1">Which software does this tenant use for invoicing?</p>
+        {message.text && (
+          <div className={`p-4 rounded-xl text-sm font-bold ${message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+            {message.text}
+          </div>
+        )}
+
+        {/* Status Card */}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+          <div className="flex items-center">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${status.connected ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {['Zoho Books', 'Tally Prime', 'QuickBooks', 'Custom API'].map((sw) => (
-                <div 
-                  key={sw}
-                  onClick={() => setSoftware(sw)}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${software === sw ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-gray-800">{sw}</span>
-                    {software === sw && <CheckCircle2 className="text-orange-500 w-5 h-5" />}
-                  </div>
-                </div>
-              ))}
+            <div>
+              <h2 className="font-bold text-gray-900 text-lg">Zoho Status</h2>
+              <p className="text-sm text-gray-500">
+                {status.connected ? `Connected as ${status.connectedEmail || 'authorized user'}` : 'Not connected'}
+              </p>
+            </div>
+          </div>
+          {status.connected && (
+            <button 
+              onClick={handleDisconnect}
+              disabled={saving}
+              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-sm hover:bg-red-100 transition-colors flex items-center"
+            >
+              <Unlink className="w-4 h-4 mr-2" /> Disconnect
+            </button>
+          )}
+        </div>
+
+        {/* Step 1: Credentials */}
+        {!status.connected && (
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">1. OAuth Credentials</h2>
+              <p className="text-sm text-gray-500 mt-1">Get these from api-console.zoho.in (Server-based Application).</p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Client ID</label>
+                <input 
+                  type="text" 
+                  value={creds.clientId} 
+                  onChange={e => setCreds(prev => ({...prev, clientId: e.target.value}))}
+                  placeholder="1000.XXXX..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Client Secret</label>
+                <input 
+                  type="password" 
+                  value={creds.clientSecret} 
+                  onChange={e => setCreds(prev => ({...prev, clientSecret: e.target.value}))}
+                  placeholder="Enter secret..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Organization ID</label>
+                <input 
+                  type="text" 
+                  value={creds.orgId} 
+                  onChange={e => setCreds(prev => ({...prev, orgId: e.target.value}))}
+                  placeholder="e.g. 600012345"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm" 
+                />
+              </div>
             </div>
 
             <button 
-              disabled={!software}
-              onClick={() => setStep(2)}
-              className="w-full py-3 mt-8 bg-gray-900 text-white font-bold rounded-xl disabled:opacity-50 transition-colors"
+              onClick={handleSaveCreds}
+              disabled={!creds.clientId || !creds.clientSecret || !creds.orgId || saving}
+              className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl disabled:opacity-50 transition-colors mt-2 flex items-center justify-center"
             >
-              Next Step
+              {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Check className="w-5 h-5 mr-2" />}
+              Save Credentials
             </button>
           </div>
         )}
 
-        {step === 2 && (
-          <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
-            <div>
-              <h2 className="text-lg font-bold text-gray-800">Configure {software}</h2>
-              <p className="text-sm text-gray-500 mt-1">Enter your API credentials or webhooks.</p>
-            </div>
-
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">API Key / Token</label>
-                <input 
-                  type="password" 
-                  value={apiKey} 
-                  onChange={e => setApiKey(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" 
-                  placeholder="Enter API Key"
-                />
-              </div>
-              
-              {software === 'Zoho Books' && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Organization ID</label>
-                  <input 
-                    type="text" 
-                    value={orgId} 
-                    onChange={e => setOrgId(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" 
-                    placeholder="e.g. 600012345"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="flex space-x-3 mt-8">
-              <button 
-                onClick={() => setStep(1)}
-                className="flex-1 py-3 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition-colors"
-              >
-                Back
-              </button>
-              <button 
-                disabled={!apiKey}
-                onClick={() => setStep(3)}
-                className="flex-1 py-3 bg-gray-900 text-white font-bold rounded-xl disabled:opacity-50 transition-colors"
-              >
-                Preview Mapping
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
-            <div>
-              <h2 className="text-lg font-bold text-gray-800">Data Mapping Preview</h2>
-              <p className="text-sm text-gray-500 mt-1">Here is how a Job Card will be pushed to {software}. HSN codes will be strictly enforced if required by your software.</p>
-            </div>
-
-            <div className="bg-gray-900 p-5 rounded-xl shadow-inner overflow-hidden relative">
-              <div className="absolute top-0 left-0 w-full h-8 bg-gray-800 border-b border-gray-700 flex items-center px-4">
-                <FileJson className="w-4 h-4 text-gray-400 mr-2" />
-                <span className="text-xs text-gray-400 font-mono">invoice_payload_preview.json</span>
-              </div>
-              <pre className="text-green-400 font-mono text-sm mt-6 overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(mockPayload, null, 2)}
-              </pre>
-            </div>
-
-            <div className="flex space-x-3 mt-8">
-              <button 
-                onClick={() => setStep(2)}
-                className="flex-1 py-3 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition-colors"
-              >
-                Back
-              </button>
-              <button 
-                onClick={handleFinish}
-                disabled={isSaving}
-                className="flex-1 py-3 flex justify-center items-center bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-colors"
-              >
-                {isSaving ? "Saving..." : <><Check className="w-5 h-5 mr-2" /> Finalize Setup</>}
-              </button>
-            </div>
+        {/* Step 2: Connect */}
+        {!status.connected && status.hasClientId && (
+          <div className="bg-orange-50 p-5 rounded-xl border border-orange-200 shadow-sm text-center py-8">
+            <h2 className="text-lg font-bold text-orange-900 mb-2">2. Authorize Zoho</h2>
+            <p className="text-sm text-orange-700 mb-6 max-w-md mx-auto">
+              Click below to securely connect your Zoho account. You will be redirected to Zoho to approve the connection.
+            </p>
+            <a 
+              href="/api/auth/zoho"
+              className="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-colors"
+            >
+              <LinkIcon className="w-5 h-5 mr-2" /> Connect Zoho Account
+            </a>
           </div>
         )}
 
