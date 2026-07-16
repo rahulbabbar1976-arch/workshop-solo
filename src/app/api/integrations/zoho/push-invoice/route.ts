@@ -218,13 +218,49 @@ export async function POST(request: Request) {
     }
 
     // 9. Build invoice payload
-    const vehicleNote = `Vehicle: ${jobCard.vehicle?.registrationNumberRaw || ''} | ${isInterState ? 'IGST' : 'CGST+SGST'}`;
+    const vehicleReg = jobCard.vehicle?.registrationNumberRaw || '';
+    const gstTypeLabel = isInterState ? 'IGST (Inter-State)' : 'CGST+SGST (Intra-State)';
+
+    // Bank payment details appended to notes
+    const bankDetails = [
+      '─────────────────────────────',
+      'PAYMENT / BANK DETAILS',
+      'Account Name  : BABBARSONS',
+      'Account Number: 355701011020448',
+      'Bank          : UNION BANK OF INDIA',
+      'Branch        : Kailash Colony, New Delhi',
+      '─────────────────────────────',
+    ].join('\n');
+
+    const notesText = [
+      `Job Card No : ${jobCard.jobcardNumber}`,
+      `Vehicle No  : ${vehicleReg}`,
+      `GST Type    : ${gstTypeLabel}`,
+      '',
+      bankDetails,
+    ].join('\n');
+
+    // Industry-standard automotive workshop T&C
+    const defaultTerms = [
+      '1. All vehicles are received at owner\'s risk. The workshop is not liable for loss or damage due to fire, theft, or unforeseen circumstances.',
+      '2. Estimates are valid for 7 days from the date of issue. Work commences only after customer written/verbal approval.',
+      '3. Parts once fitted cannot be returned. Warranty on parts is as per the manufacturer\'s policy.',
+      '4. Labour warranty: 30 days from vehicle delivery, limited to the specific repair carried out.',
+      '5. Vehicles not collected within 7 days of intimation will attract a parking/storage charge.',
+      '6. Payment is due in full upon delivery of the vehicle. We accept Cash, UPI, and Bank Transfer.',
+      '7. The workshop is not liable for any consequential, incidental, or indirect damage arising from the repair.',
+      '8. GST as applicable under the GST Act will be levied on all parts and services.',
+      '9. All disputes are subject to the exclusive jurisdiction of courts in New Delhi.',
+      '10. Babbarsons reserves the right to retain the vehicle until full and final payment is received.',
+    ].join('\n');
+
     const invoicePayload = {
       customer_id: contactId,
-      reference_number: jobCard.jobcardNumber,
+      // reference_number maps to "Order Number" in Zoho Books — set to vehicle registration
+      reference_number: vehicleReg || jobCard.jobcardNumber,
       date: new Date().toISOString().split('T')[0],
-      notes: vehicleNote,
-      terms: profile?.termsConditionsText || '',
+      notes: notesText,
+      terms: profile?.termsConditionsText || defaultTerms,
       place_of_supply: billingInfo.placeOfSupply || billingInfo.state || '',
       gst_treatment: billingInfo.gstin ? 'business_gst' : 'consumer',
       gst_no: billingInfo.gstin || '',
