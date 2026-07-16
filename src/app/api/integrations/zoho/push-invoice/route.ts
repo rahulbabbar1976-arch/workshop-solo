@@ -80,6 +80,41 @@ function getGstType(workshopState: string, billingState: string): 'intra' | 'int
   return normalize(workshopState) === normalize(billingState) ? 'intra' : 'inter';
 }
 
+// Fetch all taxes from Zoho Books and build a map: rate → { igstId, cgstId, sgstId, combinedId }
+// Falls back to undefined if no matching tax found (Zoho will use item default)
+async function fetchZohoTaxMap(token: string, orgId: string): Promise<Map<number, { igstId?: string; combinedId?: string }>> {
+  const map = new Map<number, { igstId?: string; combinedId?: string }>();
+  try {
+    const res = await fetch(`${ZOHO_BOOKS_BASE}/taxes?organization_id=${orgId}`, {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` },
+    });
+    const data = await res.json();
+    const taxes: any[] = data.taxes || [];
+
+    // Log for debugging
+    console.log('Zoho taxes available:', taxes.map((t: any) => `${t.tax_name}(${t.tax_percentage}%,${t.tax_type})`).join(', '));
+
+    for (const tax of taxes) {
+      const pct: number = tax.tax_percentage;
+      const type: string = (tax.tax_type || '').toLowerCase();
+      const id: string = tax.tax_id;
+
+      if (!map.has(pct)) map.set(pct, {});
+      const entry = map.get(pct)!;
+
+      // IGST = inter-state
+      if (type.includes('igst')) entry.igstId = id;
+      // CGST+SGST combined group or single entry
+      if (type.includes('cgst') || type.includes('sgst') || type === 'tax_group') {
+        entry.combinedId = id;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch Zoho taxes:', e);
+  }
+  return map;
+}
+
 // POST /api/integrations/zoho/push-invoice
 export async function POST(request: Request) {
   try {
@@ -128,16 +163,27 @@ export async function POST(request: Request) {
     // 5. Get or create Zoho contact
     const contactId = await getOrCreateZohoContact(token, integration.orgId, billingInfo);
 
-    // 6. Determine GST type (used only for notes, Zoho handles taxes automatically via place_of_supply)
+    // 6. Determine GST type
     const gstType = getGstType(workshopState, billingInfo.state || '');
     const isInterState = gstType === 'inter';
 
+    // 6b. Fetch real tax IDs from Zoho Books
+    const taxMap = await fetchZohoTaxMap(token, integration.orgId);
+
+    // Helper: get tax_id for a given rate and state type
+    // Returns the tax_id string or undefined (Zoho will skip tax if not set)
+    function getTaxId(rate: number): string | undefined {
+      const entry = taxMap.get(rate);
+      if (!entry) return undefined;
+      return isInterState ? entry.igstId : entry.combinedId;
+    }
+
     // 7. Build line items from parts
-    // NOTE: Do NOT send tax_name/tax_id/tax_type — Zoho Books India applies GST
-    // automatically based on the invoice-level place_of_supply + gst_treatment + HSN code.
     const partLineItems = (jobCard.partLines || []).map((part: any) => {
       const rate = part.sellingPrice || 0;
       const qty = part.quantityUsed || part.quantityDispatched || part.quantityRequested || 1;
+      const taxRate = part.taxRate || 18;
+      const taxId = getTaxId(taxRate);
       return {
         name: part.partName,
         hsn_or_sac: part.hsnCode || '',
@@ -145,6 +191,7 @@ export async function POST(request: Request) {
         rate,
         unit: 'nos',
         description: part.itemCode ? `Part No: ${part.itemCode}` : '',
+        ...(taxId ? { tax_id: taxId } : {}),
       };
     });
 
@@ -152,13 +199,16 @@ export async function POST(request: Request) {
     const labourLineItems = (jobCard.labourLines || []).map((labour: any) => {
       const rate = labour.sellingPrice || 0;
       const qty = labour.quantity || 1;
+      const taxRate = labour.taxRate || 18;
+      const taxId = getTaxId(taxRate);
       return {
         name: labour.labourName,
-        hsn_or_sac: labour.hsnCode || '9987', // SAC 9987 = maintenance/repair services
+        hsn_or_sac: labour.hsnCode || '9987',
         quantity: qty,
         rate,
         unit: 'hrs',
         description: '',
+        ...(taxId ? { tax_id: taxId } : {}),
       };
     });
 
@@ -168,8 +218,7 @@ export async function POST(request: Request) {
     }
 
     // 9. Build invoice payload
-    // is_inclusive_of_tax: false → rates are exclusive of GST (Zoho will add GST on top)
-    const vehicleNote = `Vehicle: ${jobCard.vehicle?.registrationNumberRaw || ''} | GST: ${isInterState ? 'IGST' : 'CGST+SGST'}`;
+    const vehicleNote = `Vehicle: ${jobCard.vehicle?.registrationNumberRaw || ''} | ${isInterState ? 'IGST' : 'CGST+SGST'}`;
     const invoicePayload = {
       customer_id: contactId,
       reference_number: jobCard.jobcardNumber,
@@ -182,6 +231,7 @@ export async function POST(request: Request) {
       is_inclusive_of_tax: false,
       line_items: lineItems,
     };
+
 
     // 10. Create invoice in Zoho
     const invoiceRes = await fetch(`${ZOHO_BOOKS_BASE}/invoices?organization_id=${integration.orgId}`, {

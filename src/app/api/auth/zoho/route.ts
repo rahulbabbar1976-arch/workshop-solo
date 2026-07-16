@@ -3,7 +3,7 @@ import prisma from '@/lib/db';
 
 // GET /api/auth/zoho — Initiates OAuth flow
 export async function GET() {
-  const integration = await (prisma as any).zohoIntegration.findFirst();
+  const integration = await prisma.zohoIntegration.findFirst();
   if (!integration?.clientId) {
     return NextResponse.redirect(new URL('/solo/settings?error=zoho_not_configured', process.env.NEXT_PUBLIC_APP_URL || 'https://workshop-solo.vercel.app'));
   }
