@@ -40,7 +40,6 @@ export async function POST(request: Request) {
               defaultTaxRate: item.gstRate ? parseFloat(item.gstRate) : null,
               defaultSellingPrice: item.sellingPrice ? parseFloat(item.sellingPrice) : null,
               stockQuantity: parseFloat(item.quantity) || 0,
-              minStockLevel: 5,
             }
           });
         }
