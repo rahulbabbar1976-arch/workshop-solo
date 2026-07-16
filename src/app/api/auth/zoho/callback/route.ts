@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       },
     });
 
-    return NextResponse.redirect(`${appUrl}/solo/settings?tab=integrations&success=zoho_connected`);
+    return NextResponse.redirect(`${appUrl}/solo/settings/integration-wizard?success=zoho_connected`);
   } catch (err: any) {
     console.error('Zoho callback error:', err);
     return NextResponse.redirect(`${appUrl}/solo/settings?tab=integrations&error=zoho_error`);

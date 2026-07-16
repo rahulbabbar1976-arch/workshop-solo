@@ -106,103 +106,118 @@ function IntegrationWizardContent() {
       </div>
 
       <div className="p-5 max-w-2xl mx-auto mt-4 space-y-6">
-        
-        {message.text && (
+
+        {/* ── CONNECTED STATE ── */}
+        {status.connected && (
+          <div className="bg-white rounded-2xl border-2 border-green-400 shadow-md overflow-hidden">
+            <div className="bg-green-500 px-6 py-8 text-white text-center">
+              <CheckCircle className="w-16 h-16 mx-auto mb-3 drop-shadow" />
+              <h2 className="text-2xl font-black">Zoho Books Connected!</h2>
+              <p className="text-green-100 mt-1 text-sm">
+                Authorized as <span className="font-bold text-white">{status.connectedEmail || 'your Zoho account'}</span>
+              </p>
+            </div>
+            <div className="p-5 space-y-3">
+              <p className="text-sm text-gray-600 text-center">
+                You can now generate invoices directly from closed job cards in one tap.
+              </p>
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 font-medium text-center">
+                ✅ Go to any <strong>Closed Job Card</strong> → Details tab → <strong>Generate Invoice in Zoho</strong>
+              </div>
+              <button
+                onClick={handleDisconnect}
+                disabled={saving}
+                className="w-full mt-2 px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors flex items-center justify-center"
+              >
+                <Unlink className="w-4 h-4 mr-2" /> Disconnect Zoho Account
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Error / info message */}
+        {message.text && !status.connected && (
           <div className={`p-4 rounded-xl text-sm font-bold ${message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
             {message.text}
           </div>
         )}
 
-        {/* Status Card */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-          <div className="flex items-center">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${status.connected ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-              <CheckCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="font-bold text-gray-900 text-lg">Zoho Status</h2>
-              <p className="text-sm text-gray-500">
-                {status.connected ? `Connected as ${status.connectedEmail || 'authorized user'}` : 'Not connected'}
-              </p>
-            </div>
-          </div>
-          {status.connected && (
-            <button 
-              onClick={handleDisconnect}
-              disabled={saving}
-              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-sm hover:bg-red-100 transition-colors flex items-center"
-            >
-              <Unlink className="w-4 h-4 mr-2" /> Disconnect
-            </button>
-          )}
-        </div>
-
-        {/* Step 1: Credentials */}
+        {/* ── NOT CONNECTED STATE ── */}
         {!status.connected && (
-          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-gray-800">1. OAuth Credentials</h2>
-              <p className="text-sm text-gray-500 mt-1">Get these from api-console.zoho.in (Server-based Application).</p>
+          <>
+            {/* Step 1: Credentials */}
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">1. OAuth Credentials</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Get these from{' '}
+                  <a href="https://api-console.zoho.in" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                    api-console.zoho.in
+                  </a>{' '}
+                  → Create a <strong>Server-based Application</strong>.<br />
+                  Set redirect URI to: <span className="font-mono text-xs bg-gray-100 px-1 rounded">https://workshop-solo.vercel.app/api/auth/zoho/callback</span>
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Client ID</label>
+                  <input
+                    type="text"
+                    value={creds.clientId}
+                    onChange={e => setCreds(prev => ({...prev, clientId: e.target.value}))}
+                    placeholder="1000.XXXX..."
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Client Secret</label>
+                  <input
+                    type="password"
+                    value={creds.clientSecret}
+                    onChange={e => setCreds(prev => ({...prev, clientSecret: e.target.value}))}
+                    placeholder="Enter secret..."
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Organization ID</label>
+                  <input
+                    type="text"
+                    value={creds.orgId}
+                    onChange={e => setCreds(prev => ({...prev, orgId: e.target.value}))}
+                    placeholder="e.g. 600012345"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveCreds}
+                disabled={!creds.clientId || !creds.clientSecret || !creds.orgId || saving}
+                className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl disabled:opacity-50 transition-colors mt-2 flex items-center justify-center"
+              >
+                {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Check className="w-5 h-5 mr-2" />}
+                Save Credentials
+              </button>
             </div>
 
-            <div className="space-y-3 pt-2">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Client ID</label>
-                <input 
-                  type="text" 
-                  value={creds.clientId} 
-                  onChange={e => setCreds(prev => ({...prev, clientId: e.target.value}))}
-                  placeholder="1000.XXXX..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm" 
-                />
+            {/* Step 2: Connect — shown once credentials are saved */}
+            {status.hasClientId && (
+              <div className="bg-orange-50 p-6 rounded-xl border-2 border-orange-300 shadow-sm text-center">
+                <h2 className="text-lg font-bold text-orange-900 mb-2">2. Authorize with Zoho</h2>
+                <p className="text-sm text-orange-700 mb-6 max-w-md mx-auto">
+                  Click below to log into your Zoho account and grant access. You will be redirected back here automatically.
+                </p>
+                <a
+                  href="/api/auth/zoho"
+                  className="inline-flex items-center px-8 py-3 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-colors shadow-md text-base"
+                >
+                  <LinkIcon className="w-5 h-5 mr-2" /> Connect Zoho Account →
+                </a>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Client Secret</label>
-                <input 
-                  type="password" 
-                  value={creds.clientSecret} 
-                  onChange={e => setCreds(prev => ({...prev, clientSecret: e.target.value}))}
-                  placeholder="Enter secret..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Organization ID</label>
-                <input 
-                  type="text" 
-                  value={creds.orgId} 
-                  onChange={e => setCreds(prev => ({...prev, orgId: e.target.value}))}
-                  placeholder="e.g. 600012345"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none font-mono text-sm" 
-                />
-              </div>
-            </div>
-
-            <button 
-              onClick={handleSaveCreds}
-              disabled={!creds.clientId || !creds.clientSecret || !creds.orgId || saving}
-              className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl disabled:opacity-50 transition-colors mt-2 flex items-center justify-center"
-            >
-              {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Check className="w-5 h-5 mr-2" />}
-              Save Credentials
-            </button>
-          </div>
-        )}
-
-        {/* Step 2: Connect */}
-        {!status.connected && status.hasClientId && (
-          <div className="bg-orange-50 p-5 rounded-xl border border-orange-200 shadow-sm text-center py-8">
-            <h2 className="text-lg font-bold text-orange-900 mb-2">2. Authorize Zoho</h2>
-            <p className="text-sm text-orange-700 mb-6 max-w-md mx-auto">
-              Click below to securely connect your Zoho account. You will be redirected to Zoho to approve the connection.
-            </p>
-            <a 
-              href="/api/auth/zoho"
-              className="inline-flex items-center px-6 py-3 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-colors"
-            >
-              <LinkIcon className="w-5 h-5 mr-2" /> Connect Zoho Account
-            </a>
-          </div>
+            )}
+          </>
         )}
 
       </div>

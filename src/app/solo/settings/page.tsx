@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Download, Upload, CheckCircle, AlertCircle, Trash2, Printer } from "lucide-react";
+import { Download, Upload, CheckCircle, AlertCircle, Trash2, Loader2, XCircle, Zap } from "lucide-react";
 import { exportTenantDataAction, restoreTenantDataAction } from "@/app/actions/settingsActions";
 import { factoryResetAction } from "./actions";
 import PrintSettingsForm from "./PrintSettingsForm";
@@ -14,6 +14,18 @@ export default function SettingsPage() {
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [showFactoryReset, setShowFactoryReset] = useState(false);
   const [password, setPassword] = useState("");
+
+  // Zoho connection status
+  const [zohoStatus, setZohoStatus] = useState<{ connected: boolean; configured: boolean; connectedEmail?: string } | null>(null);
+  const [zohoLoading, setZohoLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/integrations/zoho/status')
+      .then(r => r.json())
+      .then(data => setZohoStatus(data))
+      .catch(() => setZohoStatus({ connected: false, configured: false }))
+      .finally(() => setZohoLoading(false));
+  }, []);
 
   const handleExport = async () => {
     try {
@@ -146,20 +158,52 @@ export default function SettingsPage() {
 
         <GeminiSettingsForm />
 
-        <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden mt-6">
-          <div className="p-5 border-b border-green-100 flex items-center justify-between">
-            <div>
-              <h2 className="font-bold text-green-700 text-lg">Accounting Integration</h2>
-              <p className="text-sm text-gray-500 mt-1">Link your external accounting software (e.g. Zoho, Tally) for automated billing and invoicing.</p>
+        {/* Zoho Books Integration — Live Status Widget */}
+        <Link href="/solo/settings/integration-wizard" className="block">
+          <div className={`bg-white rounded-xl shadow-sm border-2 overflow-hidden transition-all hover:shadow-md ${
+            zohoStatus?.connected ? 'border-green-400' : 'border-gray-200 hover:border-orange-300'
+          }`}>
+            <div className="p-5 flex items-center justify-between">
+              <div className="flex items-center">
+                {/* Zoho Logo placeholder / icon */}
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 font-black text-white text-lg ${
+                  zohoStatus?.connected ? 'bg-green-500' : 'bg-gray-300'
+                }`}>
+                  Z
+                </div>
+                <div>
+                  <h2 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                    Zoho Books
+                    {zohoLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    ) : zohoStatus?.connected ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                        <CheckCircle className="w-3 h-3 mr-1" /> Connected
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">
+                        <XCircle className="w-3 h-3 mr-1" /> Not Connected
+                      </span>
+                    )}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {zohoLoading
+                      ? 'Checking status...'
+                      : zohoStatus?.connected
+                        ? `Authorized as ${zohoStatus.connectedEmail || 'Zoho user'} — tap to manage`
+                        : zohoStatus?.configured
+                          ? 'Credentials saved — tap to authorize'
+                          : 'Tap to configure and connect'
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className={`p-2 rounded-lg ${zohoStatus?.connected ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'}`}>
+                <Zap className="w-5 h-5" />
+              </div>
             </div>
-            <Link 
-              href="/solo/settings/integration-wizard" 
-              className="px-4 py-2 bg-green-50 text-green-700 font-bold rounded-lg border border-green-200 hover:bg-green-100 transition-colors"
-            >
-              Setup Wizard
-            </Link>
           </div>
-        </div>
+        </Link>
 
         <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden mt-6">
           <div className="p-5 border-b border-red-100 flex items-center justify-between">
