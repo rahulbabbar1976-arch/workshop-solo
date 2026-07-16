@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorData = await response.text();
       console.error('Gemini API Error:', errorData);
-      return NextResponse.json({ success: false, error: 'Failed to process image with Gemini API' }, { status: 500 });
+      return NextResponse.json({ success: false, error: `Failed to process image with Gemini API: ${errorData}` }, { status: 500 });
     }
 
     const data = await response.json();
