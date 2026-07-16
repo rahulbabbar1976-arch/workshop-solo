@@ -660,7 +660,6 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 )}
               </div>
             </div>
-            </div>
 
             {/* Billing Details Block */}
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
