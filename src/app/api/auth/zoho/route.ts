@@ -16,6 +16,6 @@ export async function GET() {
     access_type: 'offline',
   });
 
-  const zohoAuthUrl = `https://accounts.zoho.in/oauth/v2/auth?${params.toString()}`;
+  const zohoAuthUrl = `https://accounts.zoho.com/oauth/v2/auth?${params.toString()}`;
   return NextResponse.redirect(zohoAuthUrl);
 }

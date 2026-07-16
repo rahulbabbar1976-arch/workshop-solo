@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
-const ZOHO_BOOKS_BASE = 'https://www.zohoapis.in/books/v3';
+const ZOHO_BOOKS_BASE = 'https://www.zohoapis.com/books/v3';
 
 // Get a valid access token, refreshing if expired
 async function getValidToken(integration: any): Promise<string> {
@@ -14,7 +14,7 @@ async function getValidToken(integration: any): Promise<string> {
   }
 
   // Refresh the token
-  const res = await fetch('https://accounts.zoho.in/oauth/v2/token', {
+  const res = await fetch('https://accounts.zoho.com/oauth/v2/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -225,7 +225,7 @@ export async function POST(request: Request) {
         zohoSyncStatus: 'synced',
         zohoInvoiceId: zohoInvoice.invoice_id,
         zohoInvoiceNumber: zohoInvoice.invoice_number,
-        zohoInvoiceUrl: `https://books.zoho.in/app/${integration.orgId}#/invoices/${zohoInvoice.invoice_id}`,
+        zohoInvoiceUrl: `https://books.zoho.com/app/${integration.orgId}#/invoices/${zohoInvoice.invoice_id}`,
       },
     });
 
@@ -233,7 +233,7 @@ export async function POST(request: Request) {
       success: true,
       invoiceId: zohoInvoice.invoice_id,
       invoiceNumber: zohoInvoice.invoice_number,
-      invoiceUrl: `https://books.zoho.in/app/${integration.orgId}#/invoices/${zohoInvoice.invoice_id}`,
+      invoiceUrl: `https://books.zoho.com/app/${integration.orgId}#/invoices/${zohoInvoice.invoice_id}`,
     });
 
   } catch (err: any) {

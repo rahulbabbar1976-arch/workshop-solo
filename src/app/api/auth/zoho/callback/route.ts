@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     }
 
     // Exchange code for tokens
-    const tokenRes = await fetch('https://accounts.zoho.in/oauth/v2/token', {
+    const tokenRes = await fetch('https://accounts.zoho.com/oauth/v2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     // Get connected account info
     let connectedEmail = '';
     try {
-      const userRes = await fetch('https://accounts.zoho.in/oauth/v2/userinfo', {
+      const userRes = await fetch('https://accounts.zoho.com/oauth/v2/userinfo', {
         headers: { Authorization: `Zoho-oauthtoken ${tokens.access_token}` },
       });
       const userInfo = await userRes.json();
