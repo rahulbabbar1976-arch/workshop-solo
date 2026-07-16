@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 
     const billingCustomer = jobCard.billingCustomer || jobCard.customer;
     const billingInfo = {
-       name: billingCustomer.displayName,
+       name: jobCard.customer.displayName, // Always use main customer name on Zoho Estimates
        gstin: billingCustomer.taxId || '',
        address: [billingCustomer.addressLine1, billingCustomer.addressLine2].filter(Boolean).join(', '),
        state: billingCustomer.state || '',
