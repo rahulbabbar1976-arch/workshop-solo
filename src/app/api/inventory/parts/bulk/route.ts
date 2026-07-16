@@ -53,7 +53,7 @@ export async function POST(request: Request) {
               transactionType: 'PURCHASE_IN',
               quantity: parseFloat(item.quantity),
               runningStock: master.stockQuantity || 0,
-              notes: `Bill: ${billNumber || 'Unknown'} from ${supplierName || 'Unknown Supplier'}`
+              supplierName: supplierName || 'Unknown Supplier'
             }
           });
         }
