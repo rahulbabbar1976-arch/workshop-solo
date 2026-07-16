@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Plus, Search, Edit2, X, ArrowLeft, Trash2 } from "lucide-react";
+import { Package, Plus, Search, Edit2, X, ArrowLeft, Trash2, Camera } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -150,6 +150,11 @@ export default function PartsMasterPage() {
             className="w-full pl-10 pr-4 py-3 bg-white border-none rounded-xl shadow-sm focus:ring-2 focus:ring-teal-500 font-medium text-gray-800"
           />
         </div>
+        
+        {/* AI Scanner Button */}
+        <Link href="/solo/inventory/parts/import" className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-sm hover:from-orange-600 hover:to-amber-600 transition-colors flex items-center justify-center text-sm">
+          <Camera className="w-5 h-5 mr-2" /> AI Bill Scanner
+        </Link>
 
         {/* List */}
         <div className="space-y-3">

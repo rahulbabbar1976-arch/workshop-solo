@@ -47,6 +47,12 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const [showContactModal, setShowContactModal] = useState(false);
   const [deletingId,    setDeletingId]      = useState<string | null>(null);
 
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  const [billingInvoiceNum, setBillingInvoiceNum] = useState(jobCard.invoiceNumber || "");
+  const [billingSearchQuery, setBillingSearchQuery] = useState("");
+  const [billingSearchResults, setBillingSearchResults] = useState<any[]>([]);
+  const [selectedBillingCustomer, setSelectedBillingCustomer] = useState<any>(jobCard.billingCustomer || null);
+
   const vehicleId = jobCard.vehicle?.id || jobCard.vehicleId;
 
   const fetchVehiclePhotos = useCallback(async () => {
@@ -473,6 +479,44 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     return (p.quantityRequested || 0) * (p.sellingPrice || 0);
   };
   
+  const handleBillingSearch = async (val: string) => {
+    setBillingSearchQuery(val);
+    if (!val) {
+      setBillingSearchResults([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/customers?q=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (data.success) {
+        setBillingSearchResults(data.customers || []);
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const handleSaveBilling = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          billingCustomerId: selectedBillingCustomer?.id || null,
+          invoiceNumber: billingInvoiceNum || null
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.jobcard) setJobCard(data.jobcard);
+        setIsBillingModalOpen(false);
+      } else {
+        alert("Failed to save billing info");
+      }
+    } catch(e) { console.error(e); } finally {
+      setIsSaving(false);
+    }
+  };
+  
   const getLaborTotal = (l: any) => {
     return (l.quantity || 0) * (l.sellingPrice || 0);
   };
@@ -613,6 +657,32 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   >
                     Mark Ready
                   </button>
+                )}
+              </div>
+            </div>
+            </div>
+
+            {/* Billing Details Block */}
+            <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+              <div className="flex justify-between items-center mb-2">
+                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Billing Details</h3>
+                 {!isLocked && (
+                   <button onClick={() => setIsBillingModalOpen(true)} className="text-blue-500 hover:text-blue-600 transition-colors">
+                     <Edit2 className="w-4 h-4" />
+                   </button>
+                 )}
+              </div>
+              <div className="text-sm text-gray-800 space-y-1">
+                {jobCard.billingCustomer ? (
+                  <>
+                    <p className="font-bold">{jobCard.billingCustomer.displayName}</p>
+                    <p>{jobCard.billingCustomer.taxId ? `GST: ${jobCard.billingCustomer.taxId}` : 'No GSTIN provided'}</p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 italic">Same as vehicle owner</p>
+                )}
+                {jobCard.invoiceNumber && (
+                  <p className="mt-2 text-blue-600 font-mono font-semibold">Inv: {jobCard.invoiceNumber}</p>
                 )}
               </div>
             </div>
@@ -804,10 +874,6 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                         {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
                     </div>
-                    {/* Job card label */}
-                    {p.phase && (
-                      <span className="absolute top-2 left-2 bg-black/50 text-white text-[10px] font-bold px-1.5 py-0.5 rounded capitalize">{p.phase}</span>
-                    )}
                   </div>
                 ))}
               </div>
@@ -994,8 +1060,94 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           <Link href={`/solo/jobcards/${jobCard.id}/billing`} className="bg-gray-900 text-white px-6 py-3 rounded font-bold shadow-md hover:bg-gray-800 transition-colors">
             Pay Now
           </Link>
-        </div>
+          {/* Billing Modal */}
+        {isBillingModalOpen && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-gray-800">Edit Billing Details</h3>
+                <button onClick={() => setIsBillingModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-4 overflow-y-auto space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Billing Entity</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={billingSearchQuery}
+                      onChange={(e) => handleBillingSearch(e.target.value)}
+                      placeholder="Search by name or phone..."
+                      className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-medium"
+                    />
+                    {billingSearchResults.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+                        {billingSearchResults.map((cust: any) => (
+                          <div 
+                            key={cust.id}
+                            onClick={() => {
+                              setSelectedBillingCustomer(cust);
+                              setBillingSearchQuery(cust.displayName);
+                              setBillingSearchResults([]);
+                            }}
+                            className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-0"
+                          >
+                            <div className="font-bold text-gray-800 text-sm">{cust.displayName}</div>
+                            <div className="text-xs text-gray-500">{cust.primaryMobile || 'No phone'} {cust.taxId ? `• GST: ${cust.taxId}` : ''}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedBillingCustomer && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-lg flex justify-between items-center">
+                      <div>
+                        <div className="text-sm font-bold text-blue-800">{selectedBillingCustomer.displayName}</div>
+                        {selectedBillingCustomer.taxId && <div className="text-xs text-blue-600">GSTIN: {selectedBillingCustomer.taxId}</div>}
+                      </div>
+                      <button onClick={() => { setSelectedBillingCustomer(null); setBillingSearchQuery(""); }} className="text-blue-500 hover:text-blue-700">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Invoice Number</label>
+                  <input
+                    type="text"
+                    value={billingInvoiceNum}
+                    onChange={(e) => setBillingInvoiceNum(e.target.value)}
+                    placeholder="e.g. INV-2023-001"
+                    className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 border-t flex justify-end space-x-3 bg-gray-50">
+                <button 
+                  onClick={() => setIsBillingModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveBilling}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Save Billing
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
+    </div>
       {/* Photo Selection Modal */}
       {isPhotoModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-in fade-in">

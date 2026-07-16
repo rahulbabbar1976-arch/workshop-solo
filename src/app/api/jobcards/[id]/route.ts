@@ -12,6 +12,7 @@ export async function GET(
       where: { id },
       include: {
         customer: true,
+        billingCustomer: true,
         vehicle: true,
         snapshot: true,
         mechanics: true,
@@ -83,6 +84,11 @@ export async function PUT(
       fuelLevel,
       overrideReadOnly,
       
+      // Billing
+      billingCustomerId,
+      invoiceNumber,
+      invoiceDate,
+      
       // Customer & Vehicle detail edits
       customerName,
       customerMobile,
@@ -122,6 +128,7 @@ export async function PUT(
       where: { id },
       include: {
         customer: true,
+        billingCustomer: true,
         vehicle: true,
         snapshot: true,
         mechanics: true,
@@ -153,6 +160,9 @@ export async function PUT(
           internalNotes: internalNotes !== undefined ? internalNotes : existing.internalNotes,
           intakeOdometer: intakeOdometer !== undefined ? parseInt(intakeOdometer, 10) || null : existing.intakeOdometer,
           fuelLevel: fuelLevel !== undefined ? fuelLevel : existing.fuelLevel,
+          billingCustomerId: billingCustomerId !== undefined ? billingCustomerId : existing.billingCustomerId,
+          invoiceNumber: invoiceNumber !== undefined ? invoiceNumber : existing.invoiceNumber,
+          invoiceDate: invoiceDate !== undefined ? (invoiceDate ? new Date(invoiceDate) : null) : existing.invoiceDate,
           closedAt: status === 'closed' ? new Date() : (status === 'open' ? null : existing.closedAt)
         }
       });
@@ -283,6 +293,7 @@ export async function PUT(
                 mechanicNote: p.mechanicNote,
                 sellingPrice: p.sellingPrice !== undefined ? parseFloat(p.sellingPrice) : undefined,
                 taxRate: p.taxRate !== undefined ? parseFloat(p.taxRate) : undefined,
+                hsnCode: p.hsnCode !== undefined ? p.hsnCode : undefined,
                 discountType: p.discountType,
                 discountValue: p.discountValue !== undefined ? parseFloat(p.discountValue) : undefined,
                 approvedByUserId: p.status === 'approved' || p.status === 'in_stock' ? p.approvedByUserId : undefined
@@ -327,7 +338,8 @@ export async function PUT(
                 status: p.status || 'requested',
                 mechanicNote: p.mechanicNote || null,
                 sellingPrice: p.sellingPrice !== undefined ? parseFloat(p.sellingPrice) : null,
-                taxRate: p.taxRate !== undefined ? parseFloat(p.taxRate) : 18.00 // Default GST slab
+                taxRate: p.taxRate !== undefined ? parseFloat(p.taxRate) : 18.00,
+                hsnCode: p.hsnCode || null
               }
             });
 
@@ -386,6 +398,7 @@ export async function PUT(
                 mechanicNote: l.mechanicNote,
                 sellingPrice: l.sellingPrice !== undefined ? parseFloat(l.sellingPrice) : undefined,
                 taxRate: l.taxRate !== undefined ? parseFloat(l.taxRate) : undefined,
+                hsnCode: l.hsnCode !== undefined ? l.hsnCode : undefined,
                 quantity: l.quantity !== undefined ? parseFloat(l.quantity) : undefined
               }
             });
@@ -400,6 +413,7 @@ export async function PUT(
                 mechanicNote: l.mechanicNote || null,
                 sellingPrice: l.sellingPrice !== undefined ? parseFloat(l.sellingPrice) : 0,
                 taxRate: l.taxRate !== undefined ? parseFloat(l.taxRate) : 18.00,
+                hsnCode: l.hsnCode || null,
                 quantity: parseFloat(l.quantity) || 1
               }
             });

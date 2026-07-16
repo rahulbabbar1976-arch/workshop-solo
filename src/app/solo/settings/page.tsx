@@ -145,7 +145,22 @@ export default function SettingsPage() {
 
         <GeminiSettingsForm />
 
-        <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden mt-6">
+          <div className="p-5 border-b border-green-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-green-700 text-lg">Accounting Integration</h2>
+              <p className="text-sm text-gray-500 mt-1">Link your external accounting software (e.g. Zoho, Tally) for automated billing and invoicing.</p>
+            </div>
+            <Link 
+              href="/solo/settings/integration-wizard" 
+              className="px-4 py-2 bg-green-50 text-green-700 font-bold rounded-lg border border-green-200 hover:bg-green-100 transition-colors"
+            >
+              Setup Wizard
+            </Link>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden mt-6">
           <div className="p-5 border-b border-red-100 flex items-center justify-between">
             <div>
               <h2 className="font-bold text-red-600 text-lg flex items-center">

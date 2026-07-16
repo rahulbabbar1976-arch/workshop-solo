@@ -186,9 +186,18 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
           <div className="text-center italic font-bold text-xs border-b border-black pb-1 mb-2">JOB CARD</div>
 
           {/* Customer */}
-          <div className="mb-2">
-            <div className="font-bold italic text-xs">CUSTOMER</div>
-            <div className="font-bold italic text-xs">{jobCard.customer?.displayName || 'Unknown Customer'}</div>
+          <div className="mb-2 flex justify-between">
+            <div>
+              <div className="font-bold italic text-xs">CUSTOMER</div>
+              <div className="font-bold italic text-xs">{jobCard.customer?.displayName || 'Unknown Customer'}</div>
+            </div>
+            {jobCard.billingCustomer && jobCard.billingCustomer.id !== jobCard.customer?.id && (
+              <div className="text-right">
+                <div className="font-bold italic text-xs text-gray-500">BILL TO</div>
+                <div className="font-bold italic text-xs">{jobCard.billingCustomer.displayName}</div>
+                {jobCard.billingCustomer.taxId && <div className="text-xs">GSTIN: {jobCard.billingCustomer.taxId}</div>}
+              </div>
+            )}
           </div>
 
           <table className="w-full text-xs border-y border-black mb-4">
@@ -225,7 +234,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
               <tr className="italic border-b border-black font-bold">
                 <td className="text-left w-6">Id</td>
                 <td className="text-left">Name</td>
-                <td className="text-center w-10">Code</td>
+                <td className="text-center w-12">HSN</td>
                 {cols.labour?.includes('qty') && <td className="text-right w-12">Quant.</td>}
                 {cols.labour?.includes('qty') && <td className="text-left w-8 pl-1">Unit</td>}
                 {cols.labour?.includes('discount') && <td className="text-right w-12">Disc.</td>}
@@ -243,7 +252,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
                 <tr key={s.id}>
                   <td className="text-right pr-2">{s.index}</td>
                   <td className="text-left whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">{s.name}</td>
-                  <td className="text-center"></td>
+                  <td className="text-center">{s.hsnCode || ''}</td>
                   {cols.labour?.includes('qty') && <td className="text-right">{s.calc.qty}</td>}
                   {cols.labour?.includes('qty') && <td className="text-left pl-1">pcs</td>}
                   {cols.labour?.includes('discount') && <td className="text-right">{s.calc.discPercent > 0 ? `${s.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}
@@ -275,7 +284,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
               <tr className="italic border-b border-black font-bold">
                 <td className="text-left w-6">Id</td>
                 <td className="text-left">Name</td>
-                <td className="text-center w-10">Code</td>
+                <td className="text-center w-12">HSN</td>
                 {cols.parts?.includes('qty') && <td className="text-right w-12">Quant.</td>}
                 {cols.parts?.includes('qty') && <td className="text-left w-8 pl-1">Unit</td>}
                 {cols.parts?.includes('discount') && <td className="text-right w-12">Disc.</td>}
@@ -291,7 +300,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
                 <tr key={p.id}>
                   <td className="text-right pr-2">{p.index}</td>
                   <td className="text-left whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">{p.name}</td>
-                  <td className="text-center"></td>
+                  <td className="text-center">{p.hsnCode || ''}</td>
                   {cols.parts?.includes('qty') && <td className="text-right">{p.calc.qty}</td>}
                   {cols.parts?.includes('qty') && <td className="text-left pl-1">pcs</td>}
                   {cols.parts?.includes('discount') && <td className="text-right">{p.calc.discPercent > 0 ? `${p.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}

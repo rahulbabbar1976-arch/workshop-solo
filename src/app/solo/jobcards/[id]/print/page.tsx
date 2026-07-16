@@ -12,6 +12,7 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
     where: { id },
     include: {
       customer: true,
+      billingCustomer: true,
       vehicle: true,
       partLines: true,
       labourLines: true,
@@ -28,6 +29,7 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
       where: { jobcardNumber: id },
       include: {
         customer: true,
+        billingCustomer: true,
         vehicle: true,
         partLines: true,
         labourLines: true,
