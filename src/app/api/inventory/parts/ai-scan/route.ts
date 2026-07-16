@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = "Analyze this purchase invoice/bill. Extract all the line items representing automotive parts, oils, or labor. For each item, extract the Name, Part Number/Item Code (if available), Quantity, Unit Purchase Price (excluding tax if possible), GST/Tax Rate percentage, and HSN/SAC Code. If HSN code or GST rate is missing, make your best educated guess based on the part name (e.g. Engine Oil usually 18% GST and HSN 2710). Return the response strictly as a JSON object with a single key 'items' containing an array of these objects: { \"partName\": string, \"partNumber\": string, \"quantity\": number, \"purchasePrice\": number, \"gstRate\": number, \"hsnCode\": string }. Do not include any other text or markdown formatting outside the JSON.";
 
