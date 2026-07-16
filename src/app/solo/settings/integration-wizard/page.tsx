@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { ArrowLeft, Check, CheckCircle2, Link as LinkIcon, Unlink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function IntegrationWizardPage() {
+function IntegrationWizardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -208,5 +208,13 @@ export default function IntegrationWizardPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function IntegrationWizardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-orange-500" /></div>}>
+      <IntegrationWizardContent />
+    </Suspense>
   );
 }
