@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const integration = await (prisma as any).zohoIntegration.findFirst();
+    const integration = await prisma.zohoIntegration.findFirst();
     if (!integration) {
       return NextResponse.redirect(`${appUrl}/solo/settings?tab=integrations&error=zoho_not_configured`);
     }
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
     const expiry = new Date(Date.now() + (tokens.expires_in || 3600) * 1000);
 
-    await (prisma as any).zohoIntegration.update({
+    await prisma.zohoIntegration.update({
       where: { id: integration.id },
       data: {
         accessToken: tokens.access_token,

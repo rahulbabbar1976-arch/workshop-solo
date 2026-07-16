@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { cookies } from 'next/headers';
 
 // GET /api/auth/zoho — Initiates OAuth flow
 export async function GET() {

@@ -4,9 +4,9 @@ import prisma from '@/lib/db';
 // POST /api/auth/zoho/disconnect
 export async function POST() {
   try {
-    const integration = await (prisma as any).zohoIntegration.findFirst();
+    const integration = await prisma.zohoIntegration.findFirst();
     if (integration) {
-      await (prisma as any).zohoIntegration.update({
+      await prisma.zohoIntegration.update({
         where: { id: integration.id },
         data: {
           accessToken: null,

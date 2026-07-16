@@ -29,7 +29,7 @@ async function getValidToken(integration: any): Promise<string> {
   if (!data.access_token) throw new Error('Failed to refresh Zoho token: ' + JSON.stringify(data));
 
   const newExpiry = new Date(Date.now() + (data.expires_in || 3600) * 1000);
-  await (prisma as any).zohoIntegration.update({
+  await prisma.zohoIntegration.update({
     where: { id: integration.id },
     data: { accessToken: data.access_token, tokenExpiry: newExpiry },
   });
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     }
 
     // 1. Get Zoho integration
-    const integration = await (prisma as any).zohoIntegration.findFirst();
+    const integration = await prisma.zohoIntegration.findFirst();
     if (!integration?.isConnected) {
       return NextResponse.json({ success: false, error: 'Zoho is not connected. Go to Settings → Integrations.' }, { status: 403 });
     }
@@ -168,6 +168,9 @@ export async function POST(request: Request) {
         rate,
         discount: labour.discountValue || 0,
         item_total: rate * qty,
+        ...(isInterState
+          ? { tax_type: 'igst', tax_percentage: gstRate }
+          : { tax_type: 'cgst_sgst', tax_percentage: gstRate / 2 }),
         tax_name: isInterState ? `IGST ${gstRate}%` : `GST ${gstRate}%`,
         unit: 'hrs',
         description: '',
@@ -223,7 +226,7 @@ export async function POST(request: Request) {
         zohoInvoiceId: zohoInvoice.invoice_id,
         zohoInvoiceNumber: zohoInvoice.invoice_number,
         zohoInvoiceUrl: `https://books.zoho.in/app/${integration.orgId}#/invoices/${zohoInvoice.invoice_id}`,
-      } as any,
+      },
     });
 
     return NextResponse.json({

@@ -1,12 +1,11 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { ArrowLeft, Check, CheckCircle2, Link as LinkIcon, Unlink, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle, Link as LinkIcon, Unlink, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 function IntegrationWizardContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   
   const [loading, setLoading] = useState(true);
@@ -118,7 +117,7 @@ function IntegrationWizardContent() {
         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div className="flex items-center">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${status.connected ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-              <CheckCircle2 className="w-6 h-6" />
+              <CheckCircle className="w-6 h-6" />
             </div>
             <div>
               <h2 className="font-bold text-gray-900 text-lg">Zoho Status</h2>

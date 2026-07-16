@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 
 export async function GET() {
   try {
-    const integration = await (prisma as any).zohoIntegration.findFirst();
+    const integration = await prisma.zohoIntegration.findFirst();
     if (!integration) {
       return NextResponse.json({ configured: false, connected: false });
     }
@@ -27,14 +27,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'All fields required' }, { status: 400 });
     }
 
-    const existing = await (prisma as any).zohoIntegration.findFirst();
+    const existing = await prisma.zohoIntegration.findFirst();
     if (existing) {
-      await (prisma as any).zohoIntegration.update({
+      await prisma.zohoIntegration.update({
         where: { id: existing.id },
         data: { clientId, clientSecret, orgId, isConnected: false },
       });
     } else {
-      await (prisma as any).zohoIntegration.create({
+      await prisma.zohoIntegration.create({
         data: { clientId, clientSecret, orgId },
       });
     }
