@@ -132,7 +132,10 @@ export async function savePrintSettingsAction(data: any) {
 
 export async function getWorkshopProfileInfoAction() {
   const profile = await prisma.workshopProfile.findFirst();
-  return { geminiApiKey: profile?.geminiApiKey || "" };
+  return { 
+    geminiApiKey: profile?.geminiApiKey || "",
+    openRouterApiKey: (profile as any)?.openRouterApiKey || "",
+  };
 }
 
 export async function saveGeminiApiKeyAction(apiKey: string) {
@@ -153,6 +156,26 @@ export async function saveGeminiApiKeyAction(apiKey: string) {
   await prisma.workshopProfile.update({
     where: { id: profile.id },
     data: { geminiApiKey: apiKey }
+  });
+
+  return { success: true };
+}
+
+export async function saveOpenRouterApiKeyAction(apiKey: string) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('workshop_user_id')?.value;
+  if (!userId) throw new Error("Unauthorized");
+
+  let profile = await prisma.workshopProfile.findFirst();
+  if (!profile) {
+    profile = await prisma.workshopProfile.create({
+      data: { workshopName: "My Workshop", addressLine1: "" }
+    });
+  }
+
+  await (prisma.workshopProfile as any).update({
+    where: { id: profile.id },
+    data: { openRouterApiKey: apiKey }
   });
 
   return { success: true };

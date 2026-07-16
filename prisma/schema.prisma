@@ -61,6 +61,7 @@ model WorkshopProfile {
   showGstRates         Boolean  @default(true)
   showCompanyDetails   Boolean  @default(true)
   geminiApiKey         String?  @default("")
+  openRouterApiKey     String?  @default("")
   currencyCode         String   @default("INR")
   distanceUnit         String   @default("km")
   createdAt            DateTime @default(now())

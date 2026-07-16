@@ -3,53 +3,7 @@ import prisma from '@/lib/db';
 
 export const maxDuration = 60;
 
-// List of models to try in order - 1.5-flash first (wider free-tier support)
-const GEMINI_MODELS = [
-  'gemini-1.5-flash',
-  'gemini-1.5-pro',
-  'gemini-2.0-flash',
-  'gemini-2.5-flash',
-];
-
-async function tryGeminiModel(apiKey: string, modelName: string, prompt: string, imageData: string, mimeType: string) {
-  const { GoogleGenerativeAI } = await import('@google/generative-ai');
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: modelName });
-
-  const imageParts = [
-    {
-      inlineData: {
-        data: imageData.includes(',') ? imageData.split(',')[1] : imageData,
-        mimeType: mimeType
-      }
-    }
-  ];
-
-  const result = await model.generateContent([prompt, ...imageParts]);
-  const response = await result.response;
-  return response.text();
-}
-
-export async function POST(request: Request) {
-  try {
-    const { base64Image, mimeType, ocrText } = await request.json();
-
-    // --- PATH 1: OCR text was sent from client (Tesseract fallback) ---
-    if (ocrText && !base64Image) {
-      const parsed = parseOCRTextToItems(ocrText);
-      return NextResponse.json({ success: true, items: parsed, method: 'ocr' });
-    }
-
-    if (!base64Image || !mimeType) {
-      return NextResponse.json({ success: false, error: 'Image data is required' }, { status: 400 });
-    }
-
-    // --- PATH 2: Try Gemini AI (if API key configured) ---
-    const profile = await prisma.workshopProfile.findFirst();
-    const apiKey = profile?.geminiApiKey;
-
-    if (apiKey) {
-      const prompt = `Analyze this purchase invoice/bill image. Extract all line items representing automotive parts, oils, or consumables.
+const INVOICE_PROMPT = `Analyze this purchase invoice/bill image. Extract all line items representing automotive parts, oils, filters, or consumables.
 For each item extract:
 - partName: the product/part name
 - partNumber: item/part code or SKU (empty string if not found)
@@ -72,46 +26,153 @@ If HSN/GST is missing, make an educated guess:
 Return ONLY valid JSON with this exact structure, no markdown, no extra text:
 {"items": [{"partName": string, "partNumber": string, "quantity": number, "purchasePrice": number, "gstRate": number, "hsnCode": string}]}`;
 
-      // Try each model in order until one works
-      for (const modelName of GEMINI_MODELS) {
-        try {
-          console.log(`Trying Gemini model: ${modelName}`);
-          const aiText = await tryGeminiModel(apiKey, modelName, prompt, base64Image, mimeType);
+// --- OpenRouter (free, no billing required) ---
+async function tryOpenRouter(apiKey: string, imageData: string, mimeType: string): Promise<string> {
+  // Free vision-capable models on OpenRouter (in order of preference)
+  const FREE_MODELS = [
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-4-maverick:free',
+    'meta-llama/llama-4-scout:free',
+    'mistralai/mistral-small-3.2-24b-instruct:free',
+  ];
 
-          if (aiText) {
-            const cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(cleanJson);
-            const items = parsed.items || [];
-            console.log(`Success with model: ${modelName}, found ${items.length} items`);
-            return NextResponse.json({ success: true, items, method: `gemini-${modelName}` });
-          }
-        } catch (modelErr: any) {
-          const errMsg = modelErr?.message || '';
-          console.warn(`Model ${modelName} failed:`, errMsg.substring(0, 100));
-          
-          // If quota/billing error on this model, try next model
-          if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('billing') || errMsg.includes('depleted')) {
-            console.warn(`Quota/billing issue on ${modelName}, trying next model...`);
-            continue;
-          }
-          // If 404, try next model
-          if (errMsg.includes('404')) {
-            continue;
-          }
-          // For other errors, break
-          break;
+  const base64 = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+
+  for (const model of FREE_MODELS) {
+    try {
+      console.log(`Trying OpenRouter model: ${model}`);
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://workshop-solo.vercel.app',
+          'X-Title': 'Workshop Solo',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: INVOICE_PROMPT },
+                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+              ]
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.1,
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`OpenRouter model ${model} failed (${res.status}):`, errText.substring(0, 150));
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (text) {
+        console.log(`OpenRouter success with model: ${model}`);
+        return text;
+      }
+    } catch (e: any) {
+      console.warn(`OpenRouter model ${model} error:`, e.message?.substring(0, 100));
+    }
+  }
+
+  throw new Error('All OpenRouter models failed');
+}
+
+// --- Gemini (fallback, requires billing in some regions) ---
+const GEMINI_MODELS = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'];
+
+async function tryGemini(apiKey: string, imageData: string, mimeType: string): Promise<string> {
+  const { GoogleGenerativeAI } = await import('@google/generative-ai');
+  const genAI = new GoogleGenerativeAI(apiKey);
+
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      console.log(`Trying Gemini model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const imageParts = [{
+        inlineData: {
+          data: imageData.includes(',') ? imageData.split(',')[1] : imageData,
+          mimeType
         }
+      }];
+      const result = await model.generateContent([INVOICE_PROMPT, ...imageParts]);
+      const text = result.response.text();
+      if (text) {
+        console.log(`Gemini success with model: ${modelName}`);
+        return text;
+      }
+    } catch (e: any) {
+      const msg = e?.message || '';
+      console.warn(`Gemini model ${modelName} failed:`, msg.substring(0, 100));
+      // Always continue to next model
+    }
+  }
+
+  throw new Error('All Gemini models failed');
+}
+
+function parseAIText(text: string) {
+  const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  // Find the JSON object in the response
+  const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON found in response');
+  const parsed = JSON.parse(jsonMatch[0]);
+  return parsed.items || [];
+}
+
+export async function POST(request: Request) {
+  try {
+    const { base64Image, mimeType, ocrText } = await request.json();
+
+    // --- PATH 1: OCR text from client (last resort fallback) ---
+    if (ocrText && !base64Image) {
+      const parsed = parseOCRTextToItems(ocrText);
+      return NextResponse.json({ success: true, items: parsed, method: 'ocr' });
+    }
+
+    if (!base64Image || !mimeType) {
+      return NextResponse.json({ success: false, error: 'Image data is required' }, { status: 400 });
+    }
+
+    const profile = await prisma.workshopProfile.findFirst();
+    const openRouterKey = (profile as any)?.openRouterApiKey;
+    const geminiKey = profile?.geminiApiKey;
+
+    // --- PATH 2: Try OpenRouter first (free, no billing) ---
+    if (openRouterKey) {
+      try {
+        const aiText = await tryOpenRouter(openRouterKey, base64Image, mimeType);
+        const items = parseAIText(aiText);
+        return NextResponse.json({ success: true, items, method: 'openrouter' });
+      } catch (e: any) {
+        console.warn('OpenRouter failed, falling back to Gemini:', e.message);
       }
     }
 
-    // --- PATH 3: No API key or all Gemini models failed → return signal to client to use Tesseract ---
-    return NextResponse.json({
-      success: false,
-      fallbackToOCR: true,
-      error: !apiKey
-        ? 'No Gemini API key configured. Using free OCR scanner instead.'
-        : 'Gemini API unavailable (quota/billing issue). Using free OCR scanner instead.'
-    }, { status: 200 }); // Return 200 so client can handle gracefully
+    // --- PATH 3: Try Gemini (fallback) ---
+    if (geminiKey) {
+      try {
+        const aiText = await tryGemini(geminiKey, base64Image, mimeType);
+        const items = parseAIText(aiText);
+        return NextResponse.json({ success: true, items, method: 'gemini' });
+      } catch (e: any) {
+        console.warn('Gemini failed:', e.message);
+      }
+    }
+
+    // --- PATH 4: No AI available → signal client to use Tesseract OCR ---
+    const reason = !openRouterKey && !geminiKey
+      ? 'No AI key configured. Go to Settings → AI Integration to add a free OpenRouter key.'
+      : 'AI unavailable. Using free OCR scanner instead.';
+
+    return NextResponse.json({ success: false, fallbackToOCR: true, error: reason }, { status: 200 });
 
   } catch (err: any) {
     console.error('AI Scan Error:', err);
@@ -119,12 +180,11 @@ Return ONLY valid JSON with this exact structure, no markdown, no extra text:
   }
 }
 
-// Simple regex-based parser for OCR text output
+// Basic regex parser for Tesseract OCR text
 function parseOCRTextToItems(text: string): any[] {
   const items: any[] = [];
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Known HSN/GST mappings for common auto parts
   const hsnMap: Record<string, { hsn: string; gst: number }> = {
     'engine oil': { hsn: '2710', gst: 18 },
     'oil filter': { hsn: '8421', gst: 18 },
@@ -142,28 +202,20 @@ function parseOCRTextToItems(text: string): any[] {
     'clutch': { hsn: '8708', gst: 28 },
   };
 
-  const priceRegex = /[\d,]+\.?\d*/g;
-
   for (const line of lines) {
-    // Skip header-like lines
     if (/^(sr|item|description|qty|price|amount|total|gst|hsn|rate|s\.no)/i.test(line)) continue;
     if (line.length < 5) continue;
 
-    const prices = line.match(priceRegex)?.map(p => parseFloat(p.replace(/,/g, ''))) || [];
+    const prices = line.match(/[\d,]+\.?\d*/g)?.map(p => parseFloat(p.replace(/,/g, ''))) || [];
     const validPrices = prices.filter(p => p > 0 && p < 1000000);
-
     if (validPrices.length === 0) continue;
 
-    // Determine part name (text before numbers)
     const namePart = line.replace(/[\d,\.%\/]+/g, ' ').replace(/\s+/g, ' ').trim();
     if (namePart.length < 3) continue;
 
-    // Lookup HSN/GST
-    let hsn = '';
-    let gst = 18;
-    const lowerName = namePart.toLowerCase();
+    let hsn = '', gst = 18;
     for (const [keyword, mapping] of Object.entries(hsnMap)) {
-      if (lowerName.includes(keyword)) {
+      if (namePart.toLowerCase().includes(keyword)) {
         hsn = mapping.hsn;
         gst = mapping.gst;
         break;
@@ -174,14 +226,7 @@ function parseOCRTextToItems(text: string): any[] {
     const qty = validPrices.length >= 3 ? validPrices[0] : 1;
 
     if (purchasePrice > 0) {
-      items.push({
-        partName: namePart,
-        partNumber: '',
-        quantity: qty,
-        purchasePrice: purchasePrice,
-        gstRate: gst,
-        hsnCode: hsn
-      });
+      items.push({ partName: namePart, partNumber: '', quantity: qty, purchasePrice, gstRate: gst, hsnCode: hsn });
     }
   }
 
