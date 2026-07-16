@@ -128,28 +128,21 @@ export async function POST(request: Request) {
     // 5. Get or create Zoho contact
     const contactId = await getOrCreateZohoContact(token, integration.orgId, billingInfo);
 
-    // 6. Determine GST type
+    // 6. Determine GST type (used only for notes, Zoho handles taxes automatically via place_of_supply)
     const gstType = getGstType(workshopState, billingInfo.state || '');
     const isInterState = gstType === 'inter';
 
     // 7. Build line items from parts
+    // NOTE: Do NOT send tax_name/tax_id/tax_type — Zoho Books India applies GST
+    // automatically based on the invoice-level place_of_supply + gst_treatment + HSN code.
     const partLineItems = (jobCard.partLines || []).map((part: any) => {
       const rate = part.sellingPrice || 0;
       const qty = part.quantityUsed || part.quantityDispatched || part.quantityRequested || 1;
-      const gstRate = part.taxRate || 18;
-
       return {
         name: part.partName,
         hsn_or_sac: part.hsnCode || '',
         quantity: qty,
         rate,
-        discount: part.discountValue || 0,
-        item_total: rate * qty,
-        ...(isInterState
-          ? { tax_type: 'igst', tax_percentage: gstRate }
-          : { tax_type: 'cgst_sgst', tax_percentage: gstRate / 2 }), // split for display
-        tax_name: isInterState ? `IGST ${gstRate}%` : `GST ${gstRate}%`,
-        tags: [],
         unit: 'nos',
         description: part.itemCode ? `Part No: ${part.itemCode}` : '',
       };
@@ -159,19 +152,11 @@ export async function POST(request: Request) {
     const labourLineItems = (jobCard.labourLines || []).map((labour: any) => {
       const rate = labour.sellingPrice || 0;
       const qty = labour.quantity || 1;
-      const gstRate = labour.taxRate || 18;
-
       return {
         name: labour.labourName,
-        hsn_or_sac: labour.hsnCode || '9987', // 9987 = vehicle repair SAC
+        hsn_or_sac: labour.hsnCode || '9987', // SAC 9987 = maintenance/repair services
         quantity: qty,
         rate,
-        discount: labour.discountValue || 0,
-        item_total: rate * qty,
-        ...(isInterState
-          ? { tax_type: 'igst', tax_percentage: gstRate }
-          : { tax_type: 'cgst_sgst', tax_percentage: gstRate / 2 }),
-        tax_name: isInterState ? `IGST ${gstRate}%` : `GST ${gstRate}%`,
         unit: 'hrs',
         description: '',
       };
@@ -183,7 +168,8 @@ export async function POST(request: Request) {
     }
 
     // 9. Build invoice payload
-    const vehicleNote = `Vehicle: ${jobCard.vehicle?.registrationNumberRaw || ''}`;
+    // is_inclusive_of_tax: false → rates are exclusive of GST (Zoho will add GST on top)
+    const vehicleNote = `Vehicle: ${jobCard.vehicle?.registrationNumberRaw || ''} | GST: ${isInterState ? 'IGST' : 'CGST+SGST'}`;
     const invoicePayload = {
       customer_id: contactId,
       reference_number: jobCard.jobcardNumber,
@@ -193,6 +179,7 @@ export async function POST(request: Request) {
       place_of_supply: billingInfo.placeOfSupply || billingInfo.state || '',
       gst_treatment: billingInfo.gstin ? 'business_gst' : 'consumer',
       gst_no: billingInfo.gstin || '',
+      is_inclusive_of_tax: false,
       line_items: lineItems,
     };
 
