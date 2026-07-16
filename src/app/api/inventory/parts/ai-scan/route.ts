@@ -3,12 +3,12 @@ import prisma from '@/lib/db';
 
 export const maxDuration = 60;
 
-// List of models to try in order (newest first, fallback to older ones)
+// List of models to try in order - 1.5-flash first (wider free-tier support)
 const GEMINI_MODELS = [
-  'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-1.5-pro',
-  'gemini-pro-vision',
+  'gemini-2.0-flash',
+  'gemini-2.5-flash',
 ];
 
 async function tryGeminiModel(apiKey: string, modelName: string, prompt: string, imageData: string, mimeType: string) {
@@ -89,10 +89,10 @@ Return ONLY valid JSON with this exact structure, no markdown, no extra text:
           const errMsg = modelErr?.message || '';
           console.warn(`Model ${modelName} failed:`, errMsg.substring(0, 100));
           
-          // If quota/billing error, no point trying other models with same key
+          // If quota/billing error on this model, try next model
           if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('billing') || errMsg.includes('depleted')) {
-            console.warn('Quota/billing error — skipping remaining Gemini models');
-            break;
+            console.warn(`Quota/billing issue on ${modelName}, trying next model...`);
+            continue;
           }
           // If 404, try next model
           if (errMsg.includes('404')) {
