@@ -721,7 +721,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 {jobCard.zohoInvoiceId ? (
                   <div className="flex flex-col space-y-2">
                     <div className="text-sm text-emerald-600 font-bold flex items-center">
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Synced to Zoho Books
+                      <CheckCircle className="w-4 h-4 mr-1" /> Synced to Zoho Books
                     </div>
                     {jobCard.zohoInvoiceNumber && <div className="text-sm text-gray-700">Invoice #: <span className="font-mono">{jobCard.zohoInvoiceNumber}</span></div>}
                     {jobCard.zohoInvoiceUrl && (
