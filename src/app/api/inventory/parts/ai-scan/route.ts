@@ -22,52 +22,32 @@ export async function POST(request: Request) {
       }, { status: 403 });
     }
 
-    // Call Gemini 1.5 Flash Vision API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: "Analyze this purchase invoice/bill. Extract all the line items representing automotive parts, oils, or labor. For each item, extract the Name, Part Number/Item Code (if available), Quantity, Unit Purchase Price (excluding tax if possible), GST/Tax Rate percentage, and HSN/SAC Code. If HSN code or GST rate is missing, make your best educated guess based on the part name (e.g. Engine Oil usually 18% GST and HSN 2710). Return the response strictly as a JSON object with a single key 'items' containing an array of these objects: { \"partName\": string, \"partNumber\": string, \"quantity\": number, \"purchasePrice\": number, \"gstRate\": number, \"hsnCode\": string }. Do not include any other text or markdown formatting outside the JSON."
-              },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Image.split(',')[1] || base64Image
-                }
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          response_mime_type: "application/json",
-          temperature: 0.2
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = "Analyze this purchase invoice/bill. Extract all the line items representing automotive parts, oils, or labor. For each item, extract the Name, Part Number/Item Code (if available), Quantity, Unit Purchase Price (excluding tax if possible), GST/Tax Rate percentage, and HSN/SAC Code. If HSN code or GST rate is missing, make your best educated guess based on the part name (e.g. Engine Oil usually 18% GST and HSN 2710). Return the response strictly as a JSON object with a single key 'items' containing an array of these objects: { \"partName\": string, \"partNumber\": string, \"quantity\": number, \"purchasePrice\": number, \"gstRate\": number, \"hsnCode\": string }. Do not include any other text or markdown formatting outside the JSON.";
+
+    const imageParts = [
+      {
+        inlineData: {
+          data: base64Image.split(',')[1] || base64Image,
+          mimeType: mimeType
         }
-      })
-    });
+      }
+    ];
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Gemini API Error:', errorData);
-      return NextResponse.json({ success: false, error: `Failed to process image with Gemini API: ${errorData}` }, { status: 500 });
-    }
+    const result = await model.generateContent([prompt, ...imageParts]);
+    const response = await result.response;
+    const aiText = response.text();
 
-    const data = await response.json();
-    
-    // Extract JSON from Gemini response
-    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!aiText) {
       return NextResponse.json({ success: false, error: 'Empty response from AI' }, { status: 500 });
     }
 
     let parsedItems = [];
     try {
-      // In case it still wrapped in markdown despite response_mime_type
+      // Clean up markdown block if present
       const cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       parsedItems = parsed.items || [];
