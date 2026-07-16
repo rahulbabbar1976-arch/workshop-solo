@@ -229,7 +229,7 @@ export async function POST(request: Request) {
       'Account Number: 355701011020448',
       'Bank          : UNION BANK OF INDIA',
       'Branch        : Kailash Colony, New Delhi',
-      'IFSC Code     : UBIN0535570',
+      'IFSC Code     : UBIN0535575',
       '─────────────────────────────',
     ].join('\n');
 
