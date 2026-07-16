@@ -9,7 +9,7 @@ export async function GET() {
   }
 
   const params = new URLSearchParams({
-    scope: 'ZohoBooks.invoices.CREATE,ZohoBooks.invoices.READ,ZohoBooks.contacts.CREATE,ZohoBooks.contacts.READ,ZohoBooks.settings.READ',
+    scope: 'ZohoBooks.invoices.CREATE,ZohoBooks.invoices.READ,ZohoBooks.estimates.CREATE,ZohoBooks.estimates.READ,ZohoBooks.contacts.CREATE,ZohoBooks.contacts.READ,ZohoBooks.settings.READ',
     client_id: integration.clientId,
     response_type: 'code',
     redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL || 'https://workshop-solo.vercel.app'}/api/auth/zoho/callback`,
