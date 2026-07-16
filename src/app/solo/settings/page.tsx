@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Download, Upload, CheckCircle, AlertCircle, Trash2, Printer } from "lucide-react";
 import { exportTenantDataAction, restoreTenantDataAction } from "@/app/actions/settingsActions";
 import { factoryResetAction } from "./actions";
