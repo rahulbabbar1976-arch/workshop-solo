@@ -186,6 +186,7 @@ export async function POST(request: Request) {
       const taxId = getTaxId(taxRate);
       return {
         name: part.partName,
+        item_type: 'goods',
         hsn_or_sac: part.hsnCode || '',
         quantity: qty,
         rate,
@@ -203,6 +204,7 @@ export async function POST(request: Request) {
       const taxId = getTaxId(taxRate);
       return {
         name: labour.labourName,
+        item_type: 'services',
         hsn_or_sac: labour.hsnCode || '9987',
         quantity: qty,
         rate,
@@ -270,8 +272,8 @@ export async function POST(request: Request) {
     };
 
 
-    // 10. Create invoice in Zoho
-    const invoiceRes = await fetch(`${ZOHO_BOOKS_BASE}/invoices?organization_id=${integration.orgId}`, {
+    // 10. Create estimate in Zoho
+    const estimateRes = await fetch(`${ZOHO_BOOKS_BASE}/estimates?organization_id=${integration.orgId}`, {
       method: 'POST',
       headers: {
         Authorization: `Zoho-oauthtoken ${token}`,
@@ -280,34 +282,32 @@ export async function POST(request: Request) {
       body: JSON.stringify(invoicePayload),
     });
 
-    const invoiceData = await invoiceRes.json();
-
-    if (invoiceData.code !== 0 || !invoiceData.invoice) {
-      console.error('Zoho invoice creation failed:', invoiceData);
+    const estimateData = await estimateRes.json();
+    if (estimateData.code !== 0) {
       return NextResponse.json({
         success: false,
-        error: `Zoho rejected the invoice: ${invoiceData.message || JSON.stringify(invoiceData)}`,
-      }, { status: 500 });
+        error: `Zoho rejected the estimate: ${estimateData.message || JSON.stringify(estimateData)}`
+      }, { status: 400 });
     }
 
-    const zohoInvoice = invoiceData.invoice;
+    const zohoEstimate = estimateData.estimate;
 
-    // 11. Save Zoho invoice details back to job card
+    // 11. Update Job Card with Zoho Estimate details
     await prisma.jobCard.update({
       where: { id: jobCardId },
       data: {
         zohoSyncStatus: 'synced',
-        zohoInvoiceId: zohoInvoice.invoice_id,
-        zohoInvoiceNumber: zohoInvoice.invoice_number,
-        zohoInvoiceUrl: `https://books.zoho.com/app/${integration.orgId}#/invoices/${zohoInvoice.invoice_id}`,
+        zohoInvoiceId: zohoEstimate.estimate_id, // Storing estimate ID in the same field
+        zohoInvoiceNumber: zohoEstimate.estimate_number, // Storing estimate Number in the same field
+        zohoInvoiceUrl: `https://books.zoho.com/app/${integration.orgId}#/quotes/${zohoEstimate.estimate_id}`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      invoiceId: zohoInvoice.invoice_id,
-      invoiceNumber: zohoInvoice.invoice_number,
-      invoiceUrl: `https://books.zoho.com/app/${integration.orgId}#/invoices/${zohoInvoice.invoice_id}`,
+      invoiceId: zohoEstimate.estimate_id,
+      invoiceNumber: zohoEstimate.estimate_number,
+      invoiceUrl: `https://books.zoho.com/app/${integration.orgId}#/quotes/${zohoEstimate.estimate_id}`,
     });
 
   } catch (err: any) {

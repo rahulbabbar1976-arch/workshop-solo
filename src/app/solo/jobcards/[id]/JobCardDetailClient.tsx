@@ -723,10 +723,10 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     <div className="text-sm text-emerald-600 font-bold flex items-center">
                       <CheckCircle className="w-4 h-4 mr-1" /> Synced to Zoho Books
                     </div>
-                    {jobCard.zohoInvoiceNumber && <div className="text-sm text-gray-700">Invoice #: <span className="font-mono">{jobCard.zohoInvoiceNumber}</span></div>}
+                    {jobCard.zohoInvoiceNumber && <div className="text-sm text-gray-700">Estimate #: <span className="font-mono">{jobCard.zohoInvoiceNumber}</span></div>}
                     {jobCard.zohoInvoiceUrl && (
                       <a href={jobCard.zohoInvoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm font-medium">
-                        View Invoice in Zoho ↗
+                        View Estimate in Zoho ↗
                       </a>
                     )}
                   </div>
@@ -737,7 +737,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                     className="w-full bg-[#0d87e1] text-white py-3 rounded-lg font-bold shadow hover:bg-[#0b74c2] transition-colors flex items-center justify-center disabled:opacity-50"
                   >
                     {isPushingToZoho ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Generate Invoice in Zoho
+                    Generate Estimate in Zoho
                   </button>
                 )}
               </div>
