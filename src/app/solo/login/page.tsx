@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, KeyRound, ShieldCheck, Lock } from "lucide-react";
 import Link from "next/link";
+import { InstallApp } from "@/components/InstallApp";
 
 export default function SoloLoginPage() {
   const router = useRouter();
@@ -171,6 +172,8 @@ export default function SoloLoginPage() {
                 Create a Workshop Account
               </Link>
             </div>
+            
+            <InstallApp />
             
           </form>
         </div>
