@@ -87,13 +87,13 @@ export async function POST(req: Request) {
           }
         }
       } else if (entityType === 'parts') {
-        const categoryMap = [
+        const categoryMap: { keywords: string[], regex?: RegExp, family: string, hsn: string }[] = [
           { keywords: ['filter'], family: 'Filters', hsn: '8421' },
           { keywords: ['coolant'], family: 'Coolant', hsn: '3820' },
           { keywords: ['oil', 'lubricant', 'grease', 'fluid'], family: 'Lubricants', hsn: '2710' },
           { keywords: ['pad', 'shoe', 'rotor', 'caliper', 'brake', 'brk'], family: 'Brakes', hsn: '8708' },
-          { keywords: ['battery'], family: 'Batteries', hsn: '8507' },
-          { keywords: ['tire', 'tyre'], family: 'Tires', hsn: '4011' },
+          { keywords: ['battery'], regex: /\bdin\b/i, family: 'Batteries', hsn: '8507' },
+          { keywords: ['tire', 'tyre'], regex: /\b\d{3}[/\s]\d{2}[/\s]?r/i, family: 'Tires', hsn: '4011' },
           { keywords: ['bulb', 'light', 'lamp', 'led'], family: 'Lights', hsn: '8512' },
           { keywords: ['spark plug', 'plug', 'coil'], family: 'Ignition', hsn: '8511' },
           { keywords: ['shock', 'strut', 'suspension', 'arm', 'bush'], family: 'Suspension', hsn: '8708' },
@@ -114,7 +114,9 @@ export async function POST(req: Request) {
           }
           const textToSearch = `${name || ''} ${desc || ''}`.toLowerCase();
           for (const mapping of categoryMap) {
-            if (mapping.keywords.some(kw => textToSearch.includes(kw))) {
+            const hasKeyword = mapping.keywords.some(kw => textToSearch.includes(kw));
+            const hasRegexMatch = mapping.regex && mapping.regex.test(textToSearch);
+            if (hasKeyword || hasRegexMatch) {
               return {
                 category: providedCategory && providedCategory !== 'General' ? providedCategory : mapping.family,
                 hsnCode: providedHsn || mapping.hsn
