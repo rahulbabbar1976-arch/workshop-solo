@@ -89,19 +89,22 @@ export async function POST(req: Request) {
       } else if (entityType === 'parts') {
         const categoryMap = [
           { keywords: ['filter'], family: 'Filters', hsn: '8421' },
-          { keywords: ['oil', 'lubricant', 'coolant', 'grease', 'fluid'], family: 'Oils & Fluids', hsn: '2710' },
+          { keywords: ['coolant'], family: 'Coolant', hsn: '3820' },
+          { keywords: ['oil', 'lubricant', 'grease', 'fluid'], family: 'Lubricants', hsn: '2710' },
           { keywords: ['pad', 'shoe', 'rotor', 'caliper', 'brake', 'brk'], family: 'Brakes', hsn: '8708' },
           { keywords: ['battery'], family: 'Batteries', hsn: '8507' },
           { keywords: ['tire', 'tyre'], family: 'Tires', hsn: '4011' },
-          { keywords: ['bulb', 'light', 'lamp', 'led'], family: 'Lighting', hsn: '8512' },
+          { keywords: ['bulb', 'light', 'lamp', 'led'], family: 'Lights', hsn: '8512' },
           { keywords: ['spark plug', 'plug', 'coil'], family: 'Ignition', hsn: '8511' },
           { keywords: ['shock', 'strut', 'suspension', 'arm', 'bush'], family: 'Suspension', hsn: '8708' },
           { keywords: ['belt', 'pulley', 'timing'], family: 'Belts & Drives', hsn: '4010' },
           { keywords: ['wiper', 'blade'], family: 'Wipers', hsn: '8512' },
           { keywords: ['bearing', 'hub'], family: 'Bearings', hsn: '8482' },
           { keywords: ['sensor', 'oxygen', 'o2', 'mass air', 'maf'], family: 'Sensors', hsn: '9031' },
-          { keywords: ['switch', 'relay'], family: 'Switches', hsn: '8536' },
+          { keywords: ['switch', 'relay', 'fuse'], family: 'Electricals', hsn: '8536' },
           { keywords: ['ac', 'a/c', 'air conditioner', 'compressor', 'condenser'], family: 'Air Conditioners', hsn: '8415' },
+          { keywords: ['fuel'], family: 'Fuel System', hsn: '8708' },
+          { keywords: ['engine'], family: 'Engine', hsn: '8409' },
           { keywords: ['mat', 'cover', 'perfume', 'accessory', 'polish'], family: 'Accessories', hsn: '8708' }
         ];
 
