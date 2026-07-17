@@ -253,7 +253,11 @@ Format your response in clean, beautiful Markdown with professional bold headers
           })
         });
         const result = await response.json();
-        textResponse = result.choices?.[0]?.message?.content;
+        if (result.error) {
+          textResponse = `OpenRouter API Error: ${result.error.message || JSON.stringify(result.error)}`;
+        } else {
+          textResponse = result.choices?.[0]?.message?.content;
+        }
       } else if (geminiKey) {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
@@ -266,7 +270,11 @@ Format your response in clean, beautiful Markdown with professional bold headers
           }
         );
         const result = await response.json();
-        textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (result.error) {
+          textResponse = `Gemini API Error: ${result.error.message || JSON.stringify(result.error)}`;
+        } else {
+          textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        }
       }
 
       setAiReportContent(textResponse || "Failed to generate report. Please try again.");
