@@ -87,18 +87,51 @@ export async function POST(req: Request) {
           }
         }
       } else if (entityType === 'parts') {
-        const createData = batch.map((item: any) => ({
-          partNumber: item.partNumber || `PART-${Math.floor(Math.random()*10000)}`,
-          partName: item.partName || 'Unknown Part',
-          description: item.description || undefined,
-          brand: item.brand || undefined,
-          category: item.category || 'General',
-          sellingPrice: item.sellingPrice ? parseFloat(item.sellingPrice) : 0,
-          purchasePrice: item.purchasePrice ? parseFloat(item.purchasePrice) : 0,
-          currentStock: item.currentStock ? parseInt(item.currentStock) : 0,
-          reorderLevel: item.reorderLevel ? parseInt(item.reorderLevel) : 5,
-          hsnCode: item.hsnCode || undefined
-        }));
+        const categoryMap = [
+          { keywords: ['filter'], family: 'Filters', hsn: '8421' },
+          { keywords: ['oil', 'lubricant', 'coolant', 'grease', 'fluid'], family: 'Oils & Fluids', hsn: '2710' },
+          { keywords: ['pad', 'shoe', 'rotor', 'caliper', 'brake', 'brk'], family: 'Brakes', hsn: '8708' },
+          { keywords: ['battery'], family: 'Batteries', hsn: '8507' },
+          { keywords: ['tire', 'tyre'], family: 'Tires', hsn: '4011' },
+          { keywords: ['bulb', 'light', 'lamp', 'led'], family: 'Lighting', hsn: '8512' },
+          { keywords: ['spark plug', 'plug', 'coil'], family: 'Ignition', hsn: '8511' },
+          { keywords: ['shock', 'strut', 'suspension', 'arm', 'bush'], family: 'Suspension', hsn: '8708' },
+          { keywords: ['belt', 'pulley', 'timing'], family: 'Belts & Drives', hsn: '4010' },
+          { keywords: ['wiper', 'blade'], family: 'Wipers', hsn: '8512' },
+          { keywords: ['bearing', 'hub'], family: 'Bearings', hsn: '8482' }
+        ];
+
+        const getCategoryAndHsn = (name: string, desc: string, providedCategory?: string, providedHsn?: string) => {
+          if (providedCategory && providedCategory !== 'General' && providedHsn) {
+            return { category: providedCategory, hsnCode: providedHsn };
+          }
+          const textToSearch = `${name || ''} ${desc || ''}`.toLowerCase();
+          for (const mapping of categoryMap) {
+            if (mapping.keywords.some(kw => textToSearch.includes(kw))) {
+              return {
+                category: providedCategory && providedCategory !== 'General' ? providedCategory : mapping.family,
+                hsnCode: providedHsn || mapping.hsn
+              };
+            }
+          }
+          return { category: providedCategory || 'General', hsnCode: providedHsn };
+        };
+
+        const createData = batch.map((item: any) => {
+          const autoData = getCategoryAndHsn(item.partName, item.description, item.category, item.hsnCode);
+          return {
+            partNumber: item.partNumber || `PART-${Math.floor(Math.random()*10000)}`,
+            partName: item.partName || 'Unknown Part',
+            description: item.description || undefined,
+            brand: item.brand || undefined,
+            category: autoData.category,
+            sellingPrice: item.sellingPrice ? parseFloat(item.sellingPrice) : 0,
+            purchasePrice: item.purchasePrice ? parseFloat(item.purchasePrice) : 0,
+            currentStock: item.currentStock ? parseInt(item.currentStock) : 0,
+            reorderLevel: item.reorderLevel ? parseInt(item.reorderLevel) : 5,
+            hsnCode: autoData.hsnCode || undefined
+          };
+        });
 
         try {
           const result = await db.partsMaster.createMany({
