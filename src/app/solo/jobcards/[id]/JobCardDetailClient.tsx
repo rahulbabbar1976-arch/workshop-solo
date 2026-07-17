@@ -53,6 +53,11 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const [billingSearchResults, setBillingSearchResults] = useState<any[]>([]);
   const [selectedBillingCustomer, setSelectedBillingCustomer] = useState<any>(jobCard.billingCustomer || null);
   const [isPushingToZoho, setIsPushingToZoho] = useState(false);
+  const [zohoSearchQuery, setZohoSearchQuery] = useState("");
+  const [zohoSearchResults, setZohoSearchResults] = useState<any[]>([]);
+  const [isSearchingZoho, setIsSearchingZoho] = useState(false);
+  const [zohoSearchError, setZohoSearchError] = useState("");
+  const [billingModalTab, setBillingModalTab] = useState<"local" | "zoho">("local");
 
   const vehicleId = jobCard.vehicle?.id || jobCard.vehicleId;
 
@@ -550,14 +555,74 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     } catch(e) { console.error(e); }
   };
 
+  const handleZohoContactSearch = async () => {
+    if (!zohoSearchQuery.trim()) {
+      setZohoSearchError("Please enter a name or GST number");
+      return;
+    }
+    setIsSearchingZoho(true);
+    setZohoSearchError("");
+    setZohoSearchResults([]);
+    try {
+      const res = await fetch(`/api/integrations/zoho/search-contact?q=${encodeURIComponent(zohoSearchQuery.trim())}`);
+      const data = await res.json();
+      if (data.success) {
+        setZohoSearchResults(data.contacts || []);
+        if (data.contacts.length === 0) {
+          setZohoSearchError("No contacts found in Zoho for this query");
+        }
+      } else {
+        setZohoSearchError(data.error || "Failed to search Zoho contacts");
+      }
+    } catch (e: any) {
+      console.error(e);
+      setZohoSearchError("Network error searching Zoho contacts");
+    } finally {
+      setIsSearchingZoho(false);
+    }
+  };
+
   const handleSaveBilling = async () => {
     setIsSaving(true);
     try {
+      let finalBillingCustomerId = selectedBillingCustomer?.id || null;
+
+      // If the selected customer is a Zoho contact, create it locally first
+      if (selectedBillingCustomer && selectedBillingCustomer.isZohoContact) {
+        const createRes = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: selectedBillingCustomer.displayName,
+            taxId: selectedBillingCustomer.taxId || null,
+            addressLine1: selectedBillingCustomer.addressLine1 || null,
+            state: selectedBillingCustomer.state || null,
+            city: selectedBillingCustomer.city || null,
+            postalCode: selectedBillingCustomer.postalCode || null,
+            primaryMobile: selectedBillingCustomer.primaryMobile || null,
+            email: selectedBillingCustomer.email || null,
+            notes: `Synced from Zoho (ID: ${selectedBillingCustomer.zohoContactId})`
+          })
+        });
+
+        if (createRes.ok) {
+          const createData = await createRes.json();
+          if (createData.customer?.id) {
+            finalBillingCustomerId = createData.customer.id;
+          } else {
+            throw new Error("Failed to retrieve created customer ID");
+          }
+        } else {
+          const errData = await createRes.json();
+          throw new Error(errData.error || "Failed to save Zoho contact to local database");
+        }
+      }
+
       const res = await fetch(`/api/jobcards/${jobCard.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          billingCustomerId: selectedBillingCustomer?.id || null,
+          billingCustomerId: finalBillingCustomerId,
           invoiceNumber: billingInvoiceNum || null
         })
       });
@@ -565,10 +630,17 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         const data = await res.json();
         if (data.jobcard) setJobCard(data.jobcard);
         setIsBillingModalOpen(false);
+        // Clear Zoho search state
+        setZohoSearchQuery("");
+        setZohoSearchResults([]);
+        setZohoSearchError("");
       } else {
         alert("Failed to save billing info");
       }
-    } catch(e) { console.error(e); } finally {
+    } catch(e: any) { 
+      console.error(e);
+      alert(e.message || "An error occurred while saving billing info");
+    } finally {
       setIsSaving(false);
     }
   };
@@ -1181,58 +1253,160 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {/* Tab Header */}
+              <div className="flex border-b border-gray-200 bg-gray-50/50">
+                <button
+                  type="button"
+                  onClick={() => setBillingModalTab("local")}
+                  className={`flex-1 py-3 text-center text-xs uppercase tracking-wider font-bold border-b-2 transition-all ${
+                    billingModalTab === "local" ? "border-orange-500 text-orange-600 font-extrabold" : "border-transparent text-gray-500"
+                  }`}
+                >
+                  Local Database
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingModalTab("zoho")}
+                  className={`flex-1 py-3 text-center text-xs uppercase tracking-wider font-bold border-b-2 transition-all ${
+                    billingModalTab === "zoho" ? "border-orange-500 text-orange-600 font-extrabold" : "border-transparent text-gray-500"
+                  }`}
+                >
+                  Zoho Books Registry
+                </button>
+              </div>
               
               <div className="p-4 overflow-y-auto space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Billing Entity</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={billingSearchQuery}
-                      onChange={(e) => handleBillingSearch(e.target.value)}
-                      placeholder="Search by name or phone..."
-                      className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-medium"
-                    />
-                    {billingSearchResults.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
-                        {billingSearchResults.map((cust: any) => (
+                {billingModalTab === "local" ? (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Billing Entity (Local)</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={billingSearchQuery}
+                        onChange={(e) => handleBillingSearch(e.target.value)}
+                        placeholder="Search by name or phone..."
+                        className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-medium"
+                      />
+                      {billingSearchResults.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+                          {billingSearchResults.map((cust: any) => (
+                            <div 
+                              key={cust.id}
+                              onClick={() => {
+                                setSelectedBillingCustomer(cust);
+                                setBillingSearchQuery(cust.displayName);
+                                setBillingSearchResults([]);
+                              }}
+                              className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-0"
+                            >
+                              <div className="font-bold text-gray-800 text-sm">{cust.displayName}</div>
+                              <div className="text-xs text-gray-500">{cust.primaryMobile || 'No phone'} {cust.taxId ? `• GST: ${cust.taxId}` : ''}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Verify GST / Search Zoho</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={zohoSearchQuery}
+                        onChange={(e) => setZohoSearchQuery(e.target.value)}
+                        placeholder="Enter GSTIN or Company Name..."
+                        className="flex-1 p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-medium text-sm"
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleZohoContactSearch(); }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleZohoContactSearch}
+                        disabled={isSearchingZoho}
+                        className="px-4 bg-orange-500 text-white font-bold text-sm rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center min-w-[80px]"
+                      >
+                        {isSearchingZoho ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
+                      </button>
+                    </div>
+
+                    {zohoSearchError && (
+                      <p className="text-xs text-red-600 font-medium mt-1.5">{zohoSearchError}</p>
+                    )}
+
+                    {zohoSearchResults.length > 0 && (
+                      <div className="mt-3 border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                        {zohoSearchResults.map((contact: any) => (
                           <div 
-                            key={cust.id}
+                            key={contact.zohoContactId}
                             onClick={() => {
-                              setSelectedBillingCustomer(cust);
-                              setBillingSearchQuery(cust.displayName);
-                              setBillingSearchResults([]);
+                              setSelectedBillingCustomer({
+                                isZohoContact: true,
+                                zohoContactId: contact.zohoContactId,
+                                displayName: contact.name,
+                                taxId: contact.gstin,
+                                addressLine1: contact.address,
+                                state: contact.state,
+                                city: contact.city,
+                                postalCode: contact.zip,
+                                primaryMobile: contact.phone,
+                                email: contact.email
+                              });
+                              setZohoSearchResults([]);
                             }}
-                            className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-0"
+                            className="p-3 hover:bg-orange-50 cursor-pointer transition-colors"
                           >
-                            <div className="font-bold text-gray-800 text-sm">{cust.displayName}</div>
-                            <div className="text-xs text-gray-500">{cust.primaryMobile || 'No phone'} {cust.taxId ? `• GST: ${cust.taxId}` : ''}</div>
+                            <div className="font-bold text-gray-800 text-sm">{contact.name}</div>
+                            {contact.gstin && (
+                              <div className="text-xs text-orange-600 font-bold mt-0.5">GSTIN: {contact.gstin}</div>
+                            )}
+                            {(contact.state || contact.address) && (
+                              <div className="text-xs text-gray-500 mt-0.5 truncate">{[contact.address, contact.state].filter(Boolean).join(', ')}</div>
+                            )}
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
-                  {selectedBillingCustomer && (
-                    <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-lg flex justify-between items-center">
+                )}
+
+                {/* Display Current/Selected Billing Customer details */}
+                {selectedBillingCustomer && (
+                  <div className="mt-2 p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <div className="text-sm font-bold text-blue-800">{selectedBillingCustomer.displayName}</div>
-                        {selectedBillingCustomer.taxId && <div className="text-xs text-blue-600">GSTIN: {selectedBillingCustomer.taxId}</div>}
+                        <div className="text-xs font-bold text-teal-600 uppercase tracking-wide">Selected Billing Details</div>
+                        <div className="text-sm font-extrabold text-gray-800 mt-1 flex items-center gap-1.5">
+                          {selectedBillingCustomer.displayName}
+                          {selectedBillingCustomer.isZohoContact && (
+                            <span className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded font-black uppercase">Zoho</span>
+                          )}
+                        </div>
+                        {selectedBillingCustomer.taxId && (
+                          <div className="text-xs font-bold text-gray-700 mt-1">GSTIN: <span className="font-mono">{selectedBillingCustomer.taxId}</span></div>
+                        )}
+                        {selectedBillingCustomer.state && (
+                          <div className="text-xs text-gray-500 mt-0.5">Place of Supply: {selectedBillingCustomer.state}</div>
+                        )}
                       </div>
-                      <button onClick={() => { setSelectedBillingCustomer(null); setBillingSearchQuery(""); }} className="text-blue-500 hover:text-blue-700">
+                      <button 
+                        onClick={() => { setSelectedBillingCustomer(null); setBillingSearchQuery(""); setZohoSearchQuery(""); }} 
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Invoice Number</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Invoice Number (Optional)</label>
                   <input
                     type="text"
                     value={billingInvoiceNum}
                     onChange={(e) => setBillingInvoiceNum(e.target.value)}
                     placeholder="e.g. INV-2023-001"
-                    className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-mono"
+                    className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:border-blue-500 font-mono text-sm"
                   />
                 </div>
               </div>
