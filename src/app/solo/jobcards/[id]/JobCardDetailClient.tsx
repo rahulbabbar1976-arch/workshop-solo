@@ -1530,9 +1530,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
             </div>
           </div>
         )}
-
       </div>
-    </div>
       {/* Photo Selection Modal */}
       {isPhotoModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-in fade-in">
