@@ -85,12 +85,9 @@ async function main() {
   const orgId = integration.orgId;
   const taxMap = await fetchZohoTaxMap(token, orgId);
 
-  // Fetch recent local purchases (e.g., from the last 7 days)
-  const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const purchases = await prisma.partPurchase.findMany({
-    where: {
-      createdAt: { gte: cutoffDate }
-    },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
     include: {
       partMaster: true
     }

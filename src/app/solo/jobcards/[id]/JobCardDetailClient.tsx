@@ -23,12 +23,16 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const [newPartName, setNewPartName] = useState("");
   const [newPartQty, setNewPartQty] = useState(1);
   const [newPartPrice, setNewPartPrice] = useState("");
+  const [newPartDiscountType, setNewPartDiscountType] = useState("percent");
+  const [newPartDiscountValue, setNewPartDiscountValue] = useState("");
   const [partSearchResults, setPartSearchResults] = useState<any[]>([]);
   const [showPartResults, setShowPartResults] = useState(false);
 
   const [newLaborName, setNewLaborName] = useState("");
   const [newLaborQty, setNewLaborQty] = useState(1);
   const [newLaborPrice, setNewLaborPrice] = useState("");
+  const [newLaborDiscountType, setNewLaborDiscountType] = useState("percent");
+  const [newLaborDiscountValue, setNewLaborDiscountValue] = useState("");
   const [laborSearchResults, setLaborSearchResults] = useState<any[]>([]);
   const [showLaborResults, setShowLaborResults] = useState(false);
 
@@ -129,7 +133,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
       if (editingPartId) {
         updatedParts = updatedParts.map(p => 
           p.id === editingPartId 
-            ? { ...p, partMasterId: masterId || p.partMasterId, partName: newPartName, quantityRequested: newPartQty, sellingPrice: parseFloat(newPartPrice) } 
+            ? { ...p, partMasterId: masterId || p.partMasterId, partName: newPartName, quantityRequested: newPartQty, sellingPrice: parseFloat(newPartPrice), discountType: newPartDiscountType, discountValue: newPartDiscountValue ? parseFloat(newPartDiscountValue) : 0 } 
             : p
         );
       } else {
@@ -138,6 +142,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           partName: newPartName,
           quantityRequested: newPartQty,
           sellingPrice: parseFloat(newPartPrice),
+          discountType: newPartDiscountType,
+          discountValue: newPartDiscountValue ? parseFloat(newPartDiscountValue) : 0,
           status: "requested"
         });
       }
@@ -163,6 +169,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         setNewPartName("");
         setNewPartQty(1);
         setNewPartPrice("");
+        setNewPartDiscountType("percent");
+        setNewPartDiscountValue("");
       } else {
         const data = await res.json();
         alert(data.error || "Failed to save part");
@@ -224,7 +232,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
       if (editingLaborId) {
         updatedLabor = updatedLabor.map(l => 
           l.id === editingLaborId 
-            ? { ...l, labourMasterId: masterId || l.labourMasterId, labourName: newLaborName, quantity: newLaborQty, sellingPrice: parseFloat(newLaborPrice) } 
+            ? { ...l, labourMasterId: masterId || l.labourMasterId, labourName: newLaborName, quantity: newLaborQty, sellingPrice: parseFloat(newLaborPrice), discountType: newLaborDiscountType, discountValue: newLaborDiscountValue ? parseFloat(newLaborDiscountValue) : 0 } 
             : l
         );
       } else {
@@ -233,6 +241,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
           labourName: newLaborName,
           quantity: newLaborQty,
           sellingPrice: parseFloat(newLaborPrice),
+          discountType: newLaborDiscountType,
+          discountValue: newLaborDiscountValue ? parseFloat(newLaborDiscountValue) : 0,
           status: "pending"
         });
       }
@@ -257,6 +267,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
         setNewLaborName("");
         setNewLaborQty(1);
         setNewLaborPrice("");
+        setNewLaborDiscountType("percent");
+        setNewLaborDiscountValue("");
       } else {
         const data = await res.json();
         alert(data.error || "Failed to save labor");
@@ -460,6 +472,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     setNewPartName(p.partName);
     setNewPartQty(p.quantityRequested || 1);
     setNewPartPrice(p.sellingPrice?.toString() || "");
+    setNewPartDiscountType(p.discountType || "percent");
+    setNewPartDiscountValue(p.discountValue?.toString() || "");
     setIsPartModalOpen(true);
   };
 
@@ -495,6 +509,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     setNewLaborName(l.labourName);
     setNewLaborQty(l.quantity || 1);
     setNewLaborPrice(l.sellingPrice?.toString() || "");
+    setNewLaborDiscountType(l.discountType || "percent");
+    setNewLaborDiscountValue(l.discountValue?.toString() || "");
     setIsLaborModalOpen(true);
   };
 
@@ -537,7 +553,10 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   const complaints = jobCard.complaints || [];
 
   const getPartTotal = (p: any) => {
-    return (p.quantityRequested || 0) * (p.sellingPrice || 0);
+    const qty = p.quantityRequested || 0;
+    const price = p.sellingPrice || 0;
+    const disc = p.discountType === 'percent' ? (price * (p.discountValue || 0) / 100) : (p.discountValue || 0);
+    return Math.max(0, (price - disc) * qty);
   };
   
   const handleBillingSearch = async (val: string) => {
@@ -646,12 +665,20 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
   };
   
   const getLaborTotal = (l: any) => {
-    return (l.quantity || 0) * (l.sellingPrice || 0);
+    const qty = l.quantity || 0;
+    const price = l.sellingPrice || 0;
+    const disc = l.discountType === 'percent' ? (price * (l.discountValue || 0) / 100) : (l.discountValue || 0);
+    return Math.max(0, (price - disc) * qty);
   };
 
   const totalParts = parts.reduce((sum: number, p: any) => sum + getPartTotal(p), 0);
   const totalLabor = labor.reduce((sum: number, l: any) => sum + getLaborTotal(l), 0);
   const grandTotal = totalParts + totalLabor;
+  const totalPartsBeforeDiscount = parts.reduce((sum: number, p: any) => sum + (p.quantityRequested || 0) * (p.sellingPrice || 0), 0);
+  const totalLaborBeforeDiscount = labor.reduce((sum: number, l: any) => sum + (l.quantity || 0) * (l.sellingPrice || 0), 0);
+  const totalBeforeDiscount = totalPartsBeforeDiscount + totalLaborBeforeDiscount;
+  const totalDiscountAmount = totalBeforeDiscount - grandTotal;
+  const discountPercentage = totalBeforeDiscount > 0 ? (totalDiscountAmount / totalBeforeDiscount) * 100 : 0;
 
   const isLocked = ["ready_for_delivery", "delivered", "closed", "ready"].includes(jobCard.status?.toLowerCase());
   
@@ -920,6 +947,11 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 <div className="flex-1 pr-2">
                   <h4 className="font-bold text-gray-800 text-sm">{p.partName}</h4>
                   <p className="text-xs text-gray-500 mt-1">Qty: {p.quantityRequested} × ₹{p.sellingPrice?.toFixed(2) || '0.00'}</p>
+                  {p.discountValue > 0 && (
+                    <p className="text-xs text-orange-500 mt-0.5 font-semibold">
+                      Discount: {p.discountType === 'percent' ? `${p.discountValue}%` : `₹${p.discountValue}`}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <p className="font-bold text-gray-900 mb-2">₹{getPartTotal(p).toFixed(2)}</p>
@@ -939,6 +971,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   setNewPartName("");
                   setNewPartQty(1);
                   setNewPartPrice("");
+                  setNewPartDiscountType("percent");
+                  setNewPartDiscountValue("");
                   setIsPartModalOpen(true);
                 }}
                 className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
@@ -956,6 +990,11 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                 <div className="flex-1 pr-2">
                   <h4 className="font-bold text-gray-800 text-sm">{l.labourName}</h4>
                   <p className="text-xs text-gray-500 mt-1">Qty: {l.quantity} × ₹{l.sellingPrice?.toFixed(2) || '0.00'}</p>
+                  {l.discountValue > 0 && (
+                    <p className="text-xs text-orange-500 mt-0.5 font-semibold">
+                      Discount: {l.discountType === 'percent' ? `${l.discountValue}%` : `₹${l.discountValue}`}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <p className="font-bold text-gray-900 mb-2">₹{getLaborTotal(l).toFixed(2)}</p>
@@ -975,6 +1014,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   setNewLaborName("");
                   setNewLaborQty(1);
                   setNewLaborPrice("");
+                  setNewLaborDiscountType("percent");
+                  setNewLaborDiscountValue("");
                   setIsLaborModalOpen(true);
                 }}
                 className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
@@ -1155,6 +1196,29 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   />
                 </div>
               </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Discount Type</label>
+                  <select
+                    value={newPartDiscountType}
+                    onChange={e => setNewPartDiscountType(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900 bg-white"
+                  >
+                    <option value="percent">Percentage (%)</option>
+                    <option value="amount">Amount (₹)</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Discount Value</label>
+                  <input 
+                    type="number" 
+                    value={newPartDiscountValue}
+                    onChange={e => setNewPartDiscountValue(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
               <button 
                 onClick={handleSavePart}
                 disabled={isSaving || !newPartName || !newPartPrice}
@@ -1221,6 +1285,29 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   />
                 </div>
               </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Discount Type</label>
+                  <select
+                    value={newLaborDiscountType}
+                    onChange={e => setNewLaborDiscountType(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900 bg-white"
+                  >
+                    <option value="percent">Percentage (%)</option>
+                    <option value="amount">Amount (₹)</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Discount Value</label>
+                  <input 
+                    type="number" 
+                    value={newLaborDiscountValue}
+                    onChange={e => setNewLaborDiscountValue(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
               <button 
                 onClick={handleSaveLabor}
                 disabled={isSaving || !newLaborName || !newLaborPrice}
@@ -1235,14 +1322,27 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
 
       {/* Sticky Bottom Total Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] p-4 md:hidden z-30">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-2">
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Est. Total</p>
-            <p className="text-2xl font-black text-orange-500">₹{grandTotal.toFixed(2)}</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Subtotal</p>
+            <p className="text-sm font-semibold text-gray-700">₹{totalBeforeDiscount.toFixed(2)}</p>
           </div>
-          <Link href={`/solo/jobcards/${jobCard.id}/billing`} className="bg-gray-900 text-white px-6 py-3 rounded font-bold shadow-md hover:bg-gray-800 transition-colors">
+          {totalDiscountAmount > 0 && (
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Discount ({discountPercentage.toFixed(1)}%)</p>
+              <p className="text-sm font-bold text-orange-500">- ₹{totalDiscountAmount.toFixed(2)}</p>
+            </div>
+          )}
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">Est. Total</p>
+            <p className="text-xl font-black text-gray-900">₹{grandTotal.toFixed(2)}</p>
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Link href={`/solo/jobcards/${jobCard.id}/billing`} className="bg-gray-900 text-white w-full text-center px-6 py-3 rounded font-bold shadow-md hover:bg-gray-800 transition-colors">
             Pay Now
           </Link>
+        </div>
           {/* Billing Modal */}
         {isBillingModalOpen && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in">
