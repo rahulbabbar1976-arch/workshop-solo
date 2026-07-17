@@ -98,7 +98,11 @@ export async function POST(req: Request) {
           { keywords: ['shock', 'strut', 'suspension', 'arm', 'bush'], family: 'Suspension', hsn: '8708' },
           { keywords: ['belt', 'pulley', 'timing'], family: 'Belts & Drives', hsn: '4010' },
           { keywords: ['wiper', 'blade'], family: 'Wipers', hsn: '8512' },
-          { keywords: ['bearing', 'hub'], family: 'Bearings', hsn: '8482' }
+          { keywords: ['bearing', 'hub'], family: 'Bearings', hsn: '8482' },
+          { keywords: ['sensor', 'oxygen', 'o2', 'mass air', 'maf'], family: 'Sensors', hsn: '9031' },
+          { keywords: ['switch', 'relay'], family: 'Switches', hsn: '8536' },
+          { keywords: ['ac', 'a/c', 'air conditioner', 'compressor', 'condenser'], family: 'Air Conditioners', hsn: '8415' },
+          { keywords: ['mat', 'cover', 'perfume', 'accessory', 'polish'], family: 'Accessories', hsn: '8708' }
         ];
 
         const getCategoryAndHsn = (name: string, desc: string, providedCategory?: string, providedHsn?: string) => {
