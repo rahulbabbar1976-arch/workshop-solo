@@ -209,10 +209,11 @@ export default function PartsMasterPage() {
       // Load current key
       const profileRes = await fetch('/api/profile');
       const data = await profileRes.json();
-      const apiKey = data.profile?.geminiApiKey;
+      const openRouterKey = data.profile?.openRouterApiKey;
+      const geminiKey = data.profile?.geminiApiKey;
 
-      if (!apiKey) {
-        setAiReportContent("⚠️ Gemini API Key not configured. Please add your key in Owner Settings to use AI features.");
+      if (!openRouterKey && !geminiKey) {
+        setAiReportContent("⚠️ AI API Key not configured. Please add an OpenRouter or Gemini key in Owner Settings to use AI features.");
         setIsGeneratingReport(false);
         return;
       }
@@ -237,22 +238,40 @@ Please include:
 
 Format your response in clean, beautiful Markdown with professional bold headers. Do not output JSON, do not include raw code blocks. Keep it concise.`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          }),
-        }
-      );
+      let textResponse = "";
 
-      const result = await response.json();
-      const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (openRouterKey) {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openRouterKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        const result = await response.json();
+        textResponse = result.choices?.[0]?.message?.content;
+      } else if (geminiKey) {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+            }),
+          }
+        );
+        const result = await response.json();
+        textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      }
+
       setAiReportContent(textResponse || "Failed to generate report. Please try again.");
     } catch (err: any) {
-      setAiReportContent(`Failed to contact Gemini API: ${err.message}`);
+      setAiReportContent(`Failed to contact AI API: ${err.message}`);
     } finally {
       setIsGeneratingReport(false);
     }
