@@ -203,7 +203,7 @@ export default function AIImportPage() {
   return (
     <div className="content bg-gray-50 min-h-screen pb-32">
       <div className="bg-white px-5 pt-8 pb-4 shadow-sm relative z-10 flex items-center border-b border-gray-200">
-        <Link href="/solo/inventory" className="mr-3 p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+        <Link href="/solo/inventory/parts" className="mr-3 p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
           <ArrowLeft className="w-6 h-6" />
         </Link>
         <div>
