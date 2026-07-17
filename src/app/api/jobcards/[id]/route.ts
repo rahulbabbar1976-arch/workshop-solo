@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { predictAndSaveHsn } from '@/lib/hsn-predictor';
 
 export async function GET(
   request: Request,
@@ -168,6 +169,47 @@ export async function PUT(
       lmList.forEach(lm => {
         if (lm.hsnCode) labourHsnMap.set(lm.id, lm.hsnCode);
       });
+    }
+
+    // 0.5 Run AI Prediction for items that are missing HSN codes
+    if (parts && Array.isArray(parts)) {
+      for (const p of parts) {
+        if (p.isDeleted) continue;
+        const hasHsn = p.hsnCode || (p.partMasterId ? partsHsnMap.get(p.partMasterId) : null);
+        if (!hasHsn && p.partName) {
+          try {
+            console.log(`AI predicting HSN for part: "${p.partName}"`);
+            const prediction = await predictAndSaveHsn(p.partName, false, p.partMasterId);
+            if (p.partMasterId) {
+              partsHsnMap.set(p.partMasterId, prediction.hsnCode);
+            } else {
+              p.hsnCode = prediction.hsnCode; // save on the line directly if no master record
+            }
+          } catch (aiErr) {
+            console.error('Failed to predict HSN for part:', aiErr);
+          }
+        }
+      }
+    }
+
+    if (labour && Array.isArray(labour)) {
+      for (const l of labour) {
+        if (l.isDeleted) continue;
+        const hasHsn = l.hsnCode || (l.labourMasterId ? labourHsnMap.get(l.labourMasterId) : null);
+        if (!hasHsn && l.labourName) {
+          try {
+            console.log(`AI predicting SAC for labor: "${l.labourName}"`);
+            const prediction = await predictAndSaveHsn(l.labourName, true, l.labourMasterId);
+            if (l.labourMasterId) {
+              labourHsnMap.set(l.labourMasterId, prediction.hsnCode);
+            } else {
+              l.hsnCode = prediction.hsnCode; // save on the line directly if no master record
+            }
+          } catch (aiErr) {
+            console.error('Failed to predict SAC for labor:', aiErr);
+          }
+        }
+      }
     }
 
     // 1. Transactional Update
