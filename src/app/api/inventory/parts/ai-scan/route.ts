@@ -3,16 +3,21 @@ import prisma from '@/lib/db';
 
 export const maxDuration = 60;
 
-const INVOICE_PROMPT = `Analyze this purchase invoice/bill image. Extract all line items representing automotive parts, oils, filters, or consumables.
-For each item extract:
-- partName: the product/part name
-- partNumber: item/part code or SKU (empty string if not found)
-- quantity: the quantity purchased (number)
-- purchasePrice: unit price excluding GST/tax (number)
-- gstRate: GST percentage rate (number, e.g. 18 for 18%)
-- hsnCode: HSN/SAC code (empty string if not found, but try to guess from part name)
+const INVOICE_PROMPT = `Analyze this purchase invoice/bill image. Extract all supplier details and line items representing automotive parts, oils, filters, or consumables.
+Extract:
+- supplierName: name of the seller/supplier/merchant (string or null)
+- supplierGstin: GST number of the seller/supplier (15-character alphanumeric, e.g. 07AAAAA1111A1Z1, string or null)
+- billNumber: invoice/bill number (string or null)
+- paymentMode: payment type if mentioned, e.g. Cash, UPI, Credit, Bank Transfer (string or null)
+- items: array of parts representing:
+  - partName: the product/part name (string)
+  - partNumber: item/part code or SKU (string, empty if not found)
+  - quantity: the quantity purchased (number)
+  - purchasePrice: unit price excluding GST/tax (number)
+  - gstRate: GST percentage rate (number, e.g. 18 for 18%)
+  - hsnCode: HSN/SAC code (string, empty if not found)
 
-If HSN/GST is missing, make an educated guess:
+If HSN/GST for items is missing, make an educated guess:
 - Engine Oil → HSN 2710, 18% GST
 - Oil Filter → HSN 8421, 18% GST
 - Air Filter → HSN 8421, 18% GST
@@ -24,7 +29,22 @@ If HSN/GST is missing, make an educated guess:
 - General Parts/Labour → HSN 9987, 18% GST
 
 Return ONLY valid JSON with this exact structure, no markdown, no extra text:
-{"items": [{"partName": string, "partNumber": string, "quantity": number, "purchasePrice": number, "gstRate": number, "hsnCode": string}]}`;
+{
+  "supplierName": string | null,
+  "supplierGstin": string | null,
+  "billNumber": string | null,
+  "paymentMode": string | null,
+  "items": [
+    {
+      "partName": string,
+      "partNumber": string,
+      "quantity": number,
+      "purchasePrice": number,
+      "gstRate": number,
+      "hsnCode": string
+    }
+  ]
+}`;
 
 // --- OpenRouter (free, no billing required) ---
 async function tryOpenRouter(apiKey: string, imageData: string, mimeType: string): Promise<string> {
@@ -124,7 +144,7 @@ function parseAIText(text: string) {
   const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('No JSON found in response');
   const parsed = JSON.parse(jsonMatch[0]);
-  return parsed.items || [];
+  return parsed;
 }
 
 export async function POST(request: Request) {
@@ -133,8 +153,15 @@ export async function POST(request: Request) {
 
     // --- PATH 1: OCR text from client (last resort fallback) ---
     if (ocrText && !base64Image) {
-      const parsed = parseOCRTextToItems(ocrText);
-      return NextResponse.json({ success: true, items: parsed, method: 'ocr' });
+      const parsedItems = parseOCRTextToItems(ocrText);
+      const scanData = {
+        supplierName: '',
+        supplierGstin: '',
+        billNumber: '',
+        paymentMode: 'Cash',
+        items: parsedItems
+      };
+      return NextResponse.json({ success: true, scanData, method: 'ocr' });
     }
 
     if (!base64Image || !mimeType) {
@@ -149,8 +176,8 @@ export async function POST(request: Request) {
     if (openRouterKey) {
       try {
         const aiText = await tryOpenRouter(openRouterKey, base64Image, mimeType);
-        const items = parseAIText(aiText);
-        return NextResponse.json({ success: true, items, method: 'openrouter' });
+        const scanData = parseAIText(aiText);
+        return NextResponse.json({ success: true, scanData, method: 'openrouter' });
       } catch (e: any) {
         console.warn('OpenRouter failed, falling back to Gemini:', e.message);
       }
@@ -160,8 +187,8 @@ export async function POST(request: Request) {
     if (geminiKey) {
       try {
         const aiText = await tryGemini(geminiKey, base64Image, mimeType);
-        const items = parseAIText(aiText);
-        return NextResponse.json({ success: true, items, method: 'gemini' });
+        const scanData = parseAIText(aiText);
+        return NextResponse.json({ success: true, scanData, method: 'gemini' });
       } catch (e: any) {
         console.warn('Gemini failed:', e.message);
       }

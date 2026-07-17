@@ -35,7 +35,9 @@ export default function AIImportPage() {
   const [scanMethod, setScanMethod] = useState<string>("");
   const [items, setItems] = useState<AIItem[]>([]);
   const [supplierName, setSupplierName] = useState("");
+  const [supplierGstin, setSupplierGstin] = useState("");
   const [billNumber, setBillNumber] = useState("");
+  const [paymentMode, setPaymentMode] = useState("Cash");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [markupPercent, setMarkupPercent] = useState(30);
@@ -78,6 +80,10 @@ export default function AIImportPage() {
     setError(null);
     setInfoMsg(null);
     setItems([]);
+    setSupplierName("");
+    setSupplierGstin("");
+    setBillNumber("");
+    setPaymentMode("Cash");
     setScanMethod("");
 
     try {
@@ -100,10 +106,14 @@ export default function AIImportPage() {
 
       const data = await res.json();
 
-      if (data.success && data.items?.length > 0) {
+      if (data.success && data.scanData) {
         // Gemini worked!
         setScanMethod(data.method || "gemini");
-        setItems(processItems(data.items));
+        setSupplierName(data.scanData.supplierName || "");
+        setSupplierGstin(data.scanData.supplierGstin || "");
+        setBillNumber(data.scanData.billNumber || "");
+        setPaymentMode(data.scanData.paymentMode || "Cash");
+        setItems(processItems(data.scanData.items || []));
         return;
       }
 
@@ -126,8 +136,12 @@ export default function AIImportPage() {
         });
 
         const ocrData = await ocrRes.json();
-        if (ocrData.success && ocrData.items?.length > 0) {
-          setItems(processItems(ocrData.items));
+        if (ocrData.success && ocrData.scanData) {
+          setSupplierName(ocrData.scanData.supplierName || "");
+          setSupplierGstin(ocrData.scanData.supplierGstin || "");
+          setBillNumber(ocrData.scanData.billNumber || "");
+          setPaymentMode(ocrData.scanData.paymentMode || "Cash");
+          setItems(processItems(ocrData.scanData.items || []));
         } else {
           throw new Error("Could not extract items from the invoice. Please check the image quality and try again.");
         }
@@ -158,12 +172,12 @@ export default function AIImportPage() {
       const res = await fetch("/api/inventory/parts/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, supplierName, billNumber }),
+        body: JSON.stringify({ items, supplierName, billNumber, supplierGstin, paymentMode }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
-      alert(`Successfully saved ${data.count} items to inventory!`);
+      alert(`Successfully saved ${data.count} items to inventory! ${data.zohoSync ? 'Also uploaded to Zoho Books!' : ''}`);
       router.push("/solo/inventory");
     } catch (err: any) {
       alert(err.message || "Failed to save to database");
@@ -256,15 +270,28 @@ export default function AIImportPage() {
         {items.length > 0 && (
           <div className="space-y-4 animate-in slide-in-from-bottom-8">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">Invoice Details</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">Invoice & Supplier Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Supplier Name</label>
-                  <input type="text" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none text-sm" placeholder="Optional" />
+                  <input type="text" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none text-sm" placeholder="e.g. Bosch Car Parts" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Supplier GSTIN</label>
+                  <input type="text" value={supplierGstin} onChange={(e) => setSupplierGstin(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none text-sm" placeholder="e.g. 07AAAAA1111A1Z1" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Bill / Invoice No</label>
-                  <input type="text" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none text-sm" placeholder="Optional" />
+                  <input type="text" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none text-sm" placeholder="e.g. INV-10293" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Payment Mode</label>
+                  <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 outline-none text-sm">
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Credit">Credit</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                  </select>
                 </div>
               </div>
             </div>
