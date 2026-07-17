@@ -144,6 +144,32 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Historical legacy job cards are read-only' }, { status: 400 });
     }
 
+    // 0. Pre-fetch HSN codes for parts and labor before starting the transaction
+    const partMasterIds = (parts || []).map((p: any) => p.partMasterId).filter(Boolean);
+    const labourMasterIds = (labour || []).map((l: any) => l.labourMasterId).filter(Boolean);
+
+    const partsHsnMap = new Map<string, string>();
+    if (partMasterIds.length > 0) {
+      const pmList = await prisma.partsMaster.findMany({
+        where: { id: { in: partMasterIds } },
+        select: { id: true, hsnCode: true }
+      });
+      pmList.forEach(pm => {
+        if (pm.hsnCode) partsHsnMap.set(pm.id, pm.hsnCode);
+      });
+    }
+
+    const labourHsnMap = new Map<string, string>();
+    if (labourMasterIds.length > 0) {
+      const lmList = await prisma.labourMaster.findMany({
+        where: { id: { in: labourMasterIds } },
+        select: { id: true, hsnCode: true }
+      });
+      lmList.forEach(lm => {
+        if (lm.hsnCode) labourHsnMap.set(lm.id, lm.hsnCode);
+      });
+    }
+
     // 1. Transactional Update
     const result = await prisma.$transaction(async (tx) => {
       
@@ -285,8 +311,7 @@ export async function PUT(
             
             let finalHsn = p.hsnCode;
             if (finalHsn === undefined && p.partMasterId) {
-              const pm = await tx.partsMaster.findUnique({ where: { id: p.partMasterId } });
-              finalHsn = pm?.hsnCode || undefined;
+              finalHsn = partsHsnMap.get(p.partMasterId) || undefined;
             }
 
             await tx.jobCardPart.update({
@@ -335,8 +360,7 @@ export async function PUT(
             // Create new part line
             let finalHsn = p.hsnCode;
             if (!finalHsn && p.partMasterId) {
-              const pm = await tx.partsMaster.findUnique({ where: { id: p.partMasterId } });
-              finalHsn = pm?.hsnCode || null;
+              finalHsn = partsHsnMap.get(p.partMasterId) || null;
             }
 
             const newPart = await tx.jobCardPart.create({
@@ -403,8 +427,7 @@ export async function PUT(
             // Update existing labour line
             let finalHsn = l.hsnCode;
             if (finalHsn === undefined && l.labourMasterId) {
-              const lm = await tx.labourMaster.findUnique({ where: { id: l.labourMasterId } });
-              finalHsn = lm?.hsnCode || undefined;
+              finalHsn = labourHsnMap.get(l.labourMasterId) || undefined;
             }
 
             await tx.jobCardLabour.update({
@@ -424,8 +447,7 @@ export async function PUT(
             // Create new labour line
             let finalHsn = l.hsnCode;
             if (!finalHsn && l.labourMasterId) {
-              const lm = await tx.labourMaster.findUnique({ where: { id: l.labourMasterId } });
-              finalHsn = lm?.hsnCode || '9987';
+              finalHsn = labourHsnMap.get(l.labourMasterId) || '9987';
             }
 
             await tx.jobCardLabour.create({
