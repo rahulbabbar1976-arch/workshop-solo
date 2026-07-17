@@ -63,7 +63,7 @@ export function TopNav() {
             <Download className="w-4 h-4 mr-1" /> Install App
           </button>
         )}
-        <div className="relative">
+        <div className="relative md:hidden">
           <div 
             className="avatar cursor-pointer overflow-hidden bg-orange-100 text-orange-600 font-bold flex items-center justify-center w-10 h-10 rounded-full"
             onClick={() => setMenuOpen(!menuOpen)}
