@@ -92,8 +92,8 @@ export async function POST(req: Request) {
           { keywords: ['coolant'], family: 'Coolant', hsn: '3820' },
           { keywords: ['oil', 'lubricant', 'grease', 'fluid'], family: 'Lubricants', hsn: '2710' },
           { keywords: ['pad', 'shoe', 'rotor', 'caliper', 'brake', 'brk'], family: 'Brakes', hsn: '8708' },
-          { keywords: ['battery'], regex: /\bdin\b/i, family: 'Batteries', hsn: '8507' },
-          { keywords: ['tire', 'tyre'], regex: /\b\d{3}[/\s]\d{2}[/\s]?r/i, family: 'Tires', hsn: '4011' },
+          { keywords: ['battery'], regex: /\bdin\b/i, family: 'Battery', hsn: '8507' },
+          { keywords: ['tire', 'tyre'], regex: /\b\d{3}[/\s]\d{2}[/\s]?r/i, family: 'Tyres', hsn: '4011' },
           { keywords: ['bulb', 'light', 'lamp', 'led'], family: 'Lights', hsn: '8512' },
           { keywords: ['spark plug', 'plug', 'coil'], family: 'Ignition', hsn: '8511' },
           { keywords: ['shock', 'strut', 'suspension', 'arm', 'bush'], family: 'Suspension', hsn: '8708' },
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
           { keywords: ['switch', 'relay', 'fuse'], family: 'Electricals', hsn: '8536' },
           { keywords: ['ac', 'a/c', 'air conditioner', 'compressor', 'condenser'], family: 'Air Conditioners', hsn: '8415' },
           { keywords: ['fuel'], family: 'Fuel System', hsn: '8708' },
-          { keywords: ['engine'], family: 'Engine', hsn: '8409' },
+          { keywords: ['engine'], family: 'Engine Parts', hsn: '8409' },
           { keywords: ['mat', 'cover', 'perfume', 'accessory', 'polish'], family: 'Accessories', hsn: '8708' }
         ];
 

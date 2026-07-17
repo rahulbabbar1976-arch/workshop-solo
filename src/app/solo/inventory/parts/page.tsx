@@ -37,6 +37,11 @@ const CATEGORIES = [
   "Fuel System",
   "Engine Parts",
   "Gearbox Parts",
+  "Suspension",
+  "Belts & Drives",
+  "Bearings",
+  "Wipers",
+  "Ignition",
   "Others"
 ];
 
