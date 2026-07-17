@@ -125,8 +125,29 @@ export async function POST(request: Request) {
     const pMode = paymentMode || 'Cash';
     const bNumber = billNumber || `BILL-${Date.now()}`;
 
+    // Calculate total bill amount locally (including GST)
+    let localBillTotal = 0;
+    for (const item of items) {
+      const qty = parseFloat(item.quantity) || 1;
+      const price = parseFloat(item.purchasePrice) || 0;
+      const gst = parseFloat(item.gstRate) || 18;
+      localBillTotal += qty * price * (1 + gst / 100);
+    }
+
     // 1. Save locally inside transactional update
     const result = await prisma.$transaction(async (tx) => {
+      // Create parent SupplierBill
+      const bill = await tx.supplierBill.create({
+        data: {
+          billNumber: bNumber,
+          supplierName: sName,
+          supplierGstin: sGstin || null,
+          totalAmount: localBillTotal,
+          paymentMode: pMode,
+          zohoSyncStatus: 'pending'
+        }
+      });
+
       const createdMasters = [];
 
       for (const item of items) {
@@ -172,7 +193,7 @@ export async function POST(request: Request) {
             }
           });
 
-          // Record PartPurchase transaction
+          // Record PartPurchase transaction linked to SupplierBill
           await tx.partPurchase.create({
             data: {
               partMasterId: master.id,
@@ -182,13 +203,14 @@ export async function POST(request: Request) {
               supplierContact: sGstin || null,
               purchasePrice: parseFloat(item.purchasePrice) || 0,
               quantityBought: parseFloat(item.quantity) || 0,
-              paymentMode: pMode
+              paymentMode: pMode,
+              supplierBillId: bill.id
             }
           });
         }
       }
 
-      return createdMasters;
+      return { count: createdMasters.length, billId: bill.id };
     });
 
     // 2. Upload to Zoho Books (if connected)
@@ -263,22 +285,30 @@ export async function POST(request: Request) {
             })
           });
           const paymentData = await paymentRes.json();
-          if (paymentData.code === 0) {
-            console.log(`Payment of ${billTotal} successfully recorded for Zoho Bill ${billId}`);
-          } else {
-            console.warn(`Zoho payment recording failed: ${paymentData.message}`);
-          }
+          
+          // Update local SupplierBill record
+          await prisma.supplierBill.update({
+            where: { id: result.billId },
+            data: {
+              zohoSyncStatus: 'synced',
+              zohoBillId: billId
+            }
+          });
 
           zohoSync = true;
         } else {
           console.error(`Zoho Bill creation failed: ${billData.message}`);
+          await prisma.supplierBill.update({
+            where: { id: result.billId },
+            data: { zohoSyncStatus: 'failed' }
+          });
         }
       }
     } catch (zohoErr) {
       console.error('Zoho Books bill upload error:', zohoErr);
     }
 
-    return NextResponse.json({ success: true, count: result.length, zohoSync });
+    return NextResponse.json({ success: true, count: result.count, zohoSync });
   } catch (err: any) {
     console.error('Bulk Import Error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

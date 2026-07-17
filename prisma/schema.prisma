@@ -416,6 +416,25 @@ model PartPurchase {
   paymentMode     String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  supplierBillId  String?
+  supplierBill    SupplierBill? @relation(fields: [supplierBillId], references: [id], onDelete: Cascade)
+}
+
+model SupplierBill {
+  id              String         @id @default(uuid())
+  billNumber      String         @unique
+  supplierName    String
+  supplierGstin   String?
+  billDate        DateTime       @default(now())
+  totalAmount     Float          @default(0)
+  paymentMode     String         @default("Cash")
+  zohoSyncStatus  String         @default("pending") // pending / synced / failed
+  zohoBillId      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  items           PartPurchase[]
 }
 
 model LabourMaster {

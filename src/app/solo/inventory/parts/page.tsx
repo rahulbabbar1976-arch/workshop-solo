@@ -311,12 +311,13 @@ Format your response in clean, beautiful Markdown with professional bold headers
                     >
                       <Camera className="w-4 h-4 mr-3 text-teal-600" /> AI Bill Scanner
                     </Link>
-                    <button 
-                      onClick={() => { setIsMenuOpen(false); setIsInvoiceHistoryOpen(true); }}
-                      className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 font-medium text-left"
+                    <Link 
+                      href="/solo/inventory/parts/bills"
+                      className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 font-medium"
+                      onClick={() => setIsMenuOpen(false)}
                     >
                       <FileText className="w-4 h-4 mr-3 text-teal-600" /> Uploaded Invoices
-                    </button>
+                    </Link>
                     <button 
                       onClick={() => { setIsMenuOpen(false); setIsQuickStockOpen(true); }}
                       className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 font-medium text-left"
