@@ -44,8 +44,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         return NextResponse.json({ success: false, error: 'Cannot delete part that has been used in a jobcard' }, { status: 400 });
     }
 
-    // Delete purchases first
+    // Delete purchases and inventory ledger entries first to satisfy foreign key constraints
     await prisma.partPurchase.deleteMany({ where: { partMasterId: id } });
+    await prisma.inventoryLedger.deleteMany({ where: { partMasterId: id } });
     await prisma.partsMaster.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
