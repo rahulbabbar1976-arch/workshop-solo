@@ -178,7 +178,7 @@ export default function AIImportPage() {
       if (!data.success) throw new Error(data.error);
 
       alert(`Successfully saved ${data.count} items to inventory! ${data.zohoSync ? 'Also uploaded to Zoho Books!' : ''}`);
-      router.push("/solo/inventory");
+      router.push("/solo/inventory/parts");
     } catch (err: any) {
       alert(err.message || "Failed to save to database");
     } finally {
