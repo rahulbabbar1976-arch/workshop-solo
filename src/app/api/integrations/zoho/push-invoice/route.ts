@@ -44,13 +44,16 @@ async function getOrCreateZohoContact(token: string, orgId: string, billingInfo:
     'Content-Type': 'application/json',
   };
 
-  // Search by name first
+  // Search by name first (using search_text is fuzzy, so we check for an exact match in results)
   const searchRes = await fetch(
     `${ZOHO_BOOKS_BASE}/contacts?organization_id=${orgId}&search_text=${encodeURIComponent(billingInfo.name)}&contact_type=customer`,
     { headers }
   );
   const searchData = await searchRes.json();
-  const existing = searchData.contacts?.[0];
+  const contacts: any[] = searchData.contacts || [];
+  const existing = contacts.find(
+    (c: any) => c.contact_name?.toLowerCase().trim() === billingInfo.name.toLowerCase().trim()
+  );
   if (existing) return existing.contact_id;
 
   // Create new contact
