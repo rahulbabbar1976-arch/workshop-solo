@@ -351,6 +351,22 @@ Format your response in clean, beautiful Markdown with professional bold headers
           />
         </div>
 
+        {/* Action Buttons: Scanner & Invoices */}
+        <div className="grid grid-cols-2 gap-3">
+          <Link 
+            href="/solo/inventory/parts/import" 
+            className="py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl shadow-sm hover:from-orange-600 hover:to-amber-600 transition-all flex items-center justify-center text-xs"
+          >
+            <Camera className="w-4 h-4 mr-2" /> AI Bill Scanner
+          </Link>
+          <Link 
+            href="/solo/inventory/parts/bills" 
+            className="py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl shadow-sm hover:bg-gray-50 transition-all flex items-center justify-center text-xs"
+          >
+            <FileText className="w-4 h-4 mr-2 text-teal-600" /> Scanned Invoices
+          </Link>
+        </div>
+
         {/* Categories Horizontal Scroll Selector */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center">
