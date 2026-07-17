@@ -207,9 +207,9 @@ export default function PartsMasterPage() {
 
     try {
       // Load current key
-      const profileRes = await fetch('/api/settings');
-      const profile = await profileRes.json();
-      const apiKey = profile?.geminiApiKey;
+      const profileRes = await fetch('/api/profile');
+      const data = await profileRes.json();
+      const apiKey = data.profile?.geminiApiKey;
 
       if (!apiKey) {
         setAiReportContent("⚠️ Gemini API Key not configured. Please add your key in Owner Settings to use AI features.");
