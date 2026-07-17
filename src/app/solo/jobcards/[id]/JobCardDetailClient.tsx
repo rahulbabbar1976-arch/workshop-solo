@@ -312,6 +312,34 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
     }
   };
 
+  const handleDeleteZohoEstimate = async () => {
+    if (!confirm("Are you sure you want to delete and unlink this Zoho estimate? This will remove it from Zoho Books and allow you to regenerate it.")) return;
+    setIsPushingToZoho(true);
+    try {
+      const res = await fetch("/api/integrations/zoho/push-invoice", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobCardId: jobCard.id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setJobCard({
+          ...jobCard,
+          zohoInvoiceId: null,
+          zohoInvoiceNumber: null,
+          zohoInvoiceUrl: null
+        });
+      } else {
+        alert("Zoho Delete Failed: " + (data.error || "Unknown error"));
+      }
+    } catch (e) {
+      alert("Network error deleting Zoho estimate");
+      console.error(e);
+    } finally {
+      setIsPushingToZoho(false);
+    }
+  };
+
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -719,16 +747,43 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
               <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Invoice & Accounting</h3>
                 {jobCard.zohoInvoiceId ? (
-                  <div className="flex flex-col space-y-2">
-                    <div className="text-sm text-emerald-600 font-bold flex items-center">
-                      <CheckCircle className="w-4 h-4 mr-1" /> Synced to Zoho Books
+                  <div className="flex flex-col space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-emerald-600 font-bold flex items-center">
+                        <CheckCircle className="w-4 h-4 mr-1" /> Synced to Zoho Books
+                      </div>
+                      <button
+                        onClick={handleDeleteZohoEstimate}
+                        disabled={isPushingToZoho}
+                        className="text-xs font-bold text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors flex items-center"
+                        title="Delete this Estimate from Zoho Books and unlink this Job Card"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                      </button>
                     </div>
                     {jobCard.zohoInvoiceNumber && <div className="text-sm text-gray-700">Estimate #: <span className="font-mono">{jobCard.zohoInvoiceNumber}</span></div>}
-                    {jobCard.zohoInvoiceUrl && (
-                      <a href={jobCard.zohoInvoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm font-medium">
-                        View Estimate in Zoho ↗
-                      </a>
-                    )}
+                    <div className="flex gap-2 pt-1">
+                      {jobCard.zohoInvoiceUrl && (
+                        <a 
+                          href={jobCard.zohoInvoiceUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="flex-1 text-center py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
+                        >
+                          View Estimate ↗
+                        </a>
+                      )}
+                      {jobCard.zohoInvoiceUrl && (
+                        <a 
+                          href={jobCard.zohoInvoiceUrl.replace('/quotes/', '/quotes/')} // Zoho's estimate URL allows direct viewing and editing
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="flex-1 text-center py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Edit2 className="w-3 h-3" /> Edit in Zoho
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <button 

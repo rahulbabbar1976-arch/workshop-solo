@@ -318,3 +318,64 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+// DELETE /api/integrations/zoho/push-invoice
+// Unlinks and deletes the estimate from Zoho Books, reset fields in our db
+export async function DELETE(request: Request) {
+  try {
+    const { jobCardId } = await request.json();
+
+    if (!jobCardId) {
+      return NextResponse.json({ success: false, error: 'jobCardId required' }, { status: 400 });
+    }
+
+    const integration = await prisma.zohoIntegration.findFirst();
+    if (!integration?.isConnected) {
+      return NextResponse.json({ success: false, error: 'Zoho is not connected.' }, { status: 403 });
+    }
+
+    const jobCard = await prisma.jobCard.findUnique({
+      where: { id: jobCardId }
+    });
+
+    if (!jobCard) {
+      return NextResponse.json({ success: false, error: 'Job card not found' }, { status: 404 });
+    }
+
+    if (jobCard.zohoInvoiceId) {
+      const token = await getValidToken(integration);
+      
+      // Delete from Zoho Books
+      const deleteRes = await fetch(
+        `${ZOHO_BOOKS_BASE}/estimates/${jobCard.zohoInvoiceId}?organization_id=${integration.orgId}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Zoho-oauthtoken ${token}` }
+        }
+      );
+      const deleteData = await deleteRes.json();
+      
+      // Note: If Zoho returns "Estimate not found" (code 1002 or similar) or success (code 0), we still proceed to unlink.
+      if (deleteData.code !== 0 && deleteData.code !== 1002) {
+        console.warn('Zoho estimate delete warning:', deleteData);
+      }
+    }
+
+    // Reset Zoho fields on local Job Card
+    await prisma.jobCard.update({
+      where: { id: jobCardId },
+      data: {
+        zohoSyncStatus: null,
+        zohoInvoiceId: null,
+        zohoInvoiceNumber: null,
+        zohoInvoiceUrl: null
+      }
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error('Zoho delete error:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
