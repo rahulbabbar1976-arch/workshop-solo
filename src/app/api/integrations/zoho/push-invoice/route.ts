@@ -221,7 +221,7 @@ export async function POST(request: Request) {
       const taxId = getTaxId(taxRate);
       return {
         name: part.partName,
-        item_type: 'goods',
+        product_type: 'goods',
         hsn_or_sac: part.hsnCode || '',
         quantity: qty,
         rate,
@@ -239,7 +239,7 @@ export async function POST(request: Request) {
       const taxId = getTaxId(taxRate);
       return {
         name: labour.labourName,
-        item_type: 'services',
+        product_type: 'services',
         hsn_or_sac: labour.hsnCode || '9987',
         quantity: qty,
         rate,

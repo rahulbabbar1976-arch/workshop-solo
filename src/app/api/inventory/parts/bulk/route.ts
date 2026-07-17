@@ -222,6 +222,7 @@ export async function POST(request: Request) {
             rate: price,
             quantity: qty,
             hsn_or_sac: item.hsnCode || '',
+            product_type: 'goods',
             ...(taxId ? { tax_id: taxId } : {})
           };
         });
