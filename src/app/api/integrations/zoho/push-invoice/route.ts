@@ -44,19 +44,37 @@ async function getOrCreateZohoContact(token: string, orgId: string, billingInfo:
     'Content-Type': 'application/json',
   };
 
-  // Search by name first (using search_text is fuzzy, so we check for an exact match in results)
-  const searchRes = await fetch(
-    `${ZOHO_BOOKS_BASE}/contacts?organization_id=${orgId}&search_text=${encodeURIComponent(billingInfo.name)}&contact_type=customer`,
-    { headers }
-  );
-  const searchData = await searchRes.json();
-  const contacts: any[] = searchData.contacts || [];
-  const existing = contacts.find(
-    (c: any) => c.contact_name?.toLowerCase().trim() === billingInfo.name.toLowerCase().trim()
-  );
-  if (existing) return existing.contact_id;
+  const cleanName = billingInfo.name.toLowerCase().trim();
 
-  // Create new contact
+  // 1. Try search by contact_name filter first
+  try {
+    const filterRes = await fetch(
+      `${ZOHO_BOOKS_BASE}/contacts?organization_id=${orgId}&contact_name=${encodeURIComponent(billingInfo.name)}`,
+      { headers }
+    );
+    const filterData = await filterRes.json();
+    const contacts: any[] = filterData.contacts || [];
+    const existing = contacts.find((c: any) => c.contact_name?.toLowerCase().trim() === cleanName);
+    if (existing) return existing.contact_id;
+  } catch (e) {
+    console.error('Zoho contact filter search failed:', e);
+  }
+
+  // 2. Try fuzzy search fallback
+  try {
+    const searchRes = await fetch(
+      `${ZOHO_BOOKS_BASE}/contacts?organization_id=${orgId}&search_text=${encodeURIComponent(billingInfo.name)}&contact_type=customer`,
+      { headers }
+    );
+    const searchData = await searchRes.json();
+    const contacts: any[] = searchData.contacts || [];
+    const existing = contacts.find((c: any) => c.contact_name?.toLowerCase().trim() === cleanName);
+    if (existing) return existing.contact_id;
+  } catch (e) {
+    console.error('Zoho contact fuzzy search failed:', e);
+  }
+
+  // 3. Create new contact
   const createRes = await fetch(`${ZOHO_BOOKS_BASE}/contacts?organization_id=${orgId}`, {
     method: 'POST',
     headers,
@@ -73,7 +91,21 @@ async function getOrCreateZohoContact(token: string, orgId: string, billingInfo:
     }),
   });
   const createData = await createRes.json();
-  if (!createData.contact?.contact_id) throw new Error('Failed to create Zoho contact: ' + JSON.stringify(createData));
+
+  // 4. Handle "Contact already exists" error (Code 3026)
+  if (createData.code === 3026) {
+    console.log(`Zoho contact "${billingInfo.name}" duplicate detected (code 3026). Fetching all contacts to find ID.`);
+    // Fetch contacts list to locate it
+    const listRes = await fetch(`${ZOHO_BOOKS_BASE}/contacts?organization_id=${orgId}&per_page=200`, { headers });
+    const listData = await listRes.json();
+    const contacts: any[] = listData.contacts || [];
+    const existing = contacts.find((c: any) => c.contact_name?.toLowerCase().trim() === cleanName);
+    if (existing) return existing.contact_id;
+  }
+
+  if (!createData.contact?.contact_id) {
+    throw new Error(`Failed to create Zoho contact: ${createData.message || JSON.stringify(createData)}`);
+  }
   return createData.contact.contact_id;
 }
 
@@ -149,7 +181,7 @@ export async function POST(request: Request) {
 
     const billingCustomer = jobCard.billingCustomer || jobCard.customer;
     const billingInfo = {
-       name: jobCard.customer.displayName, // Always use main customer name on Zoho Estimates
+       name: billingCustomer.displayName, // Respect billing customer if selected (e.g., RNC legal)
        gstin: billingCustomer.taxId || '',
        address: [billingCustomer.addressLine1, billingCustomer.addressLine2].filter(Boolean).join(', '),
        state: billingCustomer.state || '',
