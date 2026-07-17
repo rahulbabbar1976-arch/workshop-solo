@@ -283,6 +283,12 @@ export async function PUT(
             // Update existing part line
             const existingPart = await tx.jobCardPart.findUnique({ where: { id: p.id } });
             
+            let finalHsn = p.hsnCode;
+            if (finalHsn === undefined && p.partMasterId) {
+              const pm = await tx.partsMaster.findUnique({ where: { id: p.partMasterId } });
+              finalHsn = pm?.hsnCode || undefined;
+            }
+
             await tx.jobCardPart.update({
               where: { id: p.id },
               data: {
@@ -293,7 +299,7 @@ export async function PUT(
                 mechanicNote: p.mechanicNote,
                 sellingPrice: p.sellingPrice !== undefined ? parseFloat(p.sellingPrice) : undefined,
                 taxRate: p.taxRate !== undefined ? parseFloat(p.taxRate) : undefined,
-                hsnCode: p.hsnCode !== undefined ? p.hsnCode : undefined,
+                hsnCode: finalHsn !== undefined ? finalHsn : undefined,
                 discountType: p.discountType,
                 discountValue: p.discountValue !== undefined ? parseFloat(p.discountValue) : undefined,
                 approvedByUserId: p.status === 'approved' || p.status === 'in_stock' ? p.approvedByUserId : undefined
@@ -327,6 +333,12 @@ export async function PUT(
             }
           } else {
             // Create new part line
+            let finalHsn = p.hsnCode;
+            if (!finalHsn && p.partMasterId) {
+              const pm = await tx.partsMaster.findUnique({ where: { id: p.partMasterId } });
+              finalHsn = pm?.hsnCode || null;
+            }
+
             const newPart = await tx.jobCardPart.create({
               data: {
                 jobcardId: id,
@@ -339,7 +351,7 @@ export async function PUT(
                 mechanicNote: p.mechanicNote || null,
                 sellingPrice: p.sellingPrice !== undefined ? parseFloat(p.sellingPrice) : null,
                 taxRate: p.taxRate !== undefined ? parseFloat(p.taxRate) : 18.00,
-                hsnCode: p.hsnCode || null
+                hsnCode: finalHsn || null
               }
             });
 
@@ -389,6 +401,12 @@ export async function PUT(
             await tx.jobCardLabour.delete({ where: { id: l.id } });
           } else if (l.id) {
             // Update existing labour line
+            let finalHsn = l.hsnCode;
+            if (finalHsn === undefined && l.labourMasterId) {
+              const lm = await tx.labourMaster.findUnique({ where: { id: l.labourMasterId } });
+              finalHsn = lm?.hsnCode || undefined;
+            }
+
             await tx.jobCardLabour.update({
               where: { id: l.id },
               data: {
@@ -398,12 +416,18 @@ export async function PUT(
                 mechanicNote: l.mechanicNote,
                 sellingPrice: l.sellingPrice !== undefined ? parseFloat(l.sellingPrice) : undefined,
                 taxRate: l.taxRate !== undefined ? parseFloat(l.taxRate) : undefined,
-                hsnCode: l.hsnCode !== undefined ? l.hsnCode : undefined,
+                hsnCode: finalHsn !== undefined ? finalHsn : undefined,
                 quantity: l.quantity !== undefined ? parseFloat(l.quantity) : undefined
               }
             });
           } else {
             // Create new labour line
+            let finalHsn = l.hsnCode;
+            if (!finalHsn && l.labourMasterId) {
+              const lm = await tx.labourMaster.findUnique({ where: { id: l.labourMasterId } });
+              finalHsn = lm?.hsnCode || '9987';
+            }
+
             await tx.jobCardLabour.create({
               data: {
                 jobcardId: id,
@@ -413,7 +437,7 @@ export async function PUT(
                 mechanicNote: l.mechanicNote || null,
                 sellingPrice: l.sellingPrice !== undefined ? parseFloat(l.sellingPrice) : 0,
                 taxRate: l.taxRate !== undefined ? parseFloat(l.taxRate) : 18.00,
-                hsnCode: l.hsnCode || null,
+                hsnCode: finalHsn || '9987',
                 quantity: parseFloat(l.quantity) || 1
               }
             });
