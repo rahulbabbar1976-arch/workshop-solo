@@ -6,7 +6,11 @@ import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, Therm
 import Link from "next/link";
 import { useContactPicker } from "@/hooks/useContactPicker";
 import { useSaveContact } from "@/hooks/useSaveContact";
-import { searchVehicleAction, createJobCardAction } from "@/app/actions/jobcardActions";
+import { searchVehicleAction, createJobCardAction, ensureVehicleAction } from "@/app/actions/jobcardActions";
+import { compressInBrowser } from "@/hooks/useImageCompressor";
+import { ImageOff, ZoomIn, Trash2, X } from "lucide-react";
+
+const QUOTA_BYTES = 1048576; // 1MB
 
 export default function SoloNewJobcardPage() {
   const router = useRouter();
@@ -16,8 +20,16 @@ export default function SoloNewJobcardPage() {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  
-  const [media, setMedia] = useState<any[]>([]);
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [isSavingVehicle, setIsSavingVehicle] = useState(false);
+
+  // Vehicle photo store (identical to JobCardDetailClient)
+  const [vehiclePhotos, setVehiclePhotos] = useState<any[]>([]);
+  const [quotaUsed, setQuotaUsed] = useState(0);
+  const [photosLoaded, setPhotosLoaded] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -176,77 +188,111 @@ export default function SoloNewJobcardPage() {
     { icon: <Volume2 className="w-5 h-5 text-slate-500" />, label: "Horn", text: "Horn not working" },
   ];
 
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
+  const handleNextStep1 = async () => {
+    if (formData.regNo.length < 4) return;
+    
+    setIsSavingVehicle(true);
+    try {
+      const data = new FormData();
+      data.append("regNo", formData.regNo);
+      data.append("customerName", formData.customerName);
+      data.append("mobile", formData.mobile);
+      data.append("address", formData.address);
+      data.append("make", formData.make);
+      data.append("model", formData.model);
+      data.append("year", formData.year);
+      data.append("odometer", formData.odometer);
+      
+      const res = await ensureVehicleAction(data);
+      if (res.success && res.vehicleId) {
+        setVehicleId(res.vehicleId);
+        
+        // Fetch existing photos for this vehicle if any
+        try {
+          setPhotosLoaded(false);
+          const pRes = await fetch(`/api/vehicles/${res.vehicleId}/photos`);
+          const pData = await pRes.json();
+          if (pData.success) {
+            setVehiclePhotos(pData.photos || []);
+            setQuotaUsed(pData.quota?.usedBytes || 0);
           }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const newFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
-              resolve(newFile);
-            } else {
-              resolve(file); // fallback to original
-            }
-          }, 'image/jpeg', 0.7);
-        };
-      };
-      reader.onerror = () => resolve(file); // fallback to original
-    });
+        } catch (e) {
+          console.error("Failed to fetch vehicle photos", e);
+        } finally {
+          setPhotosLoaded(true);
+        }
+        
+        setStep(2);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save vehicle details.");
+    } finally {
+      setIsSavingVehicle(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const originalFile = e.target.files?.[0];
-    if (!originalFile) return;
-    
+    if (!originalFile || !vehicleId) return;
+
     setIsUploading(true);
     try {
-      // Compress the image before uploading
-      const file = await compressImage(originalFile);
+      let fileToUpload: File | Blob = originalFile;
+      let filename = originalFile.name || 'photo.jpg';
 
-      const formUpload = new FormData();
-      formUpload.append('file', file);
-      
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        body: formUpload,
-      });
-      
-      if (uploadRes.ok) {
-        const { fileUrl, fileName, mimeType, fileSizeBytes } = await uploadRes.json();
-        setMedia(prev => [...prev, { fileUrl, fileName, mimeType, fileSizeBytes }]);
+      try {
+        const compressed = await compressInBrowser(originalFile);
+        fileToUpload = compressed.blob;
+        filename = filename.replace(/\.[^.]+$/, '.jpg');
+      } catch (err) {
+        console.warn('Client compression failed:', err);
       }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert("Failed to upload image.");
+
+      const form = new FormData();
+      form.append('file', fileToUpload, filename);
+      form.append('phase', 'intake');
+      form.append('captureLabel', 'vehicle');
+
+      const res = await fetch(`/api/vehicles/${vehicleId}/photos`, { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (data.success) {
+        setVehiclePhotos(prev => [data.photo, ...prev]);
+        setQuotaUsed(data.quota?.usedBytes || 0);
+      } else {
+        alert("Upload failed: " + data.error);
+      }
+    } catch (error: any) {
+      console.error('Error uploading vehicle photo:', error);
+      alert("Network error: " + error.message);
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      if (galleryInputRef.current) galleryInputRef.current.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!vehicleId) return;
+    if (!confirm("Are you sure you want to manually delete this photo?")) return;
+    
+    setDeletingId(photoId);
+    try {
+      const res = await fetch(`/api/vehicles/${vehicleId}/photos`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVehiclePhotos(prev => prev.filter(p => p.id !== photoId));
+        setQuotaUsed(data.quota?.usedBytes || 0);
+      }
+    } catch (err) {
+      console.error('Error deleting photo:', err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -263,7 +309,6 @@ export default function SoloNewJobcardPage() {
     data.append("year", formData.year);
     data.append("odometer", formData.odometer);
     data.append("complaint", formData.complaint);
-    data.append("media", JSON.stringify(media));
 
     try {
       const res = await createJobCardAction(data);
@@ -417,11 +462,11 @@ export default function SoloNewJobcardPage() {
               </div>
 
               <button
-                onClick={() => setStep(2)}
-                disabled={formData.regNo.length < 4}
+                onClick={handleNextStep1}
+                disabled={formData.regNo.length < 4 || isSavingVehicle}
                 className="w-full py-4 mt-4 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded flex justify-center items-center uppercase tracking-wider disabled:opacity-50"
               >
-                Next <ArrowRight className="w-5 h-5 ml-2" />
+                {isSavingVehicle ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5 ml-2" /></>}
               </button>
             </div>
           )}
@@ -485,22 +530,75 @@ export default function SoloNewJobcardPage() {
                    ref={galleryInputRef}
                    onChange={handleFileUpload}
                  />
+
+            {/* Quota bar */}
+            {(() => {
+              const pct     = Math.min(100, Math.round((quotaUsed / QUOTA_BYTES) * 100));
+              const usedKB  = Math.round(quotaUsed / 1024);
+              const barColor = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-orange-400' : 'bg-teal-500';
+              return (
+                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm mb-4">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vehicle Photo Storage</span>
+                    <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-500' : 'text-gray-600'}`}>
+                      {usedKB} KB / 1024 KB ({pct}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div className={`h-2 rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">Max 100 KB/photo · 1 MB total · oldest auto-removed when full</p>
+                </div>
+              );
+            })()}
                  
                  <button 
                    onClick={(e) => { e.preventDefault(); setIsPhotoModalOpen(true); }}
                    disabled={isUploading}
-                   className="w-full py-3 bg-gray-100 text-gray-600 border-2 border-gray-200 border-dashed rounded font-bold flex justify-center items-center hover:bg-gray-200 disabled:opacity-50"
+                   className="w-full py-5 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide"
                  >
-                    {isUploading ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Camera className="w-5 h-5 mr-2" />}
-                    {isUploading ? "Uploading..." : "Capture / Upload Vehicle Pictures"}
+                    {isUploading ? <Loader2 className="w-7 h-7 mb-1.5 animate-spin" /> : <Camera className="w-7 h-7 mb-1.5" />}
+                    {isUploading ? "Compressing & Saving..." : "Take / Upload Photo"}
                  </button>
-                 {media.length > 0 && (
-                   <div className="grid grid-cols-4 gap-2 mt-2">
-                     {media.map((m, idx) => (
-                       <img key={idx} src={m.fileUrl} className="w-full h-16 object-cover rounded border border-gray-200" alt="Upload Preview" />
-                     ))}
-                   </div>
-                 )}
+
+            {/* Gallery grid */}
+            {!photosLoaded ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+            ) : vehiclePhotos.length === 0 ? (
+              <div className="flex flex-col items-center py-10 text-gray-400">
+                <ImageOff className="w-10 h-10 mb-2" />
+                <p className="text-sm">No photos yet for this vehicle</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                {vehiclePhotos.map((p: any) => (
+                  <div key={p.id} className="relative group bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                    <img
+                      src={p.fileUrl}
+                      alt={p.captureLabel || 'Vehicle photo'}
+                      className="w-full h-36 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105"
+                      onClick={() => setLightboxUrl(p.fileUrl)}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center pointer-events-none">
+                      <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <div className="flex items-center justify-between px-2 py-1.5 bg-white">
+                      <div>
+                        {p.captureLabel && <span className="text-xs font-semibold text-gray-600 capitalize">{p.captureLabel}</span>}
+                        <p className="text-xs text-gray-400">{Math.round(p.fileSizeBytes / 1024)} KB</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.preventDefault(); handleDeletePhoto(p.id); }}
+                        disabled={deletingId === p.id}
+                        className="p-1 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-40"
+                      >
+                        {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
               </div>
 
               <button
@@ -584,6 +682,19 @@ export default function SoloNewJobcardPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={() => setLightboxUrl(null)}>
+            <X className="w-8 h-8" />
+          </button>
+          <img src={lightboxUrl} alt="Full view" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
         </div>
       )}
 

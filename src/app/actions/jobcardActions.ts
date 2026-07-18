@@ -34,6 +34,70 @@ export async function searchVehicleAction(regNo: string) {
   };
 }
 
+// Action to proactively create/upsert a Vehicle (and Customer) during Step 1 of Intake
+export async function ensureVehicleAction(formData: FormData) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('workshop_user_id')?.value;
+  
+  let tenantId: string | null = null;
+  if (userId) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    tenantId = user?.tenantId || null;
+  }
+
+  const rawRegNo = formData.get("regNo") as string;
+  const normalizedLpn = rawRegNo.replace(/[^A-Z0-9]/g, '');
+  
+  const customerName = formData.get("customerName") as string;
+  const mobile = formData.get("mobile") as string;
+  const make = formData.get("make") as string;
+  const model = formData.get("model") as string;
+  const odometer = formData.get("odometer") ? parseInt(formData.get("odometer") as string) : null;
+  const address = formData.get("address") as string;
+
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Upsert Customer
+    let customer;
+    if (mobile) {
+      customer = await tx.customer.findFirst({ where: { primaryMobile: mobile, tenantId } });
+    }
+    if (!customer) {
+      customer = await tx.customer.create({
+        data: {
+          displayName: customerName || "Unknown Customer",
+          primaryMobile: mobile,
+          addressLine1: address,
+          tenantId
+        }
+      });
+    }
+
+    // 2. Upsert Vehicle
+    const vehicle = await tx.vehicle.upsert({
+      where: { registrationNumberNormalized: normalizedLpn },
+      update: {
+        manufacturer: make,
+        model: model,
+        currentOdometer: odometer,
+        currentCustomerId: customer.id,
+      },
+      create: {
+        registrationNumberRaw: rawRegNo,
+        registrationNumberNormalized: normalizedLpn,
+        manufacturer: make,
+        model: model,
+        currentOdometer: odometer,
+        currentCustomerId: customer.id,
+        tenantId
+      }
+    });
+
+    return { vehicleId: vehicle.id, customerId: customer.id };
+  });
+
+  return { success: true, vehicleId: result.vehicleId, customerId: result.customerId };
+}
+
 // Action to save a new JobCard (and upsert Vehicle/Customer)
 export async function createJobCardAction(formData: FormData) {
   const cookieStore = await cookies();
@@ -118,28 +182,6 @@ export async function createJobCardAction(formData: FormData) {
         tenantId
       }
     });
-
-    const mediaStr = formData.get("media") as string;
-    if (mediaStr) {
-      try {
-        const mediaArr = JSON.parse(mediaStr);
-        if (Array.isArray(mediaArr)) {
-          for (const m of mediaArr) {
-            await tx.jobCardMedia.create({
-              data: {
-                jobcardId: jobCard.id,
-                mediaType: 'intake_photo',
-                phase: 'intake',
-                fileUrl: m.fileUrl,
-                fileName: m.fileName || null,
-              }
-            });
-          }
-        }
-      } catch (e) {
-        console.error("Failed to parse media", e);
-      }
-    }
 
     return jobCard;
   });
