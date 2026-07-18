@@ -16,6 +16,7 @@ Extract:
   - purchasePrice: unit price excluding GST/tax (number)
   - gstRate: GST percentage rate (number, e.g. 18 for 18%)
   - hsnCode: HSN/SAC code (string, empty if not found)
+  - serialNumbers: array of strings if any serial numbers are found for this line item
 
 If HSN/GST for items is missing, make an educated guess:
 - Engine Oil → HSN 2710, 18% GST
@@ -41,7 +42,8 @@ Return ONLY valid JSON with this exact structure, no markdown, no extra text:
       "quantity": number,
       "purchasePrice": number,
       "gstRate": number,
-      "hsnCode": string
+      "hsnCode": string,
+      "serialNumbers": ["string", "string"]
     }
   ]
 }`;

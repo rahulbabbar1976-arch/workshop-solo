@@ -194,7 +194,7 @@ export async function POST(request: Request) {
           });
 
           // Record PartPurchase transaction linked to SupplierBill
-          await tx.partPurchase.create({
+          const purchase = await tx.partPurchase.create({
             data: {
               partMasterId: master.id,
               dateOfPurchase: new Date(),
@@ -207,6 +207,19 @@ export async function POST(request: Request) {
               supplierBillId: bill.id
             }
           });
+          
+          if (item.serialNumbers && Array.isArray(item.serialNumbers) && item.serialNumbers.length > 0) {
+            const serialData = item.serialNumbers.map((sn: string) => ({
+              serialNumber: sn,
+              partMasterId: master.id,
+              purchaseDate: new Date(),
+              purchaseInvoiceNumber: bNumber,
+              status: 'AVAILABLE'
+            }));
+            await tx.partSerialNumber.createMany({
+              data: serialData
+            });
+          }
         }
       }
 

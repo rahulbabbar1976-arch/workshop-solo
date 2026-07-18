@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { ArrowLeft, UploadCloud, Camera, Loader2, Save, Trash2, Sparkles, ScanText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ type AIItem = {
   gstRate: number;
   hsnCode: string;
   sellingPrice: number;
+  serialNumbers?: string[];
 };
 
 function CheckCircle2(props: any) {
@@ -70,6 +71,7 @@ export default function AIImportPage() {
         gstRate: parseFloat(it.gstRate) || 18,
         hsnCode: it.hsnCode || "",
         sellingPrice: Math.round(defaultSell),
+        serialNumbers: Array.isArray(it.serialNumbers) ? it.serialNumbers : [],
       };
     });
   };
@@ -329,7 +331,8 @@ export default function AIImportPage() {
                   </thead>
                   <tbody>
                     {items.map((it) => (
-                      <tr key={it.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <React.Fragment key={it.id}>
+                        <tr className="border-b last:border-0 hover:bg-gray-50">
                         <td className="px-2 py-2">
                           <input value={it.partName} onChange={(e) => updateItem(it.id, "partName", e.target.value)} className="w-full bg-transparent border-b border-transparent focus:border-gray-300 outline-none font-medium text-gray-800" />
                           <input value={it.partNumber} onChange={(e) => updateItem(it.id, "partNumber", e.target.value)} className="w-full bg-transparent text-xs text-gray-400 mt-1 outline-none" placeholder="Part No (Opt)" />
@@ -353,6 +356,22 @@ export default function AIImportPage() {
                           </button>
                         </td>
                       </tr>
+                      {it.serialNumbers !== undefined && (
+                        <tr key={`${it.id}-sn`} className="border-b bg-gray-50/50">
+                          <td colSpan={6} className="px-2 pb-3 pt-1">
+                            <div className="flex flex-col space-y-1">
+                              <label className="text-xs font-bold text-gray-500 uppercase">Serial Numbers (Optional)</label>
+                              <input 
+                                value={it.serialNumbers.join(", ")} 
+                                onChange={(e) => updateItem(it.id, "serialNumbers", e.target.value.split(",").map(s => s.trim()).filter(Boolean))} 
+                                placeholder="Comma separated serial numbers"
+                                className="w-full text-sm p-1.5 border border-gray-200 rounded focus:ring-2 focus:ring-orange-500 outline-none" 
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                     ))}
                   </tbody>
                 </table>

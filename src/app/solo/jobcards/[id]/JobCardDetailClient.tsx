@@ -28,6 +28,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
   const [newPartDiscountValue, setNewPartDiscountValue] = useState("");
   const [partSearchResults, setPartSearchResults] = useState<any[]>([]);
   const [showPartResults, setShowPartResults] = useState(false);
+  const [selectedSerialNumberId, setSelectedSerialNumberId] = useState<string | null>(null);
+  const [availableSerialNumbers, setAvailableSerialNumbers] = useState<any[]>([]);
 
   const [newLaborName, setNewLaborName] = useState("");
   const [newLaborQty, setNewLaborQty] = useState(1);
@@ -108,6 +110,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
   const handleSelectPart = (part: any) => {
     setNewPartName(part.partName);
     setNewPartPrice(part.defaultSellingPrice?.toString() || "");
+    setAvailableSerialNumbers(part.serialNumbers || []);
+    setSelectedSerialNumberId(null);
     setShowPartResults(false);
   };
 
@@ -134,7 +138,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
       if (editingPartId) {
         updatedParts = updatedParts.map(p => 
           p.id === editingPartId 
-            ? { ...p, partMasterId: masterId || p.partMasterId, partName: newPartName, quantityRequested: newPartQty, sellingPrice: parseFloat(newPartPrice), discountType: newPartDiscountType, discountValue: newPartDiscountValue ? parseFloat(newPartDiscountValue) : 0 } 
+            ? { ...p, partMasterId: masterId || p.partMasterId, partName: newPartName, quantityRequested: newPartQty, sellingPrice: parseFloat(newPartPrice), discountType: newPartDiscountType, discountValue: newPartDiscountValue ? parseFloat(newPartDiscountValue) : 0, serialNumberId: selectedSerialNumberId } 
             : p
         );
       } else {
@@ -145,7 +149,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
           sellingPrice: parseFloat(newPartPrice),
           discountType: newPartDiscountType,
           discountValue: newPartDiscountValue ? parseFloat(newPartDiscountValue) : 0,
-          status: "requested"
+          status: "requested",
+          serialNumberId: selectedSerialNumberId
         });
       }
 
@@ -172,6 +177,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
         setNewPartPrice("");
         setNewPartDiscountType("percent");
         setNewPartDiscountValue("");
+        setSelectedSerialNumberId(null);
+        setAvailableSerialNumbers([]);
       } else {
         const data = await res.json();
         alert(data.error || "Failed to save part");
@@ -475,6 +482,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
     setNewPartPrice(p.sellingPrice?.toString() || "");
     setNewPartDiscountType(p.discountType || "percent");
     setNewPartDiscountValue(p.discountValue?.toString() || "");
+    setSelectedSerialNumberId(p.serialNumberId || null);
     setIsPartModalOpen(true);
   };
 
@@ -1062,6 +1070,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
                   setNewPartPrice("");
                   setNewPartDiscountType("percent");
                   setNewPartDiscountValue("");
+                  setSelectedSerialNumberId(null);
+                  setAvailableSerialNumbers([]);
                   setIsPartModalOpen(true);
                 }}
                 className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
@@ -1308,6 +1318,21 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
                   />
                 </div>
               </div>
+              {availableSerialNumbers.length > 0 && (
+                <div className="mt-4">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Select Serial Number (Optional)</label>
+                  <select
+                    value={selectedSerialNumberId || ""}
+                    onChange={e => setSelectedSerialNumberId(e.target.value || null)}
+                    className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900 bg-white"
+                  >
+                    <option value="">-- None Selected --</option>
+                    {availableSerialNumbers.map(sn => (
+                      <option key={sn.id} value={sn.id}>{sn.serialNumber}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <button 
                 onClick={handleSavePart}
                 disabled={isSaving || !newPartName || !newPartPrice}

@@ -398,6 +398,31 @@ export async function PUT(
                 }
               });
             }
+
+            // Handle Serial Number Assignment for Existing Part
+            if (p.serialNumberId) {
+               await tx.partSerialNumber.update({
+                 where: { id: p.serialNumberId },
+                 data: { 
+                   jobcardPartId: p.id,
+                   status: (p.status === 'used' || p.status === 'issued') ? 'ASSIGNED' : 'AVAILABLE' 
+                 }
+               });
+               
+               if (p.partName && p.partName.toLowerCase().includes('battery') && (p.status === 'used' || p.status === 'issued')) {
+                 const sn = await tx.partSerialNumber.findUnique({ where: { id: p.serialNumberId } });
+                 if (sn) {
+                    await tx.vehicle.update({
+                      where: { id: updatedHeader.vehicleId },
+                      data: {
+                        batteryMake: p.brand || p.partName,
+                        batterySerialNumber: sn.serialNumber,
+                        batteryInstallationDate: new Date()
+                      }
+                    });
+                 }
+               }
+            }
           } else {
             // Create new part line
             let finalHsn = p.hsnCode;
@@ -455,6 +480,31 @@ export async function PUT(
                   capturedByUserId: updatedHeader.primaryMechanicId || null
                 }
               });
+            }
+
+            // Handle Serial Number Assignment for New Part
+            if (p.serialNumberId) {
+               await tx.partSerialNumber.update({
+                 where: { id: p.serialNumberId },
+                 data: { 
+                   jobcardPartId: newPart.id,
+                   status: (p.status === 'used' || p.status === 'issued') ? 'ASSIGNED' : 'AVAILABLE' 
+                 }
+               });
+               
+               if (p.partName && p.partName.toLowerCase().includes('battery') && (p.status === 'used' || p.status === 'issued')) {
+                 const sn = await tx.partSerialNumber.findUnique({ where: { id: p.serialNumberId } });
+                 if (sn) {
+                    await tx.vehicle.update({
+                      where: { id: updatedHeader.vehicleId },
+                      data: {
+                        batteryMake: p.brand || p.partName,
+                        batterySerialNumber: sn.serialNumber,
+                        batteryInstallationDate: new Date()
+                      }
+                    });
+                 }
+               }
             }
           }
         }

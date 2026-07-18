@@ -19,7 +19,12 @@ export async function GET(request: Request) {
     const parts = await prisma.partsMaster.findMany({
       where: whereClause,
       take: all ? undefined : 15,
-      include: all ? { inventoryLedgers: { orderBy: { createdAt: 'desc' } } } : undefined
+      include: {
+        serialNumbers: {
+          where: { status: 'AVAILABLE' }
+        },
+        ...(all ? { inventoryLedgers: { orderBy: { createdAt: 'desc' } } } : {})
+      }
     });
 
     return NextResponse.json({ success: true, parts });

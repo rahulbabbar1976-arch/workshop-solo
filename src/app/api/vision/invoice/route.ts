@@ -33,6 +33,7 @@ Please visually analyze this image to extract the parts details.
 CRITICAL RULES:
 1. Do NOT confuse the HSN Code with the OEM Part Number. HSN is a tax code (usually 4 to 8 digits, e.g. 31021000). The OEM Part Number is the manufacturer's item code (e.g. 58101-1RA00, 16510M68K00).
 2. If it is an invoice, extract the supplier name, invoice number, and date. If it's a part box, leave them null.
+3. EXTRACT SERIAL NUMBERS: For items like batteries or electronics, if serial numbers are listed, extract them as an array of strings.
 Extract maximum details for future data usage in a Purchase Ledger.
 Return the result strictly as a JSON object containing the invoice metadata and an array of items. Do not include markdown formatting or backticks.
 Format:
@@ -52,7 +53,8 @@ Format:
       "quantityBought": 1,
       "vehicleMake": "string or null (e.g. Maruti Suzuki)",
       "vehicleModel": "string or null (e.g. Swift)",
-      "vehicleYear": "string or null (e.g. 2018)"
+      "vehicleYear": "string or null (e.g. 2018)",
+      "serialNumbers": [] 
     }
   ]
 }`;
