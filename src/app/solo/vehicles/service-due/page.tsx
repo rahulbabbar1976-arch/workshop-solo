@@ -98,13 +98,13 @@ export default async function ServiceDuePage({
                   </div>
                 </Link>
                 
-                {profile?.whatsappServiceDueTemplate && v.currentCustomer?.mobile && (
+                {profile?.whatsappServiceDueTemplate && v.currentCustomer?.primaryMobile && (
                   <div className="mt-4 md:mt-0 md:ml-4">
                     <WhatsAppButton 
-                      phoneNumber={v.currentCustomer.mobile}
+                      phoneNumber={v.currentCustomer.primaryMobile}
                       method={profile.whatsappMethod || 'click_to_chat'}
                       message={profile.whatsappServiceDueTemplate
-                        .replace('{{customer_name}}', v.currentCustomer.name || 'Customer')
+                        .replace('{{customer_name}}', v.currentCustomer.displayName || 'Customer')
                         .replace('{{vehicle_no}}', v.registrationNumberRaw)}
                       label="Send Reminder"
                     />

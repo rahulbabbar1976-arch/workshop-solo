@@ -821,10 +821,10 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
                 {profile?.whatsappJobcardIntakeTemplate && (
                   <WhatsAppButton 
                     label="Send Intake"
-                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    phoneNumber={jobCard.currentCustomer?.primaryMobile || jobCard.customer?.primaryMobile}
                     method={profile.whatsappMethod}
                     message={profile.whatsappJobcardIntakeTemplate
-                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.displayName || jobCard.customer?.displayName || 'Customer')
                       .replace('{{vehicle_no}}', vehicleName)
                       .replace('{{jobcard_no}}', jobCard.jobcardNumber)}
                   />
@@ -832,10 +832,10 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
                 {profile?.whatsappEstimateApprovalTemplate && (
                   <WhatsAppButton 
                     label="Request Approval"
-                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    phoneNumber={jobCard.currentCustomer?.primaryMobile || jobCard.customer?.primaryMobile}
                     method={profile.whatsappMethod}
                     message={profile.whatsappEstimateApprovalTemplate
-                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.displayName || jobCard.customer?.displayName || 'Customer')
                       .replace('{{vehicle_no}}', vehicleName)
                       .replace('{{amount}}', `₹${grandTotal.toFixed(2)}`)}
                   />
@@ -843,20 +843,20 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
                 {profile?.whatsappReadyForDeliveryTemplate && (
                   <WhatsAppButton 
                     label="Send Ready"
-                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    phoneNumber={jobCard.currentCustomer?.primaryMobile || jobCard.customer?.primaryMobile}
                     method={profile.whatsappMethod}
                     message={profile.whatsappReadyForDeliveryTemplate
-                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.displayName || jobCard.customer?.displayName || 'Customer')
                       .replace('{{vehicle_no}}', vehicleName)}
                   />
                 )}
                 {profile?.whatsappInvoiceTemplate && (
                   <WhatsAppButton 
                     label="Send Invoice"
-                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    phoneNumber={jobCard.currentCustomer?.primaryMobile || jobCard.customer?.primaryMobile}
                     method={profile.whatsappMethod}
                     message={profile.whatsappInvoiceTemplate
-                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.displayName || jobCard.customer?.displayName || 'Customer')
                       .replace('{{vehicle_no}}', vehicleName)
                       .replace('{{amount}}', `₹${grandTotal.toFixed(2)}`)}
                   />
@@ -950,7 +950,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
               <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Customer Details</h3>
               <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-700">
                  <div className="font-medium text-gray-500">Address</div>
-                 <div>{jobCard.currentCustomer?.address || jobCard.customer?.address || "-"}</div>
+                 <div>{jobCard.currentCustomer?.addressLine1 || jobCard.customer?.addressLine1 || "-"}</div>
                  <div className="font-medium text-gray-500">Driver Name</div>
                  <div>{jobCard.currentCustomer?.driverName || jobCard.customer?.driverName || "-"}</div>
                  <div className="font-medium text-gray-500">Driver Mobile</div>

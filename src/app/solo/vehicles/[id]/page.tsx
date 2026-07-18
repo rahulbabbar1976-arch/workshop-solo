@@ -84,10 +84,10 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
                 Next Service
                 {vehicle.nextServiceDate && profile?.whatsappServiceDueTemplate && (
                   <WhatsAppButton 
-                    phoneNumber={currentCustomer?.mobile}
+                    phoneNumber={currentCustomer?.primaryMobile}
                     method={profile.whatsappMethod || 'click_to_chat'}
                     message={profile.whatsappServiceDueTemplate
-                      .replace('{{customer_name}}', currentCustomer?.name || 'Customer')
+                      .replace('{{customer_name}}', currentCustomer?.displayName || 'Customer')
                       .replace('{{vehicle_no}}', vehicle.registrationNumberRaw)}
                   />
                 )}
