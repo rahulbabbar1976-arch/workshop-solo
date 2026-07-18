@@ -42,7 +42,13 @@ export default async function ServiceDuePage({
     prisma.vehicle.findMany({
       where: whereClause,
       orderBy: { nextServiceDate: 'asc' },
-      include: { currentCustomer: true },
+      include: { 
+        currentCustomer: true,
+        jobCards: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      },
       skip: (page - 1) * limit,
       take: limit
     })
@@ -77,29 +83,53 @@ export default async function ServiceDuePage({
           <p>No vehicles due for service.</p>
         </div>
       ) : (
-        <div style={{ marginTop: '12px' }}>
+        <div className="grid grid-cols-1 gap-3 mt-3">
           {vehicles.map(v => {
             const isOverdue = v.nextServiceDate ? new Date(v.nextServiceDate) < new Date() : false;
+            const lastJobCard = v.jobCards?.[0];
+            const lastServiceDate = lastJobCard?.closedAt || lastJobCard?.createdAt;
+            const lastServiceKM = lastJobCard?.intakeOdometer || v.currentOdometer;
+            
             return (
-              <div key={v.id} className="vehicle-card hover:border-orange-400 transition-all flex flex-col md:flex-row md:items-center justify-between p-4 mb-3 border rounded-xl bg-white shadow-sm">
-                <Link href={`/solo/vehicles/${v.id}`} className="flex-1 flex items-start">
-                  <div className="vicon mt-1">
-                    <Car className="w-5 h-5 text-gray-400 group-hover:text-orange-500" />
-                  </div>
-                  <div>
-                    <div className="vp">{v.registrationNumberNormalized || v.registrationNumberRaw}</div>
-                    <div className="vm">
-                      {v.manufacturer || "Unknown Make"} {v.model || ""} 
-                      {v.currentCustomer?.displayName && ` • Owner: ${v.currentCustomer.displayName}`}
+              <div key={v.id} className="vehicle-card hover:border-orange-400 transition-all flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl bg-white shadow-sm">
+                <Link href={`/solo/vehicles/${v.id}`} className="flex-1 flex flex-col md:flex-row md:items-center gap-4">
+                  <div className="flex items-start">
+                    <div className="vicon mt-1">
+                      <Car className="w-5 h-5 text-gray-400 group-hover:text-orange-500" />
                     </div>
-                    <div className={`text-xs font-bold mt-1 ${isOverdue ? 'text-red-500' : 'text-orange-500'}`}>
-                      Due: {v.nextServiceDate ? dayjs(v.nextServiceDate).format("DD MMM YYYY") : "N/A"}
+                    <div className="ml-3">
+                      <div className="vp">{v.registrationNumberNormalized || v.registrationNumberRaw}</div>
+                      <div className="vm">
+                        {v.manufacturer || "Unknown Make"} {v.model || ""} 
+                        {v.currentCustomer?.displayName && ` • Owner: ${v.currentCustomer.displayName}`}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1 mt-3 md:mt-0 md:ml-6 text-sm">
+                    <div>
+                      <div className="text-gray-500 text-xs">Last Service Date</div>
+                      <div className="font-medium">{lastServiceDate ? dayjs(lastServiceDate).format("DD MMM YYYY") : "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 text-xs">Last Service KM</div>
+                      <div className="font-medium">{lastServiceKM ? `${lastServiceKM} km` : "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 text-xs">Next Service Date</div>
+                      <div className={`font-medium ${isOverdue ? 'text-red-500' : 'text-orange-500'}`}>
+                        {v.nextServiceDate ? dayjs(v.nextServiceDate).format("DD MMM YYYY") : "-"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 text-xs">Next Service KM</div>
+                      <div className="font-medium">{v.nextServiceOdometer ? `${v.nextServiceOdometer} km` : "-"}</div>
                     </div>
                   </div>
                 </Link>
                 
                 {profile?.whatsappServiceDueTemplate && v.currentCustomer?.primaryMobile && (
-                  <div className="mt-4 md:mt-0 md:ml-4">
+                  <div className="mt-4 md:mt-0 md:ml-4 flex-shrink-0">
                     <WhatsAppButton 
                       phoneNumber={v.currentCustomer.primaryMobile}
                       method={profile.whatsappMethod || 'click_to_chat'}

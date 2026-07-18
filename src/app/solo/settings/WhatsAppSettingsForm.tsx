@@ -35,7 +35,8 @@ export default function WhatsAppSettingsForm() {
           });
         }
       } catch (e: any) {
-        setMessage({ type: "error", text: "Failed to load WhatsApp settings." });
+        console.error("WhatsAppSettings Error:", e);
+        setMessage({ type: "error", text: "Failed to load WhatsApp settings: " + (e.message || String(e)) });
       } finally {
         setLoading(false);
       }

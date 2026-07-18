@@ -864,6 +864,42 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
               </div>
             </div>
 
+            {/* Fresh JobCard Notes Block */}
+            <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200 mt-4">
+              <div className="flex justify-between items-center mb-2">
+                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">JobCard Notes</h3>
+                 {!isLocked && (
+                   <button 
+                     onClick={async () => {
+                       const currentNotes = jobCard.internalNotes || "";
+                       const newNotes = prompt("Enter notes for this JobCard:", currentNotes);
+                       if (newNotes !== null && newNotes !== currentNotes) {
+                         try {
+                           const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+                             method: "PUT",
+                             headers: { "Content-Type": "application/json" },
+                             body: JSON.stringify({ internalNotes: newNotes })
+                           });
+                           if (res.ok) {
+                             const data = await res.json();
+                             setJobCard(data.jobcard);
+                           }
+                         } catch (err) {
+                           console.error("Failed to save notes:", err);
+                         }
+                       }
+                     }}
+                     className="text-orange-500 hover:text-orange-600 transition-colors"
+                   >
+                     <Edit2 className="w-4 h-4" />
+                   </button>
+                 )}
+              </div>
+              <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                {jobCard.internalNotes || <span className="text-gray-400 italic">No notes added.</span>}
+              </div>
+            </div>
+
             {/* Billing Details Block */}
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-2">
@@ -969,7 +1005,12 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobC
                  <div className="font-medium text-gray-500">Odometer</div>
                  <div>{jobCard.intakeOdometer ? `${jobCard.intakeOdometer} KM` : (jobCard.vehicle?.currentOdometer ? `${jobCard.vehicle.currentOdometer} KM` : "-")}</div>
                  <div className="font-medium text-gray-500">Battery</div>
-                 <div className="text-xs">{jobCard.vehicle?.batteryDetails || "-"}</div>
+                 <div className="text-xs">
+                   {jobCard.vehicle?.batteryDetails ? jobCard.vehicle.batteryDetails : "-"}
+                   {jobCard.vehicle?.batteryMake && ` | Make: ${jobCard.vehicle.batteryMake}`}
+                   {jobCard.vehicle?.batterySerialNumber && ` | S/N: ${jobCard.vehicle.batterySerialNumber}`}
+                   {jobCard.vehicle?.batteryInstallationDate && ` | Installed: ${new Date(jobCard.vehicle.batteryInstallationDate).toLocaleDateString()}`}
+                 </div>
                  <div className="font-medium text-gray-500">Next Service Date</div>
                  <div>{jobCard.vehicle?.nextServiceDate ? new Date(jobCard.vehicle.nextServiceDate).toLocaleDateString() : "-"}</div>
                  <div className="font-medium text-gray-500">Next Oil Change (KM)</div>

@@ -49,6 +49,11 @@ body{
   display: flex;
   flex-direction: row; /* Tablet mode default */
 }
+@media (orientation: landscape) {
+  .frame {
+    max-width: 100%;
+  }
+}
 
 .screen {
   background:var(--paper);

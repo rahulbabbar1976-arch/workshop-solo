@@ -42,9 +42,10 @@ export async function factoryResetAction(password: string) {
 }
 
 export async function getPrintSettingsAction() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get('workshop_user_id')?.value;
-  if (!userId) throw new Error("Unauthorized");
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('workshop_user_id')?.value;
+    if (!userId) throw new Error("Unauthorized");
 
   // Get or create a WorkshopProfile
   let profile = await prisma.workshopProfile.findFirst();
@@ -82,7 +83,11 @@ export async function getPrintSettingsAction() {
     });
   }
 
-  return { printSettings, docTemplate };
+    return { printSettings, docTemplate };
+  } catch (error) {
+    console.error("Error in getPrintSettingsAction:", error);
+    throw error;
+  }
 }
 
 export async function savePrintSettingsAction(data: any) {

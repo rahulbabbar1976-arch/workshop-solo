@@ -361,6 +361,59 @@ async function main() {
   }
   console.log(`Imported ${itemCount} parts and ${labourCount} labour items.`);
 
+  // 6. Import Legacy Attachments / Invoices to Vehicles
+  console.log('Reading Invoices for Attachments...');
+  try {
+    const invoicesRaw = await parseCSV('invoice.csv');
+    let mediaCount = 0;
+    // Ensure uploads directory exists
+    const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads', 'v-photos');
+    if (!fs.existsSync(UPLOADS_DIR)) {
+      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+
+    for (const row of invoicesRaw) {
+      const invoiceId = row[0];
+      const worksheetId = row[1];
+      const pdfHex = row[16]; // Assuming PDF_CONTENT is around column 16 based on schema dump
+      
+      if (!worksheetId || !pdfHex || pdfHex.length < 100) continue;
+      
+      const jobCard = await prisma.jobCard.findUnique({ 
+        where: { jobcardNumber: `LEGACY-${worksheetId}` },
+        include: { vehicle: true }
+      });
+      
+      if (jobCard && jobCard.vehicleId) {
+        try {
+          // Convert hex string to buffer
+          const pdfBuffer = Buffer.from(pdfHex, 'hex');
+          const fileName = `legacy_invoice_${invoiceId}_${Date.now()}.pdf`;
+          const filePath = path.join(UPLOADS_DIR, fileName);
+          
+          fs.writeFileSync(filePath, pdfBuffer);
+          
+          // Link attachment to Vehicle (not jobcard, as requested)
+          await prisma.vehicleMedia.create({
+            data: {
+              vehicleId: jobCard.vehicleId,
+              fileUrl: `/uploads/v-photos/${fileName}`,
+              fileName: `Legacy Invoice ${invoiceId}.pdf`,
+              mediaType: 'document'
+            }
+          });
+          
+          mediaCount++;
+        } catch (err) {
+          console.warn(`Failed to parse/save PDF for invoice ${invoiceId}`);
+        }
+      }
+    }
+    console.log(`Imported ${mediaCount} legacy attachments to vehicles.`);
+  } catch (e) {
+    console.warn("Could not process invoices.csv (file might be missing or too large).");
+  }
+
 }
 
 main().catch(console.error);

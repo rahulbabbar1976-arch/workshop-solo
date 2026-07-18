@@ -68,7 +68,8 @@ export default function PrintSettingsForm() {
           showColDiscount: printSettings?.showColDiscount ?? true,
         });
       } catch (e: any) {
-        setMessage({ type: "error", text: "Failed to load print settings." });
+        console.error("PrintSettings Error:", e);
+        setMessage({ type: "error", text: "Failed to load print settings: " + (e.message || String(e)) });
       } finally {
         setLoading(false);
       }
