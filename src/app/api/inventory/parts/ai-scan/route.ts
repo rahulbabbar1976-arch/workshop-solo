@@ -50,10 +50,11 @@ Return ONLY valid JSON with this exact structure, no markdown, no extra text:
 async function tryOpenRouter(apiKey: string, imageData: string, mimeType: string): Promise<string> {
   // Free vision-capable models on OpenRouter (in order of preference)
   const FREE_MODELS = [
+    'google/gemini-1.5-flash',
     'openrouter/free',
     'google/gemini-2.5-flash:free',
+    'google/gemini-1.5-pro',
     'meta-llama/llama-3.2-11b-vision-instruct:free',
-    'google/gemini-2.0-flash-exp:free',
   ];
 
   const base64 = imageData.includes(',') ? imageData.split(',')[1] : imageData;

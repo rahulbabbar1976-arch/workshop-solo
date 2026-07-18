@@ -63,7 +63,7 @@ export async function getPrintSettingsAction() {
   });
   if (!printSettings) {
     printSettings = await prisma.printSettings.create({
-      data: { workshopProfileId: profile.id }
+      data: { workshopProfileId: profile.id, totalIncludesTax: true }
     });
   }
 
@@ -100,6 +100,7 @@ export async function savePrintSettingsAction(data: any) {
       printTemplate: data.printTemplate,
       showTaxByDefault: data.showTaxByDefault,
       showDiscountByDefault: data.showDiscountByDefault,
+      totalIncludesTax: data.totalIncludesTax ?? true,
       showPartsLabourSeparately: data.showPartsLabourSeparately,
       showCustomerDetails: data.showCustomerDetails,
       showVehicleDetails: data.showVehicleDetails,
@@ -176,6 +177,50 @@ export async function saveOpenRouterApiKeyAction(apiKey: string) {
   await (prisma.workshopProfile as any).update({
     where: { id: profile.id },
     data: { openRouterApiKey: apiKey }
+  });
+
+  return { success: true };
+}
+
+export async function getWhatsAppSettingsAction() {
+  const profile = await prisma.workshopProfile.findFirst();
+  return {
+    whatsappMethod: profile?.whatsappMethod,
+    whatsappServiceDueTemplate: profile?.whatsappServiceDueTemplate,
+    whatsappJobcardIntakeTemplate: profile?.whatsappJobcardIntakeTemplate,
+    whatsappEstimateApprovalTemplate: profile?.whatsappEstimateApprovalTemplate,
+    whatsappReadyForDeliveryTemplate: profile?.whatsappReadyForDeliveryTemplate,
+    whatsappInvoiceTemplate: profile?.whatsappInvoiceTemplate,
+    whatsappCustomTemplate: profile?.whatsappCustomTemplate,
+  };
+}
+
+export async function saveWhatsAppSettingsAction(data: any) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('workshop_user_id')?.value;
+  if (!userId) throw new Error("Unauthorized");
+
+  let profile = await prisma.workshopProfile.findFirst();
+  if (!profile) {
+    profile = await prisma.workshopProfile.create({
+      data: {
+        workshopName: "My Workshop",
+        addressLine1: "",
+      }
+    });
+  }
+
+  await prisma.workshopProfile.update({
+    where: { id: profile.id },
+    data: {
+      whatsappMethod: data.whatsappMethod,
+      whatsappServiceDueTemplate: data.whatsappServiceDueTemplate,
+      whatsappJobcardIntakeTemplate: data.whatsappJobcardIntakeTemplate,
+      whatsappEstimateApprovalTemplate: data.whatsappEstimateApprovalTemplate,
+      whatsappReadyForDeliveryTemplate: data.whatsappReadyForDeliveryTemplate,
+      whatsappInvoiceTemplate: data.whatsappInvoiceTemplate,
+      whatsappCustomTemplate: data.whatsappCustomTemplate,
+    }
   });
 
   return { success: true };

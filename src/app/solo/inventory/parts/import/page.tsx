@@ -49,7 +49,8 @@ export default function AIImportPage() {
   const runTesseractOCR = async (dataUrl: string): Promise<string> => {
     setScanMethod("ocr");
     // @ts-ignore
-    const Tesseract = (await import("tesseract.js")).default;
+    const tesseractMod = await import("tesseract.js");
+    const Tesseract = tesseractMod.default || tesseractMod;
     const { data } = await Tesseract.recognize(dataUrl, "eng", {
       logger: () => {},
     });
@@ -87,8 +88,9 @@ export default function AIImportPage() {
     setScanMethod("");
 
     try {
-      // Step 1: Compress Image
-      const compressed = await compressInBrowser(file);
+      // Step 1: Compress Image aggressively to get around ~100kb limit
+      // using smaller dimensions and lower quality
+      const compressed = await compressInBrowser(file, 800, 800, 0.6);
       setImagePreview(compressed.dataUrl);
 
       // Step 2: First try Gemini AI

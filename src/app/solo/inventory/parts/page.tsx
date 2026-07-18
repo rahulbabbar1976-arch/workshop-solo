@@ -16,6 +16,8 @@ type AIItem = {
   stockQuantity: number;
   hsnCode?: string;
   category?: string;
+  coreFamily?: string;
+  location?: string;
   defaultTaxRate?: number;
   rackNumber?: string;
   binNumber?: string;
@@ -68,6 +70,8 @@ export default function PartsMasterPage() {
     partNumber: "",
     hsnCode: "",
     category: "Others",
+    coreFamily: "Others",
+    location: "",
     defaultSellingPrice: "",
     defaultTaxRate: "18",
     stockQuantity: "",
@@ -108,6 +112,8 @@ export default function PartsMasterPage() {
         partNumber: part.partNumber || "",
         hsnCode: part.hsnCode || "",
         category: part.category || "Others",
+        coreFamily: part.coreFamily || "Others",
+        location: part.location || "",
         defaultSellingPrice: part.defaultSellingPrice?.toString() || "",
         defaultTaxRate: part.defaultTaxRate?.toString() || "18",
         stockQuantity: part.stockQuantity?.toString() || "0",
@@ -121,6 +127,8 @@ export default function PartsMasterPage() {
         partNumber: "",
         hsnCode: "",
         category: "Others",
+        coreFamily: "Others",
+        location: "",
         defaultSellingPrice: "",
         defaultTaxRate: "18",
         stockQuantity: "",
@@ -523,10 +531,10 @@ Format your response in clean, beautiful Markdown with professional bold headers
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Core Family (Category)</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Core Family</label>
                   <select 
-                    value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    value={formData.coreFamily}
+                    onChange={e => setFormData({...formData, coreFamily: e.target.value, category: e.target.value})}
                     className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-teal-500 outline-none font-medium text-gray-900 transition-all text-sm"
                   >
                     {CATEGORIES.map(cat => (
@@ -589,6 +597,16 @@ Format your response in clean, beautiful Markdown with professional bold headers
               {/* Location details */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 flex items-center"><MapPin className="w-3 h-3 mr-1 text-teal-600" /> Parts Location</label>
+                  <input 
+                    type="text" 
+                    value={formData.location}
+                    onChange={e => setFormData({...formData, location: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-teal-500 outline-none font-medium text-gray-900 transition-all text-sm"
+                    placeholder="e.g. Warehouse A, Shelf 2"
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 flex items-center"><MapPin className="w-3 h-3 mr-1 text-teal-600" /> Rack Number</label>
                   <input 
                     type="text" 
@@ -598,6 +616,8 @@ Format your response in clean, beautiful Markdown with professional bold headers
                     placeholder="e.g. A-4"
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 flex items-center"><MapPin className="w-3 h-3 mr-1 text-teal-600" /> Bin Number</label>
                   <input 

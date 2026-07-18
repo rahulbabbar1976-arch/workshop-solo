@@ -40,7 +40,12 @@ export default async function VehiclesPage({
 
   return (
     <div className="content">
-      <div className="section-title">Vehicles Directory</div>
+      <div className="section-title flex items-center justify-between">
+        <span>Vehicles Directory</span>
+        <Link href="/solo/vehicles/service-due" className="text-sm bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg font-bold flex items-center hover:bg-orange-200 transition-colors">
+          Service Due
+        </Link>
+      </div>
       
       <form method="GET" className="searchbar">
         <Search className="w-4 h-4" />

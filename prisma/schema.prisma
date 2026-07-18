@@ -53,6 +53,14 @@ model WorkshopProfile {
   invoiceFooterText    String?
   termsConditionsText  String?
   whatsappTemplateText String?
+  whatsappMethod       String?  @default("click_to_chat") // 'click_to_chat' or 'cloud_api'
+  whatsappServiceDueTemplate       String?
+  whatsappJobcardIntakeTemplate    String?
+  whatsappEstimateApprovalTemplate String?
+  whatsappReadyForDeliveryTemplate String?
+  whatsappInvoiceTemplate          String?
+  whatsappCustomTemplate           String?
+  
   showCompanyName      Boolean  @default(true)
   showCompanyAddress   Boolean  @default(true)
   showCompanyContact   Boolean  @default(true)
@@ -165,6 +173,7 @@ model PrintSettings {
   workshopProfileId         String
   showTaxByDefault          Boolean @default(true)
   showDiscountByDefault     Boolean @default(true)
+  totalIncludesTax          Boolean @default(true)
   includeSignature          Boolean @default(true)
   includeIntakePhotos       Boolean @default(true)
   includeWorkPhotos         Boolean @default(false)
@@ -387,6 +396,8 @@ model PartsMaster {
   defaultSellingPrice Float?
   stockQuantity       Float?    @default(0)
   category            String?
+    coreFamily          String?
+    location            String?
   safetyStock         Float?    @default(2)
   lastUsedAt          DateTime?
   rackNumber          String?

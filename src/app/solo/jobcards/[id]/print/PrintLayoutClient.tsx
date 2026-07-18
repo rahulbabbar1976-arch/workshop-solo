@@ -12,6 +12,8 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
   const [isLoading, setIsLoading] = useState(true);
   const [footerText, setFooterText] = useState("");
   const [cols, setCols] = useState<any>({ parts: [], labour: [] });
+  const [totalIncludesTax, setTotalIncludesTax] = useState(true);
+  const [showColDiscount, setShowColDiscount] = useState(true);
 
   useEffect(() => {
     fetch('/api/settings/print?documentType=JOBCARD')
@@ -26,10 +28,14 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
               const parsedCols = JSON.parse(data.template.columnsConfig);
               setCols(parsedCols);
               setShowWorkshopHeader(parsedCols.showWorkshopHeader ?? true);
+              setTotalIncludesTax(parsedCols.totalIncludesTax ?? true);
             } catch (e) {
               console.error(e);
             }
           }
+        if (data.printSettings) {
+          setTotalIncludesTax(data.printSettings.totalIncludesTax ?? true);
+          setShowColDiscount(data.printSettings.showColDiscount ?? true);
         }
       })
       .finally(() => setIsLoading(false));
@@ -114,6 +120,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
   products.forEach((p: any) => totalTaxSum += (p.calc.unitTax * p.calc.qty));
 
   const totalNetSum = grandGrossSum - totalTaxSum;
+  const finalTotalToPay = totalIncludesTax ? grandGrossSum : totalNetSum;
 
   if (isLoading) {
     return (
@@ -237,12 +244,12 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
                 <td className="text-center w-12">HSN</td>
                 {cols.labour?.includes('qty') && <td className="text-right w-12">Quant.</td>}
                 {cols.labour?.includes('qty') && <td className="text-left w-8 pl-1">Unit</td>}
-                {cols.labour?.includes('discount') && <td className="text-right w-12">Disc.</td>}
+                {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right w-12">Disc.</td>}
                 {cols.labour?.includes('tax') && <td className="text-right w-12">Tax r.</td>}
                 {cols.labour?.includes('rate') && <td className="text-right w-20">Net unit pr.</td>}
                 {cols.labour?.includes('tax') && <td className="text-right w-16">Unit tax</td>}
-                {cols.labour?.includes('discount') && <td className="text-right w-24">Sum without disc.</td>}
-                {cols.labour?.includes('discount') && <td className="text-right w-20">Gr.disc.sum.</td>}
+                {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right w-24">Sum without disc.</td>}
+                {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right w-20">Gr.disc.sum.</td>}
                 {cols.labour?.includes('total') && <td className="text-right w-20">Gross sum</td>}
                 <td className="text-left w-8 pl-1">Cur.</td>
               </tr>
@@ -255,12 +262,12 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
                   <td className="text-center">{s.hsnCode || ''}</td>
                   {cols.labour?.includes('qty') && <td className="text-right">{s.calc.qty}</td>}
                   {cols.labour?.includes('qty') && <td className="text-left pl-1">pcs</td>}
-                  {cols.labour?.includes('discount') && <td className="text-right">{s.calc.discPercent > 0 ? `${s.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}
+                  {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right">{s.calc.discPercent > 0 ? `${s.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}
                   {cols.labour?.includes('tax') && <td className="text-right">{s.calc.taxPercent.toFixed(1)}%</td>}
                   {cols.labour?.includes('rate') && <td className="text-right">{s.calc.netUnitPrice.toFixed(2)}</td>}
                   {cols.labour?.includes('tax') && <td className="text-right">{s.calc.unitTax.toFixed(2)}</td>}
-                  {cols.labour?.includes('discount') && <td className="text-right">{s.calc.sumWithoutDisc.toFixed(2)}</td>}
-                  {cols.labour?.includes('discount') && <td className="text-right">{s.calc.grDiscSum.toFixed(2)}</td>}
+                  {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right">{s.calc.sumWithoutDisc.toFixed(2)}</td>}
+                  {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right">{s.calc.grDiscSum.toFixed(2)}</td>}
                   {cols.labour?.includes('total') && <td className="text-right">{s.calc.grossSum.toFixed(2)}</td>}
                   <td className="text-left pl-1">INR</td>
                 </tr>
@@ -268,9 +275,9 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
             </tbody>
             <tfoot>
               <tr className="border-t border-black">
-                <td colSpan={3 + (cols.labour?.includes('qty') ? 2 : 0) + (cols.labour?.includes('tax') ? 2 : 0) + (cols.labour?.includes('rate') ? 1 : 0)} className="text-left">Sum:</td>
-                {cols.labour?.includes('discount') && <td className="text-right">{totalServicesWithoutDisc.toFixed(2)}</td>}
-                {cols.labour?.includes('discount') && <td className="text-right">{totalServicesDisc.toFixed(2)}</td>}
+                <td colSpan={3 + (cols.labour?.includes('qty') ? 2 : 0) + (cols.labour?.includes('tax') ? 2 : 0) + (cols.labour?.includes('rate') ? 1 : 0) + ((cols.labour?.includes('discount') || showColDiscount) ? 1 : 0)} className="text-left">Sum:</td>
+                {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right">{totalServicesWithoutDisc.toFixed(2)}</td>}
+                {(cols.labour?.includes('discount') || showColDiscount) && <td className="text-right">{totalServicesDisc.toFixed(2)}</td>}
                 {cols.labour?.includes('total') && <td className="text-right">{totalServicesGross.toFixed(2)}</td>}
                 <td className="text-left pl-1">INR</td>
               </tr>
@@ -287,7 +294,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
                 <td className="text-center w-12">HSN</td>
                 {cols.parts?.includes('qty') && <td className="text-right w-12">Quant.</td>}
                 {cols.parts?.includes('qty') && <td className="text-left w-8 pl-1">Unit</td>}
-                {cols.parts?.includes('discount') && <td className="text-right w-12">Disc.</td>}
+                {(cols.parts?.includes('discount') || showColDiscount) && <td className="text-right w-12">Disc.</td>}
                 {cols.parts?.includes('tax') && <td className="text-right w-12">Tax r.</td>}
                 {cols.parts?.includes('rate') && <td className="text-right w-20">Net unit pr.</td>}
                 {cols.parts?.includes('tax') && <td className="text-right w-16">Unit tax</td>}
@@ -303,7 +310,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
                   <td className="text-center">{p.hsnCode || ''}</td>
                   {cols.parts?.includes('qty') && <td className="text-right">{p.calc.qty}</td>}
                   {cols.parts?.includes('qty') && <td className="text-left pl-1">pcs</td>}
-                  {cols.parts?.includes('discount') && <td className="text-right">{p.calc.discPercent > 0 ? `${p.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}
+                  {(cols.parts?.includes('discount') || showColDiscount) && <td className="text-right">{p.calc.discPercent > 0 ? `${p.calc.discPercent.toFixed(1)}%` : '0.0%'}</td>}
                   {cols.parts?.includes('tax') && <td className="text-right">{p.calc.taxPercent.toFixed(1)}%</td>}
                   {cols.parts?.includes('rate') && <td className="text-right">{p.calc.netUnitPrice.toFixed(2)}</td>}
                   {cols.parts?.includes('tax') && <td className="text-right">{p.calc.unitTax.toFixed(2)}</td>}
@@ -314,7 +321,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
             </tbody>
             <tfoot>
               <tr className="border-t border-black">
-                <td colSpan={3 + (cols.parts?.includes('qty') ? 2 : 0) + (cols.parts?.includes('tax') ? 2 : 0) + (cols.parts?.includes('rate') ? 1 : 0) + (cols.parts?.includes('discount') ? 1 : 0)} className="text-left">Sum:</td>
+                <td colSpan={3 + (cols.parts?.includes('qty') ? 2 : 0) + (cols.parts?.includes('tax') ? 2 : 0) + (cols.parts?.includes('rate') ? 1 : 0) + ((cols.parts?.includes('discount') || showColDiscount) ? 1 : 0)} className="text-left">Sum:</td>
                 {cols.parts?.includes('total') && <td className="text-right">{totalProductsGross.toFixed(2)}</td>}
                 <td className="text-left pl-1">INR</td>
               </tr>
@@ -349,7 +356,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
               </tr>
               <tr className="border-b border-black">
                 <td colSpan={3} className="text-left font-bold italic text-sm py-1">To be paid:</td>
-                <td className="text-center font-bold italic text-sm py-1">{grandGrossSum.toFixed(2)} INR</td>
+                <td className="text-center font-bold italic text-sm py-1">{finalTotalToPay.toFixed(2)} INR</td>
               </tr>
             </tfoot>
           </table>

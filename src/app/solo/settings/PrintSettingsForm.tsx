@@ -13,6 +13,7 @@ export default function PrintSettingsForm() {
     printTemplate: "classic",
     showTaxByDefault: true,
     showDiscountByDefault: true,
+    totalIncludesTax: true,
     showPartsLabourSeparately: true,
     showCustomerDetails: true,
     showVehicleDetails: true,
@@ -48,6 +49,7 @@ export default function PrintSettingsForm() {
           printTemplate: printSettings?.printTemplate || "classic",
           showTaxByDefault: printSettings?.showTaxByDefault ?? true,
           showDiscountByDefault: printSettings?.showDiscountByDefault ?? true,
+          totalIncludesTax: printSettings?.totalIncludesTax ?? true,
           showPartsLabourSeparately: printSettings?.showPartsLabourSeparately ?? true,
           showCustomerDetails: printSettings?.showCustomerDetails ?? true,
           showVehicleDetails: printSettings?.showVehicleDetails ?? true,
@@ -207,6 +209,7 @@ export default function PrintSettingsForm() {
               <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="showSignatureSection" checked={formData.showSignatureSection} onChange={handleChange} className="mr-2" /> Show Signature Section</label>
               <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="showTaxByDefault" checked={formData.showTaxByDefault} onChange={handleChange} className="mr-2" /> Apply Tax By Default</label>
               <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="showDiscountByDefault" checked={formData.showDiscountByDefault} onChange={handleChange} className="mr-2" /> Apply Discount By Default</label>
+              <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="totalIncludesTax" checked={formData.totalIncludesTax} onChange={handleChange} className="mr-2" /> Line Item Totals Include Tax</label>
             </div>
           </div>
 

@@ -48,7 +48,11 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json({ template });
+    const printSettings = await prisma.printSettings.findFirst({
+      where: { workshopProfileId: profile.id }
+    });
+
+    return NextResponse.json({ template, printSettings });
   } catch (error) {
     console.error('Error fetching print template:', error);
     return NextResponse.json({ error: 'Failed to fetch print template' }, { status: 500 });

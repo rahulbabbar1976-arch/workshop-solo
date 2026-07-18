@@ -6,10 +6,11 @@ import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
 import { compressInBrowser } from "@/hooks/useImageCompressor";
 import { useRouter } from "next/navigation";
+import WhatsAppButton from "@/components/WhatsAppButton";
 
 const QUOTA_BYTES = 1_048_576; // 1 MB
 
-export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any }) {
+export function JobCardDetailClient({ jobCard: initialJobCard, profile }: { jobCard: any, profile?: any }) {
   const router = useRouter();
   const [jobCard, setJobCard] = useState(initialJobCard);
   const [activeTab, setActiveTab] = useState("details");
@@ -812,6 +813,53 @@ export function JobCardDetailClient({ jobCard: initialJobCard }: { jobCard: any 
                   >
                     Mark Ready
                   </button>
+                )}
+              </div>
+              
+              {/* WhatsApp Quick Actions */}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {profile?.whatsappJobcardIntakeTemplate && (
+                  <WhatsAppButton 
+                    label="Send Intake"
+                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    method={profile.whatsappMethod}
+                    message={profile.whatsappJobcardIntakeTemplate
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{vehicle_no}}', vehicleName)
+                      .replace('{{jobcard_no}}', jobCard.jobcardNumber)}
+                  />
+                )}
+                {profile?.whatsappEstimateApprovalTemplate && (
+                  <WhatsAppButton 
+                    label="Request Approval"
+                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    method={profile.whatsappMethod}
+                    message={profile.whatsappEstimateApprovalTemplate
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{vehicle_no}}', vehicleName)
+                      .replace('{{amount}}', `₹${grandTotal.toFixed(2)}`)}
+                  />
+                )}
+                {profile?.whatsappReadyForDeliveryTemplate && (
+                  <WhatsAppButton 
+                    label="Send Ready"
+                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    method={profile.whatsappMethod}
+                    message={profile.whatsappReadyForDeliveryTemplate
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{vehicle_no}}', vehicleName)}
+                  />
+                )}
+                {profile?.whatsappInvoiceTemplate && (
+                  <WhatsAppButton 
+                    label="Send Invoice"
+                    phoneNumber={jobCard.currentCustomer?.mobile || jobCard.customer?.mobile}
+                    method={profile.whatsappMethod}
+                    message={profile.whatsappInvoiceTemplate
+                      .replace('{{customer_name}}', jobCard.currentCustomer?.name || jobCard.customer?.name || 'Customer')
+                      .replace('{{vehicle_no}}', vehicleName)
+                      .replace('{{amount}}', `₹${grandTotal.toFixed(2)}`)}
+                  />
                 )}
               </div>
             </div>

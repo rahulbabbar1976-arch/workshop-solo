@@ -7,6 +7,7 @@ import { exportTenantDataAction, restoreTenantDataAction } from "@/app/actions/s
 import { factoryResetAction } from "./actions";
 import PrintSettingsForm from "./PrintSettingsForm";
 import GeminiSettingsForm from "./GeminiSettingsForm";
+import WhatsAppSettingsForm from "./WhatsAppSettingsForm";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -156,6 +157,10 @@ export default function SettingsPage() {
 
         <PrintSettingsForm />
 
+        {/* WhatsApp Settings */}
+        <WhatsAppSettingsForm />
+
+        {/* Gemini Integration (Workshop Name & Print Config is part of PrintSettingsForm) */}
         <GeminiSettingsForm />
 
         {/* Zoho Books Integration — Live Status Widget */}

@@ -4,6 +4,8 @@ import { Car, MapPin, Phone, User, Calendar, Settings, ArrowLeft } from "lucide-
 import Link from "next/link";
 import TransferOwnershipForm from "./TransferOwnershipForm";
 import VehicleBatteryEditor from "./VehicleBatteryEditor";
+import VehicleEditorModal from "./VehicleEditorModal";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import dayjs from "dayjs";
 
 export default async function VehicleDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,6 +26,8 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
     }
   });
 
+  const profile = await prisma.workshopProfile.findFirst();
+
   if (!vehicle) {
     notFound();
   }
@@ -40,6 +44,7 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
           <h1 className="text-xl font-bold text-white tracking-wider">{vehicle.registrationNumberNormalized || vehicle.registrationNumberRaw}</h1>
           <p className="text-amber-100 text-sm">{vehicle.manufacturer} {vehicle.model}</p>
         </div>
+        <VehicleEditorModal vehicle={vehicle} />
       </div>
 
       <div className="p-5 space-y-6">
@@ -75,8 +80,19 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
               <p className="font-bold text-gray-800">{vehicle.color || "N/A"}</p>
             </div>
             <div>
-              <p className="text-gray-500 font-medium">Next Service</p>
-              <p className="font-bold text-orange-600">
+              <p className="text-gray-500 font-medium flex items-center justify-between pr-4">
+                Next Service
+                {vehicle.nextServiceDate && profile?.whatsappServiceDueTemplate && (
+                  <WhatsAppButton 
+                    phoneNumber={currentCustomer?.mobile}
+                    method={profile.whatsappMethod || 'click_to_chat'}
+                    message={profile.whatsappServiceDueTemplate
+                      .replace('{{customer_name}}', currentCustomer?.name || 'Customer')
+                      .replace('{{vehicle_no}}', vehicle.registrationNumberRaw)}
+                  />
+                )}
+              </p>
+              <p className="font-bold text-orange-600 mt-1">
                 {vehicle.nextServiceDate ? dayjs(vehicle.nextServiceDate).format("DD MMM YYYY") : "N/A"}
                 {vehicle.nextServiceOdometer && ` / ${vehicle.nextServiceOdometer} km`}
               </p>

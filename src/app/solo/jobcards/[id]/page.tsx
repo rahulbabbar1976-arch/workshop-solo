@@ -35,8 +35,10 @@ export default async function JobCardPage({ params }: { params: Promise<{ id: st
     if (!legacyJobCard) {
       return notFound();
     }
-    return <JobCardDetailClient jobCard={legacyJobCard} />;
+    const profile = await prisma.workshopProfile.findFirst();
+    return <JobCardDetailClient jobCard={legacyJobCard} profile={profile} />;
   }
 
-  return <JobCardDetailClient jobCard={jobCard} />;
+  const profile = await prisma.workshopProfile.findFirst();
+  return <JobCardDetailClient jobCard={jobCard} profile={profile} />;
 }

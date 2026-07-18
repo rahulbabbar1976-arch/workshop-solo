@@ -49,6 +49,14 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
     });
   }
 
+  let printSettings = null;
+  if (profile) {
+    printSettings = await prisma.printSettings.findFirst({
+      where: { workshopProfileId: profile.id }
+    });
+  }
+  const totalIncludesTax = printSettings?.totalIncludesTax ?? true;
+
   // Fallback defaults if no template
   const layoutConfigRaw = template?.layoutConfig ? JSON.parse(template.layoutConfig as string) : [
     { id: "HEADER", enabled: true },
@@ -58,12 +66,33 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
     { id: "INTAKE_PICTURES", enabled: true },
     { id: "LABOUR_TABLE", enabled: true },
     { id: "PARTS_TABLE", enabled: true },
+    { id: "SUMMARY", enabled: true },
     { id: "SIGNATURES", enabled: true }
   ];
 
-  const layoutConfig = (Array.isArray(layoutConfigRaw) && typeof layoutConfigRaw[0] === 'string')
+  let layoutConfig = (Array.isArray(layoutConfigRaw) && typeof layoutConfigRaw[0] === 'string')
     ? layoutConfigRaw.map(id => ({ id, enabled: true }))
-    : layoutConfigRaw;
+    : Array.isArray(layoutConfigRaw) ? layoutConfigRaw : [
+        { id: "HEADER", enabled: true },
+        { id: "CUSTOMER_VEHICLE", enabled: true },
+        { id: "TIMELINES", enabled: true },
+        { id: "COMPLAINTS", enabled: true },
+        { id: "INTAKE_PICTURES", enabled: true },
+        { id: "LABOUR_TABLE", enabled: true },
+        { id: "PARTS_TABLE", enabled: true },
+        { id: "SUMMARY", enabled: true },
+        { id: "SIGNATURES", enabled: true }
+      ];
+
+  // Override visibility with printSettings
+  if (printSettings) {
+    layoutConfig = layoutConfig.map((section: any) => {
+      if (section.id === "CUSTOMER_VEHICLE") section.enabled = printSettings.showCustomerDetails || printSettings.showVehicleDetails;
+      if (section.id === "SUMMARY") section.enabled = printSettings.showSummary;
+      if (section.id === "SIGNATURES") section.enabled = printSettings.showSignatureSection;
+      return section;
+    });
+  }
 
   const columnsConfig = template?.columnsConfig ? JSON.parse(template.columnsConfig as string) : {
     labour: ["description", "qty", "rate", "tax", "total"],
@@ -80,9 +109,18 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
     primaryColor: '#0f172a'
   };
 
-  // Helper arrays for visibility checks
-  const labourCols = columnsConfig.labour || [];
-  const partsCols = columnsConfig.parts || [];
+  // Helper object for visibility checks
+  const printCols = {
+    partName: true, // Always show description
+    partNo: printSettings?.showColPartNo ?? true,
+    brand: printSettings?.showColPartBrand ?? true,
+    qty: printSettings?.showColQty ?? true,
+    rate: printSettings?.showColRate ?? true,
+    tax: printSettings?.showColTaxRate ?? true,
+    discount: printSettings?.showColDiscount ?? true,
+    total: printSettings?.showColTotal ?? true,
+    description: true, // Always show description for labour
+  };
 
   // Fetch users for Advisor and Mechanic names
   let advisorName = 'Unassigned';
@@ -245,11 +283,12 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
                 <table>
                   <thead>
                     <tr>
-                      {labourCols.includes('description') && <th style={{ width: '50%' }}>Service Description</th>}
-                      {labourCols.includes('qty') && <th className="text-right">Hours/Qty</th>}
-                      {labourCols.includes('rate') && <th className="text-right">Rate</th>}
-                      {labourCols.includes('tax') && <th className="text-right">Tax %</th>}
-                      {labourCols.includes('total') && <th className="text-right">Total</th>}
+                      {printCols.description && <th style={{ width: '50%' }}>Service Description</th>}
+                      {printCols.qty && <th className="text-right">Hours/Qty</th>}
+                      {printCols.rate && <th className="text-right">Rate</th>}
+                      {printCols.tax && <th className="text-right">Tax %</th>}
+                      {printCols.discount && <th className="text-right">Discount</th>}
+                      {printCols.total && <th className="text-right">Total</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -257,13 +296,19 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
                       const qty = l.quantity || 0;
                       const rate = l.sellingPrice || 0;
                       const tax = l.taxRate || 0;
+                      const discount = l.discountType === 'percent' ? (rate * qty * (l.discountValue || 0) / 100) : (l.discountValue || 0);
+                      const baseAmount = (qty * rate) - discount;
+                      const taxAmount = baseAmount * (tax / 100);
+                      const lineTotal = totalIncludesTax ? (baseAmount + taxAmount) : baseAmount;
+
                       return (
                         <tr key={l.id}>
-                          {labourCols.includes('description') && <td>{l.labourName}</td>}
-                          {labourCols.includes('qty') && <td className="text-right">{qty}</td>}
-                          {labourCols.includes('rate') && <td className="text-right">{rate.toFixed(2)}</td>}
-                          {labourCols.includes('tax') && <td className="text-right">{tax}%</td>}
-                          {labourCols.includes('total') && <td className="text-right">{(qty * rate * (1 + tax/100)).toFixed(2)}</td>}
+                          {printCols.description && <td>{l.labourName}</td>}
+                          {printCols.qty && <td className="text-right">{qty}</td>}
+                          {printCols.rate && <td className="text-right">{rate.toFixed(2)}</td>}
+                          {printCols.tax && <td className="text-right">{tax}%</td>}
+                          {printCols.discount && <td className="text-right">{discount.toFixed(2)}</td>}
+                          {printCols.total && <td className="text-right">{lineTotal.toFixed(2)}</td>}
                         </tr>
                       );
                     })}
@@ -280,13 +325,14 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
                 <table>
                   <thead>
                     <tr>
-                      {partsCols.includes('partName') && <th style={{ width: '40%' }}>Part Name / Description</th>}
-                      {partsCols.includes('partNo') && <th>Part No</th>}
-                      {partsCols.includes('brand') && <th>Brand</th>}
-                      {partsCols.includes('qty') && <th className="text-right">Qty</th>}
-                      {partsCols.includes('rate') && <th className="text-right">Rate</th>}
-                      {partsCols.includes('tax') && <th className="text-right">Tax %</th>}
-                      {partsCols.includes('total') && <th className="text-right">Total</th>}
+                      {printCols.partName && <th style={{ width: '40%' }}>Part Name / Description</th>}
+                      {printCols.partNo && <th>Part No</th>}
+                      {printCols.brand && <th>Brand</th>}
+                      {printCols.qty && <th className="text-right">Qty</th>}
+                      {printCols.rate && <th className="text-right">Rate</th>}
+                      {printCols.tax && <th className="text-right">Tax %</th>}
+                      {printCols.discount && <th className="text-right">Discount</th>}
+                      {printCols.total && <th className="text-right">Total</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -294,20 +340,92 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
                       const qty = p.quantityRequested || 0;
                       const rate = p.sellingPrice || 0;
                       const tax = p.taxRate || 0;
+                      const discount = p.discountType === 'percent' ? (rate * qty * (p.discountValue || 0) / 100) : (p.discountValue || 0);
+                      const baseAmount = (qty * rate) - discount;
+                      const taxAmount = baseAmount * (tax / 100);
+                      const lineTotal = totalIncludesTax ? (baseAmount + taxAmount) : baseAmount;
+
                       return (
                         <tr key={p.id}>
-                          {partsCols.includes('partName') && <td>{p.partName || p.partNumber}</td>}
-                          {partsCols.includes('partNo') && <td>{p.partNumber}</td>}
-                          {partsCols.includes('brand') && <td>{p.brand}</td>}
-                          {partsCols.includes('qty') && <td className="text-right">{qty}</td>}
-                          {partsCols.includes('rate') && <td className="text-right">{rate.toFixed(2)}</td>}
-                          {partsCols.includes('tax') && <td className="text-right">{tax}%</td>}
-                          {partsCols.includes('total') && <td className="text-right">{(qty * rate * (1 + tax/100)).toFixed(2)}</td>}
+                          {printCols.partName && <td>{p.partName || p.partNumber}</td>}
+                          {printCols.partNo && <td>{p.partNumber}</td>}
+                          {printCols.brand && <td>{p.brand}</td>}
+                          {printCols.qty && <td className="text-right">{qty}</td>}
+                          {printCols.rate && <td className="text-right">{rate.toFixed(2)}</td>}
+                          {printCols.tax && <td className="text-right">{tax}%</td>}
+                          {printCols.discount && <td className="text-right">{discount.toFixed(2)}</td>}
+                          {printCols.total && <td className="text-right">{lineTotal.toFixed(2)}</td>}
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+              </div>
+            );
+
+          case 'SUMMARY':
+            let subtotal = 0;
+            let totalDiscount = 0;
+            let totalTax = 0;
+
+            activeJob.labourLines.forEach(l => {
+              const qty = l.quantity || 0;
+              const rate = l.sellingPrice || 0;
+              const tax = l.taxRate || 0;
+              const discount = l.discountType === 'percent' ? (rate * qty * (l.discountValue || 0) / 100) : (l.discountValue || 0);
+              const base = (qty * rate);
+              subtotal += base;
+              totalDiscount += discount;
+              totalTax += (base - discount) * (tax / 100);
+            });
+
+            activeJob.partLines.forEach(p => {
+              const qty = p.quantityRequested || 0;
+              const rate = p.sellingPrice || 0;
+              const tax = p.taxRate || 0;
+              const discount = p.discountType === 'percent' ? (rate * qty * (p.discountValue || 0) / 100) : (p.discountValue || 0);
+              const base = (qty * rate);
+              subtotal += base;
+              totalDiscount += discount;
+              totalTax += (base - discount) * (tax / 100);
+            });
+
+            const overallDiscount = activeJob.overallDiscountType === 'percent' 
+              ? ((subtotal - totalDiscount) * (activeJob.overallDiscountValue || 0) / 100)
+              : (activeJob.overallDiscountValue || 0);
+            
+            totalDiscount += overallDiscount;
+            const grandTotal = subtotal - totalDiscount + totalTax;
+
+            return (
+              <div key={idx} style={{ marginTop: '12px', marginBottom: '12px', display: 'flex', justifyContent: 'flex-end', pageBreakInside: 'avoid' }}>
+                <div style={{ width: '300px' }}>
+                  <h3 className="grid-header">SUMMARY</h3>
+                  <table style={{ border: 'none' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ border: 'none', padding: '2px', fontWeight: 500 }}>Subtotal:</td>
+                        <td className="text-right" style={{ border: 'none', padding: '2px' }}>{subtotal.toFixed(2)}</td>
+                      </tr>
+                      {totalDiscount > 0 && (
+                        <tr>
+                          <td style={{ border: 'none', padding: '2px', fontWeight: 500 }}>Total Discount:</td>
+                          <td className="text-right" style={{ border: 'none', padding: '2px', color: '#16a34a' }}>-{totalDiscount.toFixed(2)}</td>
+                        </tr>
+                      )}
+                      <tr>
+                        <td style={{ border: 'none', padding: '2px', fontWeight: 500 }}>Total Tax (GST):</td>
+                        <td className="text-right" style={{ border: 'none', padding: '2px' }}>{totalTax.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ border: 'none', padding: '2px', fontWeight: 'bold', borderTop: '1px solid #cbd5e1', fontSize: `${globalStyle.baseFontSize + 2}pt` }}>Grand Total:</td>
+                        <td className="text-right" style={{ border: 'none', padding: '2px', fontWeight: 'bold', borderTop: '1px solid #cbd5e1', fontSize: `${globalStyle.baseFontSize + 2}pt` }}>
+                          {activeJob.currency || '₹'} {grandTotal.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             );
 
