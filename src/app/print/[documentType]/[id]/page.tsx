@@ -420,7 +420,7 @@ export default async function PrintDocumentPage({ params }: { params: Promise<{ 
                       <tr>
                         <td style={{ border: 'none', padding: '2px', fontWeight: 'bold', borderTop: '1px solid #cbd5e1', fontSize: `${globalStyle.baseFontSize + 2}pt` }}>Grand Total:</td>
                         <td className="text-right" style={{ border: 'none', padding: '2px', fontWeight: 'bold', borderTop: '1px solid #cbd5e1', fontSize: `${globalStyle.baseFontSize + 2}pt` }}>
-                          {activeJob.currency || '₹'} {grandTotal.toFixed(2)}
+                          {(activeJob as any).currency || '₹'} {grandTotal.toFixed(2)}
                         </td>
                       </tr>
                     </tbody>
