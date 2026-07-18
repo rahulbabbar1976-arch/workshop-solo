@@ -33,6 +33,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
               console.error(e);
             }
           }
+        }
         if (data.printSettings) {
           setTotalIncludesTax(data.printSettings.totalIncludesTax ?? true);
           setShowColDiscount(data.printSettings.showColDiscount ?? true);
