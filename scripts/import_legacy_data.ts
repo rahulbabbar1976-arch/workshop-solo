@@ -394,12 +394,13 @@ async function main() {
           fs.writeFileSync(filePath, pdfBuffer);
           
           // Link attachment to Vehicle (not jobcard, as requested)
-          await prisma.vehicleMedia.create({
+          await prisma.vehiclePhoto.create({
             data: {
               vehicleId: jobCard.vehicleId,
               fileUrl: `/uploads/v-photos/${fileName}`,
               fileName: `Legacy Invoice ${invoiceId}.pdf`,
-              mediaType: 'document'
+              mimeType: 'application/pdf',
+              fileSizeBytes: pdfBuffer.length
             }
           });
           
