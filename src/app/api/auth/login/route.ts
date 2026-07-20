@@ -63,9 +63,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Extract Role Keys
+    // 3. Extract Role Keys & Permissions
     const roleKeys = user.roles.map(ur => ur.role.roleKey);
     const primaryRole = user.roles.find(ur => ur.isPrimary)?.role.roleKey || roleKeys[0] || 'mechanic';
+
+    const permissions = {
+      canCreateJobCard: user.roles.some(ur => ur.role.canCreateJobCard),
+      canEditJobCard: user.roles.some(ur => ur.role.canEditJobCard),
+      canViewPartPrices: user.roles.some(ur => ur.role.canViewPartPrices),
+      canViewLaborPrices: user.roles.some(ur => ur.role.canViewLaborPrices),
+      canChangeJobCardStatus: user.roles.some(ur => ur.role.canChangeJobCardStatus)
+    };
 
     // 4. Update Last Login Time in Central Database
     await centralDb.user.update({
@@ -94,7 +102,8 @@ export async function POST(request: Request) {
       email: user.email,
       mobile: user.mobile,
       roleKeys,
-      primaryRole
+      primaryRole,
+      permissions
     };
 
     const response = NextResponse.json({
@@ -110,6 +119,11 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7 // 1 week
     });
     response.cookies.set('workshop_user_id', user.id, {
+      path: '/',
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7
+    });
+    response.cookies.set('workshop_permissions', JSON.stringify(permissions), {
       path: '/',
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 7

@@ -22,6 +22,20 @@ export default function SoloNewJobcardPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [isSavingVehicle, setIsSavingVehicle] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  const [mode, setMode] = useState<'jobcard' | 'booking'>('jobcard');
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [bookingData, setBookingData] = useState({
+    scheduledDate: "",
+    scheduledTime: "",
+    serviceType: "Drive In", // Drive In or Pick Up
+    pickupEmployeeId: "",
+  });
+
+  useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then(d => { if(d.success) setEmployees(d.users.filter((u: any) => u.isActive)); });
+  }, []);
 
   // Vehicle photo store (identical to JobCardDetailClient)
   const [vehiclePhotos, setVehiclePhotos] = useState<any[]>([]);
@@ -58,6 +72,7 @@ export default function SoloNewJobcardPage() {
 
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedCustomerVehicles, setSelectedCustomerVehicles] = useState<any[] | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,22 +86,32 @@ export default function SoloNewJobcardPage() {
   }, []);
 
   const handleRegSearch = async (val: string) => {
-    const uppercased = val.toUpperCase();
-    setFormData({...formData, regNo: uppercased});
+    setSearchQuery(val);
+    // Don't auto-set regNo until a selection is made or they move on
+    setFormData({...formData, regNo: val.toUpperCase().replace(/\s+/g, '')});
     setShowDropdown(true);
     
-    if (uppercased.length >= 2) { // Allow searching even earlier
+    if (val.length >= 2) { 
       setSearching(true);
       try {
-        const res = await fetch(`/api/vehicles?q=${uppercased}`);
-        const data = await res.json();
-        if (data.success && data.vehicles) {
-          setSearchResults(data.vehicles);
-        } else {
-          setSearchResults([]);
+        const [vehRes, custRes] = await Promise.all([
+          fetch(`/api/vehicles?q=${encodeURIComponent(val)}`),
+          fetch(`/api/customers?q=${encodeURIComponent(val)}`)
+        ]);
+        
+        const vehData = await vehRes.json();
+        const custData = await custRes.json();
+        
+        const combined: any[] = [];
+        if (vehData.success && vehData.vehicles) {
+          vehData.vehicles.forEach((v: any) => combined.push({ ...v, searchType: 'vehicle' }));
         }
+        if (custData.success && custData.customers) {
+          custData.customers.forEach((c: any) => combined.push({ ...c, searchType: 'customer' }));
+        }
+        setSearchResults(combined);
       } catch(e) {
-        console.error("Error searching vehicle", e);
+        console.error("Error searching", e);
         setSearchResults([]);
       }
       setSearching(false);
@@ -95,19 +120,37 @@ export default function SoloNewJobcardPage() {
     }
   };
 
-  const handleSelectVehicle = (v: any) => {
-    setFormData(prev => ({
-      ...prev,
-      regNo: v.registrationNumberRaw || v.registrationNumberNormalized,
-      make: v.manufacturer || prev.make,
-      model: v.model || prev.model,
-      year: v.manufactureYear?.toString() || prev.year,
-      color: v.color || prev.color,
-      odometer: v.currentOdometer?.toString() || prev.odometer,
-      customerName: v.currentCustomer?.displayName || prev.customerName,
-      mobile: v.currentCustomer?.primaryMobile || prev.mobile,
-      address: v.currentCustomer?.addressLine1 || prev.address
-    }));
+  const handleSelectSearchResult = (item: any) => {
+    if (item.searchType === 'customer') {
+      setFormData(prev => ({
+        ...prev,
+        regNo: "",
+        make: "",
+        model: "",
+        year: "",
+        color: "",
+        odometer: "",
+        customerName: item.displayName || prev.customerName,
+        mobile: item.primaryMobile || prev.mobile,
+        address: item.addressLine1 || prev.address
+      }));
+      setSelectedCustomerVehicles(item.vehicles || []);
+    } else {
+      // Vehicle
+      setFormData(prev => ({
+        ...prev,
+        regNo: item.registrationNumberRaw || item.registrationNumberNormalized,
+        make: item.manufacturer || prev.make,
+        model: item.model || prev.model,
+        year: item.manufactureYear?.toString() || prev.year,
+        color: item.color || prev.color,
+        odometer: item.currentOdometer?.toString() || prev.odometer,
+        customerName: item.currentCustomer?.displayName || prev.customerName,
+        mobile: item.currentCustomer?.primaryMobile || prev.mobile,
+        address: item.currentCustomer?.addressLine1 || prev.address
+      }));
+      setSelectedCustomerVehicles(null);
+    }
     setShowDropdown(false);
   };
 
@@ -189,7 +232,11 @@ export default function SoloNewJobcardPage() {
   ];
 
   const handleNextStep1 = async () => {
-    if (formData.regNo.length < 4) return;
+    if (mode === 'jobcard' && formData.regNo.length < 4) return;
+    if (mode === 'booking' && !formData.customerName) {
+      alert("Customer Name is required to schedule an appointment.");
+      return;
+    }
     
     setIsSavingVehicle(true);
     try {
@@ -299,26 +346,78 @@ export default function SoloNewJobcardPage() {
   const handleSubmit = async () => {
     setLoading(true);
     
-    const data = new FormData();
-    data.append("regNo", formData.regNo);
-    data.append("customerName", formData.customerName);
-    data.append("mobile", formData.mobile);
-    data.append("address", formData.address);
-    data.append("make", formData.make);
-    data.append("model", formData.model);
-    data.append("year", formData.year);
-    data.append("odometer", formData.odometer);
-    data.append("complaint", formData.complaint);
-
-    try {
-      const res = await createJobCardAction(data);
-      if (res.success) {
-        alert(`Job Card ${res.jobCardId} created successfully!`);
-        router.push("/solo/dashboard");
+    if (mode === 'jobcard') {
+      const data = new FormData();
+      data.append("regNo", formData.regNo);
+      data.append("customerName", formData.customerName);
+      data.append("mobile", formData.mobile);
+      data.append("address", formData.address);
+      data.append("make", formData.make);
+      data.append("model", formData.model);
+      data.append("year", formData.year);
+      data.append("odometer", formData.odometer);
+      data.append("complaint", formData.complaint);
+      data.append("observations", formData.observations);
+      
+      try {
+        const res = await createJobCardAction(data);
+        if (res.success) {
+          alert(`Job Card ${res.jobCardId} created successfully!`);
+          router.push("/solo/dashboard");
+        }
+      } catch(e) {
+        console.error(e);
+        alert("Failed to create job card.");
       }
-    } catch(e) {
-      console.error(e);
-      alert("Failed to create job card.");
+    } else {
+      // Booking Mode
+      if (!bookingData.scheduledDate || !bookingData.scheduledTime) {
+        alert("Please provide a date and time for the appointment.");
+        setLoading(false);
+        return;
+      }
+
+      const dateTime = new Date(`${bookingData.scheduledDate}T${bookingData.scheduledTime}`);
+      
+      const payload = {
+        customerName: formData.customerName,
+        customerPhone: formData.mobile,
+        customerAddress: formData.address,
+        vehicleRegNo: formData.regNo,
+        vehicleManufacturer: formData.make,
+        vehicleModel: formData.model,
+        scheduledDate: dateTime.toISOString(),
+        pickupEmployeeId: bookingData.serviceType === 'Pick Up' ? bookingData.pickupEmployeeId : null,
+        notes: bookingData.serviceType,
+        complaints: formData.complaint,
+        observations: formData.observations,
+      };
+
+      try {
+        const res = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          const emp = employees.find(e => e.id === bookingData.pickupEmployeeId);
+          let waText = `Hello ${formData.customerName}, your appointment is confirmed for ${new Date(dateTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}.`;
+          if (bookingData.serviceType === 'Pick Up' && emp) {
+            waText += ` Our staff member ${emp.fullName} will pick up your vehicle.`;
+          }
+          
+          if (confirm("Appointment scheduled successfully! Open WhatsApp to send confirmation?")) {
+            const url = `https://wa.me/${formData.mobile.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`;
+            window.open(url, '_blank');
+          }
+          router.push("/solo/dashboard");
+        } else {
+          alert("Failed to create booking: " + data.error);
+        }
+      } catch (e) {
+        alert("Error saving booking");
+      }
     }
     setLoading(false);
   };
@@ -337,14 +436,34 @@ export default function SoloNewJobcardPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 pb-24 font-outfit">
       {/* Flat Teal Header */}
-      <div className="bg-gray-900 px-4 py-4 shadow-md flex items-center sticky top-0 z-30 text-white">
-        <Link href={step === 1 ? "/solo/dashboard" : "#"} onClick={(e) => { if (step > 1) { e.preventDefault(); setStep(step - 1); } }} className="mr-3 p-2 -ml-2 hover:bg-gray-800 rounded-full transition-colors">
-          <ArrowLeft className="w-6 h-6" />
-        </Link>
-        <h1 className="text-lg font-bold uppercase tracking-wider">New Job Card</h1>
+      <div className="bg-gray-900 px-4 py-4 shadow-md flex items-center justify-between sticky top-0 z-30 text-white">
+        <div className="flex items-center">
+          <Link href={step === 1 ? "/solo/dashboard" : "#"} onClick={(e) => { if (step > 1) { e.preventDefault(); setStep(step - 1); } }} className="mr-3 p-2 -ml-2 hover:bg-gray-800 rounded-full transition-colors">
+            <ArrowLeft className="w-6 h-6" />
+          </Link>
+          <h1 className="text-lg font-bold uppercase tracking-wider">{mode === 'jobcard' ? 'New Job Card' : 'Schedule Appt'}</h1>
+        </div>
       </div>
 
       <div className="flex-1 px-4 py-6 max-w-md w-full mx-auto">
+        {/* Mode Toggle */}
+        {step === 1 && (
+          <div className="flex bg-gray-200 p-1 rounded-lg mb-6 shadow-sm">
+            <button 
+              onClick={() => setMode('jobcard')}
+              className={`flex-1 py-2 text-sm font-bold uppercase rounded-md transition-colors ${mode === 'jobcard' ? 'bg-white text-gray-900 shadow' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Start Job
+            </button>
+            <button 
+              onClick={() => setMode('booking')}
+              className={`flex-1 py-2 text-sm font-bold uppercase rounded-md transition-colors ${mode === 'booking' ? 'bg-orange-500 text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Book Appt
+            </button>
+          </div>
+        )}
+
         {/* Flat Step Indicator */}
         <div className="flex justify-between mb-8">
           {[1, 2, 3].map((num) => (
@@ -360,12 +479,14 @@ export default function SoloNewJobcardPage() {
               <h2 className="text-lg font-bold text-orange-500 border-b-2 border-orange-500 pb-2 mb-4 uppercase">Identity & Vehicle</h2>
               
               <div className="space-y-1" ref={dropdownRef}>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Reg No / Phone <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  Search Name, Phone, or Reg No {mode === 'jobcard' && <span className="text-red-500">*</span>}
+                </label>
                 <div className="flex gap-2 relative">
                   <input 
                     type="text" 
-                    placeholder="Registration Number" 
-                    value={formData.regNo}
+                    placeholder="Enter Name, Phone, or Reg No" 
+                    value={searchQuery || formData.regNo}
                     onChange={(e) => handleRegSearch(e.target.value)}
                     onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
                     className="w-full p-4 border-2 border-gray-200 rounded focus:border-orange-500 font-bold text-gray-800 uppercase focus:ring-0"
@@ -373,23 +494,41 @@ export default function SoloNewJobcardPage() {
                   {searching && <span className="absolute right-4 top-4 animate-pulse text-amber-500 font-bold text-sm">Searching...</span>}
                   
                   {/* Autocomplete Dropdown */}
-                  {showDropdown && formData.regNo.length >= 2 && (
+                  {showDropdown && searchQuery.length >= 2 && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 shadow-xl rounded-md z-50 max-h-60 overflow-y-auto">
                       {searchResults.length > 0 ? (
                         <ul>
-                          {searchResults.map((v, i) => (
+                          {searchResults.map((item, i) => (
                             <li 
                               key={i} 
                               className="px-4 py-3 hover:bg-orange-50 border-b border-gray-100 cursor-pointer transition-colors"
-                              onClick={() => handleSelectVehicle(v)}
+                              onClick={() => handleSelectSearchResult(item)}
                             >
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-gray-800">{v.registrationNumberNormalized || v.registrationNumberRaw}</span>
-                                <span className="text-xs font-semibold px-2 py-1 bg-gray-100 rounded text-gray-600">{v.manufacturer} {v.model}</span>
-                              </div>
-                              <div className="text-sm text-gray-500 mt-1">
-                                {v.currentCustomer?.displayName || "No Owner"} {v.currentCustomer?.primaryMobile ? `• ${v.currentCustomer.primaryMobile}` : ""}
-                              </div>
+                              {item.searchType === 'customer' ? (
+                                <div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-bold text-gray-800 flex items-center">
+                                      👤 {item.displayName}
+                                    </span>
+                                    <span className="text-xs font-semibold px-2 py-1 bg-blue-100 rounded text-blue-600">Customer</span>
+                                  </div>
+                                  <div className="text-sm text-gray-500 mt-1">
+                                    {item.primaryMobile ? `${item.primaryMobile}` : "No Mobile"}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-bold text-gray-800 flex items-center">
+                                      🚘 {item.registrationNumberNormalized || item.registrationNumberRaw}
+                                    </span>
+                                    <span className="text-xs font-semibold px-2 py-1 bg-gray-100 rounded text-gray-600">{item.manufacturer} {item.model}</span>
+                                  </div>
+                                  <div className="text-sm text-gray-500 mt-1">
+                                    {item.currentCustomer?.displayName || "No Owner"} {item.currentCustomer?.primaryMobile ? `• ${item.currentCustomer.primaryMobile}` : ""}
+                                  </div>
+                                </div>
+                              )}
                             </li>
                           ))}
                         </ul>
@@ -398,7 +537,7 @@ export default function SoloNewJobcardPage() {
                           {searching ? "Searching database..." : (
                             <div>
                               No match found. <br />
-                              <span className="font-bold text-orange-500 mt-1 inline-block">Will create as new vehicle.</span>
+                              <span className="font-bold text-orange-500 mt-1 inline-block">Will create as new.</span>
                             </div>
                           )}
                         </div>
@@ -407,6 +546,52 @@ export default function SoloNewJobcardPage() {
                   )}
                 </div>
               </div>
+
+              {/* Customer Vehicles Selector */}
+              {selectedCustomerVehicles !== null && (
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-md animate-in fade-in duration-300">
+                  <label className="block text-xs font-bold text-blue-600 uppercase tracking-wide mb-2">
+                    Select Vehicle for {formData.customerName}
+                  </label>
+                  {selectedCustomerVehicles.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedCustomerVehicles.map((v, i) => (
+                        <div 
+                          key={i}
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              regNo: v.registrationNumberRaw || v.registrationNumberNormalized,
+                              make: v.manufacturer || prev.make,
+                              model: v.model || prev.model,
+                              year: v.manufactureYear?.toString() || prev.year,
+                              color: v.color || prev.color,
+                              odometer: v.currentOdometer?.toString() || prev.odometer,
+                            }));
+                            setSelectedCustomerVehicles(null);
+                          }}
+                          className="p-2 bg-white border border-blue-200 rounded cursor-pointer hover:border-blue-500 hover:bg-blue-100 transition-colors flex justify-between items-center"
+                        >
+                          <span className="font-bold text-gray-800">{v.registrationNumberNormalized || v.registrationNumberRaw}</span>
+                          <span className="text-sm text-gray-600">{v.manufacturer} {v.model}</span>
+                        </div>
+                      ))}
+                      <div 
+                        onClick={() => {
+                          setSelectedCustomerVehicles(null);
+                        }}
+                        className="p-2 border border-dashed border-gray-400 rounded text-center text-sm font-bold text-gray-600 cursor-pointer hover:border-orange-500 hover:text-orange-500 transition-colors"
+                      >
+                        + Add New Vehicle
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600">
+                      No existing vehicles found. Type registration above to create one.
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -438,6 +623,17 @@ export default function SoloNewJobcardPage() {
                   <input type="tel" className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded focus:border-orange-500 text-sm font-semibold" value={formData.mobile} onChange={e=>setFormData({...formData, mobile: e.target.value})} />
                 </div>
               </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Driver Name</label>
+                  <input type="text" className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded focus:border-orange-500 text-sm font-semibold" value={formData.driverName} onChange={e=>setFormData({...formData, driverName: e.target.value})} placeholder="Optional" />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Driver Mobile</label>
+                  <input type="tel" className="w-full px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded focus:border-orange-500 text-sm font-semibold" value={formData.driverMobile} onChange={e=>setFormData({...formData, driverMobile: e.target.value})} placeholder="Optional" />
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -463,7 +659,7 @@ export default function SoloNewJobcardPage() {
 
               <button
                 onClick={handleNextStep1}
-                disabled={formData.regNo.length < 4 || isSavingVehicle}
+                disabled={(mode === 'jobcard' && formData.regNo.length < 4) || isSavingVehicle || (mode === 'booking' && !formData.customerName)}
                 className="w-full py-4 mt-4 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded flex justify-center items-center uppercase tracking-wider disabled:opacity-50"
               >
                 {isSavingVehicle ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Next <ArrowRight className="w-5 h-5 ml-2" /></>}
@@ -610,8 +806,8 @@ export default function SoloNewJobcardPage() {
             </div>
           )}
 
-          {/* STEP 3: ESTIMATE & SAVE */}
-          {step === 3 && (
+          {/* STEP 3: FINAL DETAILS */}
+          {step === 3 && mode === 'jobcard' && (
             <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
               <h2 className="text-lg font-bold text-orange-500 border-b-2 border-orange-500 pb-2 mb-4 uppercase">Estimate & Finalize</h2>
               
@@ -655,6 +851,69 @@ export default function SoloNewJobcardPage() {
                    Share <ArrowRight className="w-4 h-4 ml-2" />
                  </button>
               </div>
+            </div>
+          )}
+
+          {step === 3 && mode === 'booking' && (
+            <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+              <h2 className="text-lg font-bold text-orange-500 border-b-2 border-orange-500 pb-2 mb-4 uppercase">Appointment Details</h2>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Date</label>
+                  <input
+                    type="date"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded focus:ring-0 focus:border-orange-500 font-bold text-gray-800"
+                    value={bookingData.scheduledDate}
+                    onChange={(e) => setBookingData({ ...bookingData, scheduledDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Time</label>
+                  <input
+                    type="time"
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded focus:ring-0 focus:border-orange-500 font-bold text-gray-800"
+                    value={bookingData.scheduledTime}
+                    onChange={(e) => setBookingData({ ...bookingData, scheduledTime: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1 mt-4">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Service Type</label>
+                <select 
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded focus:ring-0 focus:border-orange-500 font-bold text-gray-800"
+                  value={bookingData.serviceType}
+                  onChange={(e) => setBookingData({ ...bookingData, serviceType: e.target.value })}
+                >
+                  <option value="Drive In">Drive In</option>
+                  <option value="Pick Up">Pick Up & Drop</option>
+                </select>
+              </div>
+
+              {bookingData.serviceType === 'Pick Up' && (
+                <div className="space-y-1 mt-4 animate-in fade-in">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Assign Pickup Staff</label>
+                  <select 
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded focus:ring-0 focus:border-orange-500 font-bold text-gray-800"
+                    value={bookingData.pickupEmployeeId}
+                    onChange={(e) => setBookingData({ ...bookingData, pickupEmployeeId: e.target.value })}
+                  >
+                    <option value="">Select Employee...</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.team || 'Staff'})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full py-4 mt-6 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded flex justify-center items-center uppercase tracking-wider shadow-lg disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Confirm Appointment <CheckCircle className="w-5 h-5 ml-2" /></>}
+              </button>
             </div>
           )}
         </div>

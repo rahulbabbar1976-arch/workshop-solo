@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { Car, MapPin, Phone, User, Calendar, Settings, ArrowLeft } from "lucide-react";
+import { Car, MapPin, Phone, User, Calendar, Settings, ArrowLeft, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import TransferOwnershipForm from "./TransferOwnershipForm";
 import VehicleBatteryEditor from "./VehicleBatteryEditor";
@@ -15,6 +15,7 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
     where: { id },
     include: {
       currentCustomer: true,
+      photos: true,
       ownershipHistory: {
         orderBy: { fromDate: 'desc' },
         include: { customer: true }
@@ -163,6 +164,25 @@ export default async function VehicleDetailsPage({ params }: { params: Promise<{
             </div>
           </div>
         )}
+
+        {/* Attachments & Photos */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <h2 className="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-3 flex items-center">
+            <ImageIcon className="w-5 h-5 mr-2 text-gray-400" /> Attachments & Photos
+          </h2>
+          {vehicle.photos.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {vehicle.photos.map(photo => (
+                <a key={photo.id} href={photo.fileUrl} target="_blank" rel="noopener noreferrer" className="block relative aspect-square border border-gray-200 rounded-md overflow-hidden hover:opacity-80 transition-opacity bg-gray-50 flex flex-col items-center justify-center p-2 text-center group">
+                  <ImageIcon className="w-10 h-10 text-gray-300 mb-2 group-hover:text-orange-500 transition-colors" />
+                  <span className="text-xs text-gray-500 truncate w-full" title={photo.fileName || "Attachment"}>{photo.fileName || "Attachment"}</span>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 italic text-sm">No attachments found.</p>
+          )}
+        </div>
 
       </div>
     </div>

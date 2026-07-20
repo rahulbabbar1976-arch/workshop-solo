@@ -120,6 +120,7 @@ export async function PUT(
       parts,  // Array of part line items (new, updated, or deleted)
       labour, // Array of labour line items (new, updated, or deleted)
       media,  // New media uploads
+      complaints, // New complaints array
       editorId, // The user ID making the edit
       isOwner = false // Owner flag
     } = body;
@@ -231,7 +232,7 @@ export async function PUT(
           billingCustomerId: billingCustomerId !== undefined ? billingCustomerId : existing.billingCustomerId,
           invoiceNumber: invoiceNumber !== undefined ? invoiceNumber : existing.invoiceNumber,
           invoiceDate: invoiceDate !== undefined ? (invoiceDate ? new Date(invoiceDate) : null) : existing.invoiceDate,
-          closedAt: status === 'closed' ? new Date() : (status === 'open' ? null : existing.closedAt)
+          closedAt: (status === 'closed' || status === 'ready_for_delivery') ? new Date() : (status === 'open' ? null : existing.closedAt)
         }
       });
 
@@ -570,6 +571,19 @@ export async function PUT(
               fileUrl: m.fileUrl,
               fileName: m.fileName || null,
               captureLabel: m.captureLabel || null
+            }
+          });
+        }
+      }
+      
+      // Process Complaints
+      if (complaints && Array.isArray(complaints)) {
+        await tx.jobCardComplaint.deleteMany({ where: { jobcardId: id } });
+        for (const c of complaints) {
+          await tx.jobCardComplaint.create({
+            data: {
+              jobcardId: id,
+              customerComplaintText: typeof c === 'object' ? (c.customerComplaintText || c.complaintText || '') : c
             }
           });
         }

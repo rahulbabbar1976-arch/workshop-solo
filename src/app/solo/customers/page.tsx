@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { User, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import SortFilterBar from "@/components/ui/SortFilterBar";
 
 export const revalidate = 0;
 
@@ -11,8 +12,14 @@ export default async function CustomersPage({
 }) {
   const params = await searchParams;
   const q = typeof params.q === 'string' ? params.q : '';
+  const sortParam = typeof params.sort === 'string' ? params.sort : 'date_desc';
   const page = typeof params.page === 'string' ? parseInt(params.page) || 1 : 1;
   const limit = 25;
+
+  let orderByClause: any = { createdAt: 'desc' };
+  if (sortParam === "date_asc") orderByClause = { createdAt: "asc" };
+  else if (sortParam === "name_asc") orderByClause = { displayName: "asc" };
+  else if (sortParam === "name_desc") orderByClause = { displayName: "desc" };
 
   const whereClause = q ? {
     OR: [
@@ -31,7 +38,7 @@ export default async function CustomersPage({
     prisma.customer.count({ where: whereClause }),
     prisma.customer.findMany({
       where: whereClause,
-      orderBy: { createdAt: 'desc' },
+      orderBy: orderByClause,
       skip: (page - 1) * limit,
       take: limit
     })
@@ -51,9 +58,12 @@ export default async function CustomersPage({
           defaultValue={q} 
           placeholder="Search by name or phone..." 
         />
+        {sortParam && <input type="hidden" name="sort" value={sortParam} />}
         {/* Hidden page input to reset to page 1 on search */}
         <input type="hidden" name="page" value="1" />
       </form>
+
+      <SortFilterBar />
 
       {customers.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--steel)' }}>
@@ -92,20 +102,20 @@ export default async function CustomersPage({
       {totalCount > 0 && (
         <div className="pagination">
           <Link 
-            href={`?q=${q}&page=${Math.max(1, page - 1)}`} 
+            href={`?q=${q}&sort=${sortParam}&page=${Math.max(1, page - 1)}`} 
             className="pagination-btn"
-            style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1 }}
+            style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1, textDecoration: 'none' }}
           >
             Previous
           </Link>
-          <div className="pagination-info">
+          <div className="pagination-info" style={{ textAlign: 'center' }}>
             Page {page} of {totalPages} <br/>
             <span style={{ fontSize: '10px' }}>({totalCount} records)</span>
           </div>
           <Link 
-            href={`?q=${q}&page=${Math.min(totalPages, page + 1)}`} 
+            href={`?q=${q}&sort=${sortParam}&page=${Math.min(totalPages, page + 1)}`} 
             className="pagination-btn"
-            style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1 }}
+            style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1, textDecoration: 'none' }}
           >
             Next
           </Link>

@@ -11,6 +11,7 @@ export default function VehicleBatteryEditor({ vehicle }: { vehicle: any }) {
   const [make, setMake] = useState(vehicle.batteryMake || "");
   const [serial, setSerial] = useState(vehicle.batterySerialNumber || "");
   const [warranty, setWarranty] = useState(vehicle.batteryWarrantyMonths?.toString() || "");
+  const [details, setDetails] = useState(vehicle.batteryDetails || "");
   const [installDate, setInstallDate] = useState(
     vehicle.batteryInstallationDate ? new Date(vehicle.batteryInstallationDate).toISOString().split('T')[0] : ""
   );
@@ -61,6 +62,10 @@ export default function VehicleBatteryEditor({ vehicle }: { vehicle: any }) {
           <div>
             <p className="text-gray-500 font-medium">Warranty</p>
             <p className="font-bold text-gray-800">{vehicle.batteryWarrantyMonths ? `${vehicle.batteryWarrantyMonths} months` : "N/A"}</p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-gray-500 font-medium">Details</p>
+            <p className="font-bold text-gray-800">{vehicle.batteryDetails || "N/A"}</p>
           </div>
         </div>
       </div>
@@ -120,6 +125,17 @@ export default function VehicleBatteryEditor({ vehicle }: { vehicle: any }) {
               className="w-full p-2 border border-gray-300 rounded-lg text-sm" 
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Details</label>
+          <input 
+            type="text" 
+            value={details} 
+            onChange={e => setDetails(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-lg text-sm" 
+            placeholder="Additional notes"
+          />
         </div>
         
         <button

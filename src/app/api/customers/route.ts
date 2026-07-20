@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     if (q) {
       whereClause = {
         OR: [
-          { displayName: { contains: q } },
+          { displayName: { contains: q, mode: 'insensitive' } },
           { primaryMobile: { contains: q } }
         ]
       };

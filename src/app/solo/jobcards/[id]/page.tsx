@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { JobCardDetailClient } from "./JobCardDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -36,9 +37,16 @@ export default async function JobCardPage({ params }: { params: Promise<{ id: st
       return notFound();
     }
     const profile = await prisma.workshopProfile.findFirst();
-    return <JobCardDetailClient jobCard={legacyJobCard} profile={profile} />;
+    const cookieStore = await cookies();
+    const permissionsCookie = cookieStore.get('workshop_permissions');
+    const permissions = permissionsCookie ? JSON.parse(permissionsCookie.value) : null;
+    return <JobCardDetailClient jobCard={legacyJobCard} profile={profile} permissions={permissions} />;
   }
 
   const profile = await prisma.workshopProfile.findFirst();
-  return <JobCardDetailClient jobCard={jobCard} profile={profile} />;
+  const cookieStore = await cookies();
+  const permissionsCookie = cookieStore.get('workshop_permissions');
+  const permissions = permissionsCookie ? JSON.parse(permissionsCookie.value) : null;
+  
+  return <JobCardDetailClient jobCard={jobCard} profile={profile} permissions={permissions} />;
 }

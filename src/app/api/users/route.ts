@@ -41,7 +41,11 @@ export async function POST(request: Request) {
       quickPin,
       skillCategory,
       roleKeys, // Array of role keys e.g. ["mechanic", "advisor"]
-      team
+      team,
+      username,
+      address,
+      joiningDate,
+      isAppAccessEnabled
     } = body;
 
     if (!fullName) {
@@ -65,7 +69,11 @@ export async function POST(request: Request) {
         quickPinHash,
         skillCategory: skillCategory || null,
         team: team || null,
-        isActive: true
+        isActive: true,
+        username: username || null,
+        address: address || null,
+        joiningDate: joiningDate ? new Date(joiningDate) : null,
+        isAppAccessEnabled: isAppAccessEnabled !== undefined ? isAppAccessEnabled : true
       }
     });
 
@@ -105,6 +113,10 @@ export async function POST(request: Request) {
               skillCategory: skillCategory || null,
               team: team || null,
               isActive: true,
+              username: username || null,
+              address: address || null,
+              joiningDate: joiningDate ? new Date(joiningDate) : null,
+              isAppAccessEnabled: isAppAccessEnabled !== undefined ? isAppAccessEnabled : true,
               tenantDb: currentDbPath
             }
           });
@@ -149,7 +161,11 @@ export async function PUT(request: Request) {
       skillCategory,
       roleKeys,
       team,
-      isActive
+      isActive,
+      username,
+      address,
+      joiningDate,
+      isAppAccessEnabled
     } = body;
 
     if (!id) {
@@ -163,6 +179,10 @@ export async function PUT(request: Request) {
     if (skillCategory !== undefined) dataToUpdate.skillCategory = skillCategory || null;
     if (team !== undefined) dataToUpdate.team = team || null;
     if (isActive !== undefined) dataToUpdate.isActive = isActive;
+    if (username !== undefined) dataToUpdate.username = username || null;
+    if (address !== undefined) dataToUpdate.address = address || null;
+    if (joiningDate !== undefined) dataToUpdate.joiningDate = joiningDate ? new Date(joiningDate) : null;
+    if (isAppAccessEnabled !== undefined) dataToUpdate.isAppAccessEnabled = isAppAccessEnabled;
 
     if (password) {
       dataToUpdate.passwordHash = hashPassword(password);
@@ -218,6 +238,10 @@ export async function PUT(request: Request) {
           if (skillCategory !== undefined) centralData.skillCategory = skillCategory || null;
           if (team !== undefined) centralData.team = team || null;
           if (isActive !== undefined) centralData.isActive = isActive;
+          if (username !== undefined) centralData.username = username || null;
+          if (address !== undefined) centralData.address = address || null;
+          if (joiningDate !== undefined) centralData.joiningDate = joiningDate ? new Date(joiningDate) : null;
+          if (isAppAccessEnabled !== undefined) centralData.isAppAccessEnabled = isAppAccessEnabled;
 
           if (password) {
             centralData.passwordHash = hashPassword(password);

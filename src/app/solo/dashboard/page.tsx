@@ -1,11 +1,19 @@
-import { Bell, Search, Plus } from "lucide-react";
+import { Bell, Search, Plus, Users, CalendarClock, Wrench } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import Image from "next/image";
 import NotificationBell from "@/components/NotificationBell";
+import ProfileDropdown from "@/components/ProfileDropdown";
+import SortFilterBar from "@/components/ui/SortFilterBar";
+import { formatDate } from "@/lib/dateUtils";
 
-export default async function SoloDashboardPage() {
+export default async function SoloDashboardPage({
+  searchParams
+}: {
+  searchParams: Promise<{ [key: string]: string | undefined }>
+}) {
+  const params = await searchParams;
   const cookieStore = await cookies();
   const userId = cookieStore.get('workshop_user_id')?.value;
   
@@ -35,9 +43,23 @@ export default async function SoloDashboardPage() {
     where: { tenantId, status: "ready_for_delivery" }
   });
 
+  const sortParam = params.sort || 'date-desc';
+  const filterParam = params.filter || 'all';
+
+  let orderBy: any = { createdAt: "desc" };
+  if (sortParam === 'date-asc') orderBy = { createdAt: 'asc' };
+  else if (sortParam === 'date-desc') orderBy = { createdAt: 'desc' };
+  else if (sortParam === 'name-asc') orderBy = { customer: { displayName: 'asc' } };
+  else if (sortParam === 'name-desc') orderBy = { customer: { displayName: 'desc' } };
+
+  let whereClause: any = { tenantId };
+  if (filterParam !== 'all') {
+    whereClause.status = filterParam;
+  }
+
   const rawJobs = await prisma.jobCard.findMany({
-    where: { tenantId },
-    orderBy: { createdAt: "desc" },
+    where: whereClause,
+    orderBy,
     take: 10,
     include: {
       customer: true,
@@ -51,8 +73,9 @@ export default async function SoloDashboardPage() {
     plate: job.vehicle?.registrationNumberRaw || 'UNKNOWN',
     make: job.vehicle?.model || 'Unknown',
     status: job.status || 'UNKNOWN',
-    opened: job.createdAt ? job.createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '-',
-    due: job.expectedDeliveryAt ? job.expectedDeliveryAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '-'
+    opened: formatDate(job.createdAt),
+    due: formatDate(job.expectedDeliveryAt),
+    completed: formatDate(job.closedAt)
   }));
 
   // Avatar Display
@@ -67,16 +90,13 @@ export default async function SoloDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-wide">{greeting}, {firstName}</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <Link href="/solo/jobcards/new" className="bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-xl flex items-center justify-center transition-colors shadow-lg">
+            <Plus className="w-6 h-6" />
+          </Link>
           <NotificationBell />
           
-          <Link href="/solo/settings" className="w-10 h-10 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center overflow-hidden">
-            {user?.profilePhotoUrl ? (
-              <Image src={user.profilePhotoUrl} alt="Avatar" width={40} height={40} className="object-cover" />
-            ) : (
-              <span className="font-bold text-orange-500">{userInitials}</span>
-            )}
-          </Link>
+          <ProfileDropdown userInitials={userInitials} profilePhotoUrl={user?.profilePhotoUrl} />
         </div>
       </div>
 
@@ -98,9 +118,60 @@ export default async function SoloDashboardPage() {
           </Link>
         </div>
 
+        {/* Quick Action Icons */}
+        <div className="grid grid-cols-4 gap-2 pt-2">
+          <Link href="/solo/jobcards/new" className="bg-white rounded-xl p-3 shadow-sm border border-gray-200 flex flex-col items-center hover:border-orange-500 transition-colors">
+            <div className="bg-orange-100 p-2 rounded-full mb-2">
+              <Plus className="w-5 h-5 text-orange-600" />
+            </div>
+            <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wide text-center leading-tight">New Job</span>
+          </Link>
+          <Link href="/solo/vehicles/service-due" className="bg-white rounded-xl p-3 shadow-sm border border-gray-200 flex flex-col items-center hover:border-blue-500 transition-colors">
+            <div className="bg-blue-100 p-2 rounded-full mb-2">
+              <Wrench className="w-5 h-5 text-blue-600" />
+            </div>
+            <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wide text-center leading-tight">Service Due</span>
+          </Link>
+          <Link href="/solo/bookings" className="bg-white rounded-xl p-3 shadow-sm border border-gray-200 flex flex-col items-center hover:border-emerald-500 transition-colors">
+            <div className="bg-emerald-100 p-2 rounded-full mb-2">
+              <CalendarClock className="w-5 h-5 text-emerald-600" />
+            </div>
+            <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wide text-center leading-tight">Bookings</span>
+          </Link>
+          <Link href="/solo/employees" className="bg-white rounded-xl p-3 shadow-sm border border-gray-200 flex flex-col items-center hover:border-purple-500 transition-colors relative">
+            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm border border-white">
+              Staff Only
+            </div>
+            <div className="bg-purple-100 p-2 rounded-full mb-2">
+              <Users className="w-5 h-5 text-purple-600" />
+            </div>
+            <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wide text-center leading-tight">Staff</span>
+          </Link>
+        </div>
+
         {/* Section Header */}
         <div className="pt-2">
-          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Today's Job Cards</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Recent Job Cards</h2>
+          </div>
+          
+          <div className="mb-4">
+            <SortFilterBar 
+              sortOptions={[
+                { label: 'Newest First', value: 'date-desc' },
+                { label: 'Oldest First', value: 'date-asc' },
+                { label: 'Customer A-Z', value: 'name-asc' },
+                { label: 'Customer Z-A', value: 'name-desc' }
+              ]}
+              filterOptions={[
+                { label: 'All Statuses', value: 'all' },
+                { label: 'Open', value: 'open' },
+                { label: 'Waiting Approval', value: 'waiting_for_approval' },
+                { label: 'Ready', value: 'ready_for_delivery' },
+                { label: 'Closed', value: 'closed' }
+              ]}
+            />
+          </div>
           
           {/* Ticket Style Cards */}
           <div className="space-y-4">
@@ -125,7 +196,7 @@ export default async function SoloDashboardPage() {
                 <div className="border-t border-gray-100 pt-3 flex justify-between items-center text-sm">
                   <div className="font-semibold text-gray-900">{job.customer}</div>
                   <div className="text-gray-400 font-mono text-xs">
-                    opened {job.opened} &bull; due {job.due}
+                    opened {job.opened} &bull; {(job.status === 'closed' || job.status === 'ready_for_delivery') ? `completed ${job.completed || '-'}` : `due ${job.due || '-'}`}
                   </div>
                 </div>
 

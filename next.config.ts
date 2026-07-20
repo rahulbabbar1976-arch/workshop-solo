@@ -41,6 +41,12 @@ const nextConfig: NextConfig = {
   ],
   serverExternalPackages: ['tesseract.js', 'sharp'],
 
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
+
   async headers() {
     return [
       {

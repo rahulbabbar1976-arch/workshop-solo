@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Home, ClipboardList, Car, Users, Package, Wrench, User, BarChart, Calendar, Settings, LogOut } from "lucide-react";
 import { BottomNav } from "./BottomNav";
 import { TopNav } from "./TopNav"; // Can be adapted or kept as is, but we'll put it inside the screen
+import { ShieldAlert } from "lucide-react";
 
 export default function SoloLayout({
   children,
@@ -61,6 +62,21 @@ export default function SoloLayout({
             <Link href="/solo/inventory/labor" className={`railitem ${pathname.includes('/solo/inventory/labor') ? 'active' : ''}`}>
               <Wrench className="w-5 h-5 mb-1" />
               <span className="text-[10px]">Labor</span>
+            </Link>
+            
+            <div className="w-8 border-t border-gray-200 my-2 mx-auto"></div>
+
+            <Link href="/solo/bookings" className={`railitem ${pathname.includes('/solo/bookings') ? 'active' : ''}`}>
+              <Calendar className="w-5 h-5 mb-1" />
+              <span className="text-[10px]">Bookings</span>
+            </Link>
+            <Link href="/solo/employees" className={`railitem ${pathname.includes('/solo/employees') ? 'active' : ''}`}>
+              <Users className="w-5 h-5 mb-1" />
+              <span className="text-[10px]">Staff</span>
+            </Link>
+            <Link href="/solo/roles" className={`railitem ${pathname.includes('/solo/roles') ? 'active' : ''}`}>
+              <ShieldAlert className="w-5 h-5 mb-1" />
+              <span className="text-[10px]">Roles</span>
             </Link>
             <Link href="/solo/profile" className={`railitem ${pathname === '/solo/profile' ? 'active' : ''}`}>
               <User className="w-5 h-5 mb-1" />

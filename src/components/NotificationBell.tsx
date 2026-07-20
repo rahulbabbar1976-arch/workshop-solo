@@ -52,11 +52,11 @@ export default function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setOpen(!open)}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center text-white relative transition-colors ${open ? 'bg-gray-700 border-orange-500 border' : 'bg-gray-800 border-gray-700 border hover:border-orange-500'}`}
+        className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white relative transition-colors shadow-md ${open ? 'bg-gray-700 border-orange-500 border-2' : 'bg-gray-800 border-gray-700 border-2 hover:border-orange-500'}`}
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-7 h-7" />
         {notifications.length > 0 && (
-          <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+          <span className="absolute top-3 right-3 w-3 h-3 bg-orange-500 rounded-full animate-pulse border-2 border-gray-800"></span>
         )}
       </button>
 

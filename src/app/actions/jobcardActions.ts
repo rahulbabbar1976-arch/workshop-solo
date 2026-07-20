@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
 
 // Action to search for a vehicle and its customer by Registration Number
 export async function searchVehicleAction(regNo: string) {
@@ -190,4 +191,54 @@ export async function createJobCardAction(formData: FormData) {
   revalidatePath('/solo/jobcards');
   
   return { success: true, jobCardId: result.jobcardNumber };
+}
+
+// Action to securely delete a job card
+export async function deleteJobCardAction(jobCardId: string, pin: string) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get('workshop_user_id')?.value;
+  
+  if (!userId) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      roles: {
+        include: { role: true }
+      }
+    }
+  });
+
+  if (!user) {
+    return { success: false, error: "User not found" };
+  }
+
+  // Check if admin
+  const isAdmin = user.roles.some((ur: any) => ur.role.roleKey === 'super_admin' || ur.role.roleKey === 'admin');
+  if (!isAdmin) {
+    return { success: false, error: "Only admins can delete job cards" };
+  }
+
+  // Verify PIN
+  if (!user.quickPinHash) {
+    return { success: false, error: "No PIN set up on your account. Please set up a PIN in settings first." };
+  }
+  const isValid = await bcrypt.compare(pin, user.quickPinHash);
+  if (!isValid) {
+    return { success: false, error: "Incorrect PIN" };
+  }
+
+  // Perform delete
+  try {
+    await prisma.jobCard.delete({
+      where: { id: jobCardId }
+    });
+    revalidatePath("/solo/dashboard");
+    revalidatePath("/solo/jobcards");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: "Failed to delete job card" };
+  }
 }

@@ -21,6 +21,9 @@ model Tenant {
   labour           LabourMaster[]
   complaints       JobCardComplaint[]
   workflowSettings WorkflowSettings[]
+  bookings         Booking[]
+  attendanceLogs   AttendanceLog[]
+  payrollLedgers   PayrollLedger[]
 }
 
 model TenantInvite {
@@ -217,24 +220,34 @@ model PrintSettings {
 // 5. User, role, and permission tables
 
 model User {
-  id              String    @id @default(uuid())
-  fullName        String
-  mobile          String?
-  email           String?
-  passwordHash    String?
-  quickPinHash    String?
-  profilePhotoUrl String?
-  skillCategory   String? // e.g. electrical, mechanical, AC
-  team            String? // e.g. Team Alpha, Team Beta
-  isActive        Boolean   @default(true)
-  lastLoginAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  tenantDb        String?
+  id                 String    @id @default(uuid())
+  fullName           String
+  mobile             String?
+  email              String?
+  passwordHash       String?
+  quickPinHash       String?
+  profilePhotoUrl    String?
+  skillCategory      String? // e.g. electrical, mechanical, AC
+  team               String? // e.g. Team Alpha, Team Beta
+  isActive           Boolean   @default(true)
+  username           String?   @unique
+  address            String?
+  joiningDate        DateTime?
+  isAppAccessEnabled Boolean   @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  tenantDb           String?
 
   roles    UserRole[]
   tenantId String?
   tenant   Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Reverse Relations
+  pickupBookings Booking[]       @relation("BookingPickupEmployee")
+  dropBookings   Booking[]       @relation("BookingDropEmployee")
+  attendanceLogs AttendanceLog[]
+  payrollLedger  PayrollLedger[]
 }
 
 model Role {
@@ -242,6 +255,12 @@ model Role {
   roleKey     String  @unique // admin, manager, advisor, mechanic, parts_manager, accounts
   roleName    String
   description String?
+
+  canCreateJobCard       Boolean @default(false)
+  canEditJobCard         Boolean @default(false)
+  canViewPartPrices      Boolean @default(false)
+  canViewLaborPrices     Boolean @default(false)
+  canChangeJobCardStatus Boolean @default(false)
 
   users UserRole[]
 }
@@ -291,6 +310,7 @@ model Customer {
   ownershipHistory VehicleOwnershipHistory[]
   jobCards         JobCard[]
   jobCardsBilled   JobCard[]                 @relation("JobCardBillingCustomer")
+  bookings         Booking[]
   tenantId         String?
   tenant           Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
@@ -338,6 +358,7 @@ model Vehicle {
   reminderEvents     ReminderEvent[]
   diagnosticsReports DiagnosticsReport[]
   photos             VehiclePhoto[]
+  bookings           Booking[]
   tenantId           String?
   tenant             Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
@@ -540,6 +561,7 @@ model JobCard {
   partLines       JobCardPart[]
   media           JobCardMedia[]
   diagnostics     DiagnosticsReport[]
+  estimates       Estimate[]
   tenantId        String?
   tenant          Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
@@ -877,7 +899,13 @@ model Estimate {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  lines EstimateLine[]
+  lines     EstimateLine[]
+  jobCard   JobCard?       @relation(fields: [jobCardId], references: [id])
+  jobCardId String?
+  tenantId       String?
+  partsSnapshot  String?
+  laborSnapshot  String?
+  grandTotal     Float    @default(0)
 }
 
 model EstimateLine {
@@ -978,4 +1006,63 @@ model PartSerialNumber {
   partMaster  PartsMaster  @relation(fields: [partMasterId], references: [id], onDelete: Cascade)
   supplier    Supplier?    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   jobcardPart JobCardPart? @relation(fields: [jobcardPartId], references: [id], onDelete: SetNull)
+}
+
+model Booking {
+  id                  String   @id @default(uuid())
+  customerId          String?
+  customerName        String
+  customerPhone       String?
+  customerAddress     String?
+  vehicleId           String?
+  vehicleManufacturer String?
+  vehicleModel        String?
+  vehicleRegNo        String?
+  scheduledDate       DateTime
+  pickupEmployeeId    String?
+  dropEmployeeId      String?
+  status              String   @default("Pending") // Pending, Confirmed, Completed, Cancelled
+  notes               String?
+  complaints          String?
+  observations        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  tenantId            String?
+
+  tenant         Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  vehicle        Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  pickupEmployee User?     @relation("BookingPickupEmployee", fields: [pickupEmployeeId], references: [id], onDelete: SetNull)
+  dropEmployee   User?     @relation("BookingDropEmployee", fields: [dropEmployeeId], references: [id], onDelete: SetNull)
+}
+
+model AttendanceLog {
+  id        String    @id @default(uuid())
+  userId    String
+  date      DateTime // Date of attendance (could be just the date part)
+  status    String    @default("Present") // Present, Absent, Half-Day, Leave
+  clockIn   DateTime?
+  clockOut  DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenantId  String?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PayrollLedger {
+  id              String   @id @default(uuid())
+  userId          String
+  transactionDate DateTime
+  transactionType String // Salary, Advance, Deduction, Bonus, Reimbursement
+  amount          Float
+  description     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenantId        String?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

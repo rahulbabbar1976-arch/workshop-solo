@@ -3,6 +3,7 @@ import { Car, Search, MessageCircle, AlertCircle, ArrowLeft } from "lucide-react
 import Link from "next/link";
 import dayjs from "dayjs";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import SortFilterBar from "@/components/ui/SortFilterBar";
 
 export const revalidate = 0;
 
@@ -13,20 +14,29 @@ export default async function ServiceDuePage({
 }) {
   const params = await searchParams;
   const q = typeof params.q === 'string' ? params.q : '';
+  const sortParam = typeof params.sort === 'string' ? params.sort : 'date_asc';
+  const filterParam = typeof params.status === 'string' ? params.status : '';
   const page = typeof params.page === 'string' ? parseInt(params.page) || 1 : 1;
   const limit = 25;
 
   const profile = await prisma.workshopProfile.findFirst();
 
-  // Due is anything from the past, or up to 30 days in the future
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+  let orderByClause: any = { nextServiceDate: 'asc' };
+  if (sortParam === "date_desc") orderByClause = { nextServiceDate: 'desc' };
+  else if (sortParam === "name_asc") orderByClause = { manufacturer: 'asc' };
+  else if (sortParam === "name_desc") orderByClause = { manufacturer: 'desc' };
 
+  const now = new Date();
+  
   const whereClause: any = {
-    nextServiceDate: {
-      lte: thirtyDaysFromNow
-    }
+    nextServiceDate: { not: null }
   };
+
+  if (filterParam === "past") {
+    whereClause.nextServiceDate = { lt: now };
+  } else if (filterParam === "upcoming") {
+    whereClause.nextServiceDate = { gte: now };
+  }
 
   if (q) {
     whereClause.OR = [
@@ -41,7 +51,7 @@ export default async function ServiceDuePage({
     prisma.vehicle.count({ where: whereClause }),
     prisma.vehicle.findMany({
       where: whereClause,
-      orderBy: { nextServiceDate: 'asc' },
+      orderBy: orderByClause,
       include: { 
         currentCustomer: true,
         jobCards: {
@@ -73,10 +83,25 @@ export default async function ServiceDuePage({
           type="search" 
           name="q" 
           defaultValue={q} 
-          placeholder="Search by plate, make, model or customer..." 
+          placeholder="Search by plate, make, or customer..." 
         />
+        {filterParam && <input type="hidden" name="status" value={filterParam} />}
+        {sortParam && <input type="hidden" name="sort" value={sortParam} />}
         <input type="hidden" name="page" value="1" />
       </form>
+
+      <SortFilterBar 
+        sortOptions={[
+          { label: "Date: Upcoming First", value: "date_asc" },
+          { label: "Date: Furthest First", value: "date_desc" },
+          { label: "Make: A to Z", value: "name_asc" },
+          { label: "Make: Z to A", value: "name_desc" },
+        ]}
+        filterOptions={[
+          { label: "Past Due", value: "past" },
+          { label: "Upcoming", value: "upcoming" }
+        ]}
+      />
 
       {vehicles.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--steel)' }}>
@@ -150,20 +175,20 @@ export default async function ServiceDuePage({
       {totalCount > 0 && (
         <div className="pagination">
           <Link 
-            href={`?q=${q}&page=${Math.max(1, page - 1)}`} 
+            href={`?q=${q}&sort=${sortParam}&status=${filterParam}&page=${Math.max(1, page - 1)}`} 
             className="pagination-btn"
-            style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1 }}
+            style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1, textDecoration: 'none' }}
           >
             Previous
           </Link>
-          <div className="pagination-info">
+          <div className="pagination-info" style={{ textAlign: 'center' }}>
             Page {page} of {totalPages} <br/>
             <span style={{ fontSize: '10px' }}>({totalCount} records)</span>
           </div>
           <Link 
-            href={`?q=${q}&page=${Math.min(totalPages, page + 1)}`} 
+            href={`?q=${q}&sort=${sortParam}&status=${filterParam}&page=${Math.min(totalPages, page + 1)}`} 
             className="pagination-btn"
-            style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1 }}
+            style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1, textDecoration: 'none' }}
           >
             Next
           </Link>

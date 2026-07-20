@@ -38,7 +38,9 @@ export async function POST(request: Request) {
       complaintIcons, // Array of icon keys e.g. ["service", "ac"]
       complaintText,
       advisorObservation,
-      assignedMechanicId
+      assignedMechanicId,
+      driverName,
+      driverMobile
     } = body;
 
     if (!vehicleId) {
@@ -63,6 +65,17 @@ export async function POST(request: Request) {
       await prisma.vehicle.update({
         where: { id: vehicleId },
         data: { currentOdometer: parseInt(intakeOdometer, 10) }
+      });
+    }
+
+    // Update Customer Driver Info if provided
+    if (driverName || driverMobile) {
+      await prisma.customer.update({
+        where: { id: vehicle.currentCustomerId },
+        data: {
+          ...(driverName ? { driverName } : {}),
+          ...(driverMobile ? { driverMobile } : {})
+        }
       });
     }
 
@@ -112,6 +125,8 @@ export async function POST(request: Request) {
         jobcardId: jobCard.id,
         customerName: vehicle.currentCustomer.displayName,
         customerMobile: vehicle.currentCustomer.primaryMobile,
+        customerDriverName: driverName || vehicle.currentCustomer.driverName,
+        customerDriverMobile: driverMobile || vehicle.currentCustomer.driverMobile,
         customerAddress: vehicle.currentCustomer.addressLine1,
         customerTaxId: vehicle.currentCustomer.taxId,
         vehicleRegistrationNumber: vehicle.registrationNumberRaw,

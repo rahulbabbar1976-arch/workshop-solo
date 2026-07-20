@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
+import SortFilterBar from "@/components/ui/SortFilterBar";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
+import { formatDate } from "@/lib/dateUtils";
 
 export default async function SoloJobcardsPage({ 
   searchParams 
@@ -20,8 +22,14 @@ export default async function SoloJobcardsPage({
   const params = await searchParams;
   const q = typeof params.q === 'string' ? params.q : '';
   const statusFilter = typeof params.status === 'string' ? params.status : '';
+  const sortParam = typeof params.sort === 'string' ? params.sort : 'date_desc';
   const page = typeof params.page === 'string' ? parseInt(params.page) || 1 : 1;
   const limit = 25;
+
+  let orderByClause: any = { createdAt: "desc" };
+  if (sortParam === "date_asc") orderByClause = { createdAt: "asc" };
+  else if (sortParam === "name_asc") orderByClause = { customer: { displayName: "asc" } };
+  else if (sortParam === "name_desc") orderByClause = { customer: { displayName: "desc" } };
 
   const whereClause: any = {
     tenantId: tenantId || undefined,
@@ -47,7 +55,7 @@ export default async function SoloJobcardsPage({
     prisma.jobCard.count({ where: whereClause }),
     prisma.jobCard.findMany({
       where: whereClause,
-      orderBy: { createdAt: "desc" },
+      orderBy: orderByClause,
       include: {
         customer: true,
         vehicle: true,
@@ -80,8 +88,20 @@ export default async function SoloJobcardsPage({
           defaultValue={q} 
           placeholder="Search JC#, Reg No, or Customer..." 
         />
+        {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+        {sortParam && <input type="hidden" name="sort" value={sortParam} />}
         <input type="hidden" name="page" value="1" />
       </form>
+
+      <SortFilterBar 
+        filterOptions={[
+          { label: "Upcoming (Bookings/Appts)", value: "upcoming" },
+          { label: "Open/In Progress", value: "open" },
+          { label: "Waiting for Approval", value: "waiting_for_approval" },
+          { label: "Ready", value: "ready_for_delivery" },
+          { label: "Closed (Delivered)", value: "closed" }
+        ]}
+      />
 
       {rawJobs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--steel)' }}>
@@ -108,7 +128,9 @@ export default async function SoloJobcardsPage({
                 </div>
                 <div className="ticket-perf">
                   <div className="ticket-cust">{job.customer?.displayName || 'Unknown Customer'}</div>
-                  <div className="ticket-meta">{job.createdAt ? job.createdAt.toLocaleDateString() : ''}</div>
+                  <div className="ticket-meta">
+                    opened {formatDate(job.createdAt)} &bull; {(job.status === 'closed' || job.status === 'ready_for_delivery') ? `completed ${formatDate(job.closedAt) || '-'}` : `due ${formatDate(job.expectedDeliveryAt) || '-'}`}
+                  </div>
                 </div>
               </div>
             </Link>
@@ -120,7 +142,7 @@ export default async function SoloJobcardsPage({
       {totalCount > 0 && (
         <div className="pagination">
           <Link 
-            href={`?q=${q}${statusFilter ? `&status=${statusFilter}` : ''}&page=${Math.max(1, page - 1)}`} 
+            href={`?q=${q}${statusFilter ? `&status=${statusFilter}` : ''}&sort=${sortParam}&page=${Math.max(1, page - 1)}`} 
             className="pagination-btn"
             style={{ pointerEvents: page <= 1 ? 'none' : 'auto', opacity: page <= 1 ? 0.5 : 1, textDecoration: 'none' }}
           >
@@ -131,7 +153,7 @@ export default async function SoloJobcardsPage({
             <span style={{ fontSize: '10px' }}>({totalCount} records)</span>
           </div>
           <Link 
-            href={`?q=${q}${statusFilter ? `&status=${statusFilter}` : ''}&page=${Math.min(totalPages, page + 1)}`} 
+            href={`?q=${q}${statusFilter ? `&status=${statusFilter}` : ''}&sort=${sortParam}&page=${Math.min(totalPages, page + 1)}`} 
             className="pagination-btn"
             style={{ pointerEvents: page >= totalPages ? 'none' : 'auto', opacity: page >= totalPages ? 0.5 : 1, textDecoration: 'none' }}
           >
