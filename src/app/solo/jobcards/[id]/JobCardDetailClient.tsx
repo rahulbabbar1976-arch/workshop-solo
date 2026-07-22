@@ -974,7 +974,9 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl z-50 text-gray-800 py-1 font-bold text-sm">
                   <Link href={`/solo/jobcards/${jobCard.id}/print?docType=INTAKE`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Intake</Link>
                   <Link href={`/solo/jobcards/${jobCard.id}/print?docType=JOBCARD`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Jobcard</Link>
-                  <Link href={`/solo/print/estimate/${jobCard.id}`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Estimate</Link>
+                  {estimates && estimates.length > 0 && (
+                    <Link href={`/solo/print/estimate/${jobCard.id}`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Estimate</Link>
+                  )}
                   <div className="border-t border-gray-100 my-1"></div>
                   <Link href={`/solo/jobcards/${jobCard.id}/print?docType=INVOICE`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Final Invoice</Link>
                   <div className="border-t border-gray-100 my-1"></div>
