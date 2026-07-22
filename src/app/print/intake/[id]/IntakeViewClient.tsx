@@ -20,7 +20,7 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
       .catch(e => console.error(e));
   }, []);
 
-  const photos = jobCard.media?.filter((m: any) => m.type === 'intake' || m.phase === 'intake') || [];
+  const photos = jobCard.media || [];
 
   const openLightbox = (index: number) => {
     setCurrentPhotoIndex(index);
@@ -147,8 +147,8 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
       </div>
 
       <div className="hidden print:block w-full mx-auto px-8 pt-8 text-black" style={{ maxWidth: '210mm' }}>
-        {/* 1.5 inches: Company details (Left) & JC Number (Right) */}
-        <div className="flex justify-between items-start border-b-2 border-black pb-2 mb-2" style={{ height: '1.5in', maxHeight: '1.5in', overflow: 'hidden' }}>
+        {/* 1.5 inches roughly: Company details (Left) & JC Number (Right) */}
+        <div className="flex justify-between items-start border-b-2 border-black pb-2 mb-2">
           <div className="text-left w-1/2">
             <h1 className="text-2xl font-black uppercase tracking-tight">{workshopProfile?.workshopName || workshopProfile?.name || "Workshop"}</h1>
             {workshopProfile?.addressLine1 && <p className="text-sm mt-1">{workshopProfile.addressLine1}{workshopProfile.addressLine2 ? `, ${workshopProfile.addressLine2}` : ''}</p>}
@@ -163,8 +163,8 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
           </div>
         </div>
 
-        {/* 2 inches: 3 Columns (Customer, Vehicle, Extended) */}
-        <div className="flex border-b-2 border-black pb-2 mb-2" style={{ height: '2in', maxHeight: '2in', overflow: 'hidden' }}>
+        {/* 2 inches roughly: 3 Columns (Customer, Vehicle, Extended) */}
+        <div className="flex border-b-2 border-black pb-2 mb-2">
           <div className="w-1/3 pr-2 border-r border-gray-300">
             <h2 className="font-bold underline uppercase text-xs mb-2">Customer Details</h2>
             <div className="text-sm space-y-1">
@@ -199,8 +199,8 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
           </div>
         </div>
 
-        {/* 6 inches: Problems, Notes */}
-        <div className="border-b-2 border-black pb-2 mb-2 flex flex-col" style={{ height: '6in', maxHeight: '6in', overflow: 'hidden' }}>
+        {/* 6 inches roughly: Problems, Notes */}
+        <div className="border-b-2 border-black pb-2 mb-2 flex flex-col">
           <h2 className="font-bold underline uppercase text-xs mb-2">Reported Problems & Requested Work</h2>
           <div className="flex-1 overflow-hidden">
             {jobCard.complaints && jobCard.complaints.length > 0 ? (
