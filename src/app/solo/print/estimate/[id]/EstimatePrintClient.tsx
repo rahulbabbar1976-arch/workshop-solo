@@ -430,6 +430,31 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
             </div>
           )}
 
+          {/* Terms & Conditions / Notes */}
+          <div className="mt-6 border border-gray-300 p-2 text-[10px] page-break-inside-avoid">
+            <div className="font-bold mb-1">TERMS &amp; CONDITIONS / NOTES</div>
+            <ul className="list-disc pl-4 text-gray-700 space-y-1">
+              <li>Estimate is valid for 7 days from the creation date.</li>
+              <li>Parts pricing and availability are subject to change. Final invoice may vary slightly based on actual work required.</li>
+              <li>Any additional work discovered during repair will require secondary approval before proceeding.</li>
+              <li>The vehicle will not be released until the final invoice is paid in full.</li>
+            </ul>
+          </div>
+
+          {/* Approval Signature Block */}
+          <div className="mt-8 flex justify-between px-4 page-break-inside-avoid">
+            <div className="text-center w-48">
+              <div className="border-b border-black h-12"></div>
+              <div className="font-bold text-xs mt-1">Workshop Representative</div>
+              <div className="text-[10px] text-gray-500">{formatDate(new Date())}</div>
+            </div>
+            <div className="text-center w-48">
+              <div className="border-b border-black h-12 flex items-end justify-center text-gray-300 text-[10px] italic pb-1">Sign Here</div>
+              <div className="font-bold text-xs mt-1">Customer Approval</div>
+              <div className="text-[10px] text-gray-500">Date: ____/____/________</div>
+            </div>
+          </div>
+
           {/* Optional Photos section */}
           {cols?.photos && jobCard.media && jobCard.media.length > 0 && (
             <div className="mt-6 pt-4 border-t border-black page-break-inside-avoid">

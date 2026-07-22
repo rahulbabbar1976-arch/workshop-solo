@@ -1,11 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, Calendar, User, Car, Wrench, FileText, Camera, Printer, Download } from "lucide-react";
 
 export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, workshopProfile: any }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [fontFamily, setFontFamily] = useState("Inter");
+  const [baseFontSize, setBaseFontSize] = useState("14px");
+
+  useEffect(() => {
+    fetch('/api/settings/print?documentType=JOBCARD')
+      .then(res => res.json())
+      .then(data => {
+        if (data.template) {
+          setFontFamily(data.template.fontFamily || "Inter");
+          setBaseFontSize(data.template.baseFontSize || "14px");
+        }
+      })
+      .catch(e => console.error(e));
+  }, []);
 
   // Use photos from jobcard media if available. If they were previously using vehicle images, we might need to fetch those.
   // Assuming jobCard.media has the intake photos.
@@ -56,7 +70,11 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
   };
 
   return (
-    <div id="intake-printable-area" className="bg-gray-50 min-h-screen pb-12 font-sans print:bg-white print:pb-0">
+    <div 
+      id="intake-printable-area" 
+      className="bg-gray-50 min-h-screen pb-12 font-sans print:bg-white print:pb-0"
+      style={{ fontFamily: fontFamily, fontSize: baseFontSize }}
+    >
       
       {/* Action Buttons (Hidden when printing) */}
       <div className="print:hidden max-w-3xl mx-auto flex justify-end gap-3 pt-4 px-4">
