@@ -7,6 +7,7 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [fontFamily, setFontFamily] = useState("Inter");
+  const [includePhotos, setIncludePhotos] = useState(true);
 
   useEffect(() => {
     fetch('/api/settings/print?documentType=JOBCARD')
@@ -43,6 +44,10 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.getElementById('intake-printable-area');
       if (!element) return;
+      
+      // Temporarily add a class to force print styles during PDF generation
+      element.classList.add('pdf-generating');
+      
       const opt: any = {
         margin: 10,
         filename: `VehicleIntake_${jobCard.jobNumber || jobCard.id.substring(0, 8)}.pdf`,
@@ -50,10 +55,16 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
-      html2pdf().from(element).set(opt).save();
+      
+      await html2pdf().from(element).set(opt).save();
+      
+      // Remove the class after generation
+      element.classList.remove('pdf-generating');
     } catch (error) {
       console.error("Error generating PDF", error);
       alert("Failed to generate PDF. You can still use the Print button to Save as PDF.");
+      const element = document.getElementById('intake-printable-area');
+      if (element) element.classList.remove('pdf-generating');
     }
   };
 
@@ -80,17 +91,38 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
   const customer = jobCard.customer || {};
 
   return (
-    <div
-      id="intake-printable-area"
-      className="bg-gray-50 min-h-screen pb-16 print:bg-white print:pb-0"
-      style={{ fontFamily: fontFamily }}
-    >
+    <>
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        .pdf-generating .print\\:hidden { display: none !important; }
+        .pdf-generating .print\\:block { display: block !important; }
+        .pdf-generating .print\\:grid { display: grid !important; }
+      `}</style>
+      <div
+        id="intake-printable-area"
+        className="bg-gray-50 min-h-screen pb-16 print:bg-white print:pb-0"
+        style={{ fontFamily: fontFamily }}
+      >
 
       {/* ─── Action Bar (print:hidden) ─── */}
       <div className="print:hidden sticky top-0 z-40 bg-white border-b shadow-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-between px-4 py-3 gap-3">
           <div className="text-sm font-bold text-gray-700">Vehicle Intake Receipt</div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {photos.length > 0 && (
+              <label className="flex items-center gap-1 text-xs text-gray-600 mr-2 cursor-pointer bg-gray-100 hover:bg-gray-200 px-2 py-1.5 rounded-lg border border-gray-200 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={includePhotos} 
+                  onChange={(e) => setIncludePhotos(e.target.checked)}
+                  className="rounded text-teal-600 focus:ring-teal-500 w-3.5 h-3.5 cursor-pointer"
+                />
+                Include Photos
+              </label>
+            )}
             <button
               onClick={handleShareWhatsApp}
               className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors"
@@ -240,7 +272,7 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
         </div>
 
         {/* ─── Intake Photos — A4 Print Size ─── */}
-        {photos.length > 0 && (
+        {includePhotos && photos.length > 0 && (
           <div className="w-full">
             {photos.map((photo: any, index: number) => (
               <div key={photo.id || index} className="break-before-page pt-8">
@@ -588,5 +620,6 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
         </div>
       )}
     </div>
+    </>
   );
 }
