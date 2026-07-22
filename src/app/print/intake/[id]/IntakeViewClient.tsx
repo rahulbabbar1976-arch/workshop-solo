@@ -513,6 +513,7 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
                     </div>
                   </div>
                 ))}
+              </div>
             </section>
           )}
 
