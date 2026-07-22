@@ -343,6 +343,20 @@ export default function SoloNewJobcardPage() {
     }
   };
 
+  const handleTogglePrint = async (photoId: string, field: 'printOnJobcard' | 'printOnEstimate', currentValue: boolean) => {
+    try {
+      setVehiclePhotos(prev => prev.map(p => p.id === photoId ? { ...p, [field]: !currentValue } : p));
+      await fetch(`/api/vehicles/${vehicleId}/photos`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoId, [field]: !currentValue })
+      });
+    } catch (e) {
+      console.error('Failed to toggle print flag', e);
+      setVehiclePhotos(prev => prev.map(p => p.id === photoId ? { ...p, [field]: currentValue } : p));
+    }
+  };
+
   const handleSubmit = async () => {
     if (loading) return;
     setLoading(true);
@@ -738,13 +752,13 @@ export default function SoloNewJobcardPage() {
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vehicle Photo Storage</span>
                     <span className={`text-xs font-bold ${pct >= 90 ? 'text-red-500' : 'text-gray-600'}`}>
-                      {usedKB} KB / 1024 KB ({pct}%)
+                      {usedKB} KB / 3072 KB ({pct}%)
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                     <div className={`h-2 rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <p className="text-xs text-gray-400 mt-1.5">Max 100 KB/photo · 1 MB total · oldest auto-removed when full</p>
+                  <p className="text-xs text-gray-400 mt-1.5">Max 100 KB/photo · 3 MB total · oldest auto-removed when full</p>
                 </div>
               );
             })()}
@@ -791,6 +805,27 @@ export default function SoloNewJobcardPage() {
                       >
                         {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
+                    </div>
+                    {/* Print settings toggles */}
+                    <div className="flex flex-col gap-1 px-2 pb-2 bg-white border-t border-gray-50 pt-2">
+                      <label className="flex items-center text-xs text-gray-600 cursor-pointer hover:text-gray-900">
+                        <input
+                          type="checkbox"
+                          className="mr-2 h-3 w-3 rounded text-orange-500 focus:ring-orange-500"
+                          checked={p.printOnJobcard || false}
+                          onChange={() => handleTogglePrint(p.id, 'printOnJobcard', p.printOnJobcard || false)}
+                        />
+                        Print on Jobcard
+                      </label>
+                      <label className="flex items-center text-xs text-gray-600 cursor-pointer hover:text-gray-900">
+                        <input
+                          type="checkbox"
+                          className="mr-2 h-3 w-3 rounded text-orange-500 focus:ring-orange-500"
+                          checked={p.printOnEstimate || false}
+                          onChange={() => handleTogglePrint(p.id, 'printOnEstimate', p.printOnEstimate || false)}
+                        />
+                        Print on Estimate
+                      </label>
                     </div>
                   </div>
                 ))}

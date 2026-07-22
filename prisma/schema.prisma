@@ -380,8 +380,10 @@ model VehiclePhoto {
   fileSizeBytes Int // compressed size in bytes (target ≤ 100 000)
   captureLabel  String? // "front" / "rear" / "engine" / etc.
   phase         String? // "intake" / "work" / "delivery"
-  capturedAt    DateTime @default(now())
-  createdAt     DateTime @default(now())
+  capturedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  printOnJobcard  Boolean  @default(false)
+  printOnEstimate Boolean  @default(false)
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 }

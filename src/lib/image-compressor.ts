@@ -47,7 +47,7 @@ export interface CompressionResult {
 }
 
 // Vehicle photo quota constants
-export const VEHICLE_PHOTO_QUOTA_BYTES = 1_048_576;  // 1 MB per vehicle
+export const VEHICLE_PHOTO_QUOTA_BYTES = 3_145_728;  // 3 MB per vehicle
 export const VEHICLE_PHOTO_MAX_BYTES   = 100_000;    // 100 KB per photo
 // Higher resolution target for vehicle photos — more pixels within 100 KB
 export const VEHICLE_PHOTO_MAX_W = 1600;

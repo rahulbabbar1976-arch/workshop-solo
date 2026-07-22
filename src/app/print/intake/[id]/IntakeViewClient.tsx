@@ -21,7 +21,8 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
   }, []);
 
   // Photos from vehicle photo storage (VehiclePhoto model) - the dedicated photo store
-  const vehiclePhotos: any[] = jobCard.vehicle?.photos || [];
+  const allVehiclePhotos: any[] = jobCard.vehicle?.photos || [];
+  const vehiclePhotos = allVehiclePhotos.filter(p => p.printOnJobcard === true);
   // Also include any media attached directly to this job card
   const jobCardMedia: any[] = (jobCard.media || []).map((m: any) => ({ ...m, url: m.url || m.fileUrl }));
   // Combine both sources — vehicle photos first, then job card attachments
@@ -427,9 +428,9 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
 
             {/* Extended Vehicle Info */}
             {(vehicle.insurancePolicyNumber || vehicle.insurerName || vehicle.emissionInspectionNumber || vehicle.batteryMake || vehicle.nextServiceOdometer) && (
-              <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
-                <div className="text-xs font-bold uppercase text-gray-400 mb-3">Extended Vehicle Information</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-6 text-sm">
+              <div className="mt-4 pt-4 border-t border-dashed border-gray-200 print:mt-2 print:pt-2">
+                <div className="text-xs font-bold uppercase text-gray-400 mb-3 print:mb-1.5">Extended Vehicle Information</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 print:grid-cols-4 gap-y-3 print:gap-y-1 gap-x-6 text-sm print:text-xs">
                   {vehicle.insurerName && (
                     <div>
                       <span className="text-gray-400 text-xs flex items-center gap-1"><Shield className="w-3 h-3"/>Insurer</span>
@@ -488,12 +489,12 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
           </section>
 
           {/* ─── Reported Problems / Complaints ─── */}
-          <section className="bg-white rounded-xl p-5 shadow-sm border print:shadow-none print:border print:border-gray-300">
-            <h2 className="text-xs font-bold uppercase text-gray-400 mb-3 flex items-center gap-2 border-b pb-2">
+          <section className="bg-white rounded-xl p-5 print:p-3 shadow-sm border print:shadow-none print:border print:border-gray-300">
+            <h2 className="text-xs font-bold uppercase text-gray-400 mb-3 print:mb-1.5 flex items-center gap-2 border-b pb-2 print:pb-1">
               <Wrench className="w-3.5 h-3.5" /> Reported Problems & Requested Work
             </h2>
             {jobCard.complaints && jobCard.complaints.length > 0 ? (
-              <ul className="space-y-2">
+              <ul className="space-y-2 print:space-y-1 print:columns-2 print:gap-4">
                 {jobCard.complaints.map((c: any, idx: number) => (
                   <li key={c.id || idx} className="flex items-start gap-2.5 text-sm">
                     <span className="mt-0.5 w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</span>
@@ -516,27 +517,27 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
           </section>
 
           {/* ─── Delivery & Estimate ─── */}
-          <section className="bg-white rounded-xl p-5 shadow-sm border print:shadow-none print:border print:border-gray-300">
-            <h2 className="text-xs font-bold uppercase text-gray-400 mb-3 flex items-center gap-2 border-b pb-2">
+          <section className="bg-white rounded-xl p-5 print:p-3 shadow-sm border print:shadow-none print:border print:border-gray-300">
+            <h2 className="text-xs font-bold uppercase text-gray-400 mb-3 print:mb-1.5 flex items-center gap-2 border-b pb-2 print:pb-1">
               <Calendar className="w-3.5 h-3.5" /> Delivery & Estimate
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-teal-50 rounded-xl p-4 border border-teal-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:gap-2">
+              <div className="bg-teal-50 rounded-xl p-4 print:p-2 border border-teal-100">
                 <span className="text-teal-600 text-xs font-bold uppercase block mb-1">Estimated Delivery Date</span>
                 <span className="font-black text-lg text-teal-800">
                   {jobCard.expectedDeliveryAt ? formatDate(jobCard.expectedDeliveryAt) : (jobCard.estimatedCompletionDate ? formatDate(jobCard.estimatedCompletionDate) : "To be confirmed")}
                 </span>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div className="bg-gray-50 rounded-xl p-4 print:p-2 border border-gray-100">
                 <span className="text-gray-500 text-xs font-bold uppercase block mb-1">Estimated Cost</span>
-                <span className="font-semibold text-gray-700 text-sm">To be confirmed after inspection</span>
+                <span className="font-semibold text-gray-700 text-sm print:text-xs">To be confirmed after inspection</span>
               </div>
             </div>
           </section>
 
-          {/* ─── Intake Photos — VISIBLE ON PRINT ─── */}
+          {/* ─── Intake Photos ─── */}
           {photos.length > 0 && (
-            <section className="bg-white rounded-xl p-5 shadow-sm border print:shadow-none print:border print:border-gray-300">
+            <section className="bg-white rounded-xl p-5 shadow-sm border print:shadow-none print:border print:border-gray-300 print:break-before-page">
               <h2 className="text-xs font-bold uppercase text-gray-400 mb-3 flex items-center gap-2 border-b pb-2">
                 <Camera className="w-3.5 h-3.5" /> Intake Photos ({photos.length})
               </h2>
@@ -555,15 +556,23 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
                   </div>
                 ))}
               </div>
+              {/* Print grid */}
+              <div className="hidden print:grid grid-cols-2 gap-4">
+                {photos.map((photo: any, index: number) => (
+                  <div key={photo.id || index} className="border border-gray-300 relative aspect-video page-break-inside-avoid">
+                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-contain" />
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
           {/* ─── Customer Acknowledgement & Signature ─── */}
-          <section className="bg-white rounded-xl p-5 shadow-sm border border-gray-300 print:shadow-none print:border print:border-gray-400">
-            <h2 className="text-xs font-bold uppercase text-gray-400 mb-4 flex items-center gap-2 border-b pb-2">
+          <section className="bg-white rounded-xl p-5 print:p-3 shadow-sm border border-gray-300 print:shadow-none print:border print:border-gray-400">
+            <h2 className="text-xs font-bold uppercase text-gray-400 mb-4 print:mb-2 flex items-center gap-2 border-b pb-2 print:pb-1">
               <CheckCircle className="w-3.5 h-3.5" /> Customer Acknowledgement
             </h2>
-            <div className="text-xs text-gray-600 space-y-1.5 mb-6 bg-gray-50 rounded-lg p-3 border">
+            <div className="text-xs text-gray-600 space-y-1.5 mb-6 print:mb-2 bg-gray-50 rounded-lg p-3 print:p-2 border">
               <p>I, the undersigned, hereby confirm and acknowledge the following:</p>
               <ul className="list-disc pl-4 space-y-1 mt-2">
                 <li>I have handed over the above-mentioned vehicle to <strong>{workshopProfile?.workshopName || workshopProfile?.name || 'the workshop'}</strong> for the reported repairs/service.</li>

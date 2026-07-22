@@ -1,100 +1,81 @@
-# Workshop Solo PWA
+# Workshop Solo - Complete Program Documentation
 
-A modern, minimal SaaS progressive web application designed to manage automotive workshop workflows. This system is multi-tenant capable, securely isolated, and optimized for mobile and desktop interfaces.
+## Overview
+Workshop Solo is a comprehensive, multi-tenant capable SaaS application built for automotive workshop management. It handles end-to-end workshop operations including vehicle intake, jobcard management, cost estimation, inventory (parts & labor), invoicing, and PDF generation with deep WhatsApp integration.
 
-## 🚀 Key Features
+## Tech Stack
+- **Framework**: Next.js 16.2.9 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS, Lucide React (Icons)
+- **Database**: PostgreSQL (via Prisma ORM @v7.8.0)
+- **PDF Generation**: html2pdf.js
+- **Charts/Analytics**: Recharts
+- **Image Processing/OCR**: Tesseract.js, Sharp
+- **Data Import/Export**: Papaparse, xlsx, csv-parser
 
-### 1. Smart Intake & Real-time Search
-- **Job Card Creation**: Seamless intake workflow where entering a vehicle's registration number (or just the last 4 digits) instantly pulls up existing records.
-- **Auto-complete Dropdowns**: Rapid search across the database directly connected to Postgres.
-- **Dynamic Entity Creation**: If a vehicle or customer is not found, the form intuitively adapts to create new profiles on the fly during the intake process.
+## Database Architecture (Prisma Schema)
 
-### 2. Vehicle Ownership Management
-- **Detailed Specifications**: Track VIN, Engine Numbers, Colors, Manufacture Year, Battery Details, and Maintenance Schedules (Next Service, Next Oil Change).
-- **Ownership Transfer System**: Complete UI and logic to transfer a vehicle's ownership from one customer to another while strictly enforcing a 1-to-1 Vehicle-to-Owner constraint.
-- **Historical Tracking**: Automatically logs `VehicleOwnershipHistory` allowing workshops to see exactly who owned a vehicle and when.
+The database is built on a relational model centered around the `JobCard`.
 
-### 3. Interactive Data Views
-- **Customer & Vehicle Directories**: Minimalist, card-based lists using a `.ticket` aesthetic.
-- **Quick Communication**: Embedded quick-actions on customer profiles to launch direct phone calls (`tel:`) and WhatsApp chats (`wa.me`).
-- **Pagination**: Optimized rendering of lists handling thousands of legacy records gracefully.
+### Core Entities:
+1. **WorkshopProfile**: Stores global settings for the workshop (Name, Address, Logo, Tax Rates, Print Settings).
+2. **Customer**: Stores customer details (Name, Mobile, Email, Address).
+3. **Vehicle**: Stores vehicle details linked to a customer (Make, Model, Year, VIN, Odometer, License Plate).
+4. **JobCard**: The central operational document. Links a Customer and Vehicle to specific service requests.
+   - States: `OPEN`, `IN_PROGRESS`, `COMPLETED`, `CLOSED`
+   - Relations: Has many `JobCardComplaint` (user reported issues), `JobCardItem` (parts used), `JobCardLabour` (labor used), and `Media` (photos).
+5. **Estimate**: Cost estimations linked to a JobCard. Contains its own snapshot of Items and Labor to preserve historical data even if prices change.
+6. **PartsMaster**: Global inventory catalog for parts (Part Number, Item Code, Price, HSN/SAC, Category, Stock).
+7. **LabourMaster**: Global catalog for labor services (Service Name, Cost, Tax).
+8. **Media**: Attachments (primarily images) linked to JobCards. Types include `intake`, `work`, and `delivery`.
+9. **User**: Authentication and authorization (Role-based: Admin, Mechanic, Manager).
 
-### 4. Advanced Tenant Settings & Security
-- **Data Isolation**: All operations are strictly scoped by `tenantId` to ensure data privacy.
-- **Factory Reset**: A robust, password-protected mechanism allowing a tenant to securely wipe their operational data (JobCards, Customers, Vehicles) while preserving their master inventory (Parts & Labor).
-- **Backup & Restore**: Export functionality to snapshot current operations.
+## Key Features & Modules
 
-### 5. Legacy Data Migration
-- **Excel Ingestion Scripts**: Built-in standalone scripts (`scripts/migrate_legacy_data.ts`) capable of parsing large historical exports (`Auto object table.xls`, `Partners.xls`).
-- **Data Enrichment**: Accurately maps disparate legacy data formats into strongly-typed PostgreSQL columns including exact maintenance dates, battery details, and proper relationship binding.
+### 1. Dashboard & Analytics (`/solo/dashboard`)
+- Provides a high-level overview of workshop operations.
+- Uses `Recharts` to visualize revenue, jobcard volume, and pending tasks.
 
----
+### 2. Jobcard Management (`/solo/jobcards`)
+- **Intake Flow**: Captures customer details, vehicle details, reported complaints, fuel level, and intake photos.
+- **Service Workflow**: Technicians can add parts from inventory and labor charges.
+- **Estimates**: Generate estimates (with optional flexible cost/time fields) directly from the Jobcard.
+- **Kanban/Status Tracking**: Update status from Intake -> Work -> Delivery.
 
-## 🛠️ Technology Stack
+### 3. Inventory Management (`/solo/inventory`)
+- CRUD operations for Parts and Labor.
+- Supports bulk importing parts via CSV/XLSX using `papaparse` and `xlsx`.
+- Categorization and stock tracking.
 
-* **Framework**: Next.js 15 (App Router, Server Components, Server Actions)
-* **Styling**: TailwindCSS with Custom "Minimal SaaS" configuration (Orange `#f97316` primary).
-* **Database**: PostgreSQL
-* **ORM**: Prisma Client (v7+)
-* **Icons**: Lucide React
-* **Authentication**: Cookie-based session tracking (`workshop_user_id`)
-* **Security**: `bcryptjs` for password verification and route middleware.
+### 4. PDF Generation & Print Customization (`/solo/print/*`)
+- Client-side PDF generation using `html2pdf.js`.
+- **Customizable Layouts**: Controlled via `WorkshopProfile.documentTemplate`.
+  - Configurable Header/Footer margins (10mm, 20mm, 30mm).
+  - Toggles for displaying Extended Vehicle Details (VIN, Make, Year).
+  - Toggles for rendering specific Media (Intake, Work, Delivery photos) on the document.
 
----
+### 5. Communication & Sharing
+- **WhatsApp Deep Linking**: Seamless sharing of Jobcards and Estimates via WhatsApp Web/App (`wa.me`) directly from the UI.
+- Prefilled, professional messaging based on the document type.
 
-## 🗄️ Database Architecture (Key Entities)
+### 6. Settings & Configuration (`/solo/settings`)
+- **Profile**: Workshop branding and contact details.
+- **Taxes**: Configurable default tax rates (e.g., GST) applied to parts and labor.
+- **Print**: Margins, toggles, and document branding configurations.
 
-* `Tenant`: The overarching workspace (e.g., BABBARSONS).
-* `User`: Staff and administrators belonging to a Tenant.
-* `Customer`: The vehicle owners and partners.
-* `Vehicle`: The automobiles, strictly tied to one `Customer` at a time.
-* `VehicleOwnershipHistory`: The immutable log of transfers.
-* `JobCard`: The operational ticket linking a `Vehicle`, `Customer`, and `Tenant`.
-* `JobCardComplaint`: Tracked customer issues.
-* `JobCardPart` & `JobCardLabour`: The billing and inventory line items.
-* `PartsMaster` & `LabourMaster`: The global inventory dictionary for the tenant.
+## API Structure (`/api/*`)
 
----
+The application utilizes Next.js Route Handlers (RESTful APIs) for client-server communication.
 
-## 📂 Project Structure
+- `/api/jobcards`: GET, POST, PUT, DELETE operations for Jobcards.
+- `/api/jobcards/[id]/estimates`: Generate and retrieve estimates for a specific jobcard.
+- `/api/parts` & `/api/labour`: Inventory lookups and management.
+- `/api/settings/print` & `/api/settings/taxes`: Update global workshop configurations.
+- `/api/import`: Handles file uploads for bulk inventory import.
 
-```text
-workshop-solo/
-├── prisma/
-│   └── schema.prisma             # PostgreSQL schema definition
-├── scripts/
-│   └── migrate_legacy_data.ts    # Standalone script for Excel imports
-├── src/
-│   ├── app/
-│   │   ├── api/                  # API Routes (Search, Autocomplete)
-│   │   ├── solo/                 # Main Application Workspace
-│   │   │   ├── customers/        # Customer directory and details
-│   │   │   ├── vehicles/         # Vehicle tracking and ownership transfer
-│   │   │   ├── jobcards/         # Job card generation and management
-│   │   │   ├── settings/         # Factory reset and backups
-│   │   │   └── profile/          # User avatar and personal settings
-│   │   ├── globals.css           # Core styling and minimal SaaS tokens
-│   │   └── layout.tsx            # Global layout (Rails and Bottom Navs)
-│   └── lib/
-│       └── db.ts                 # Prisma Client singleton
-```
-
----
-
-## 💻 Getting Started
-
-1. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-2. **Database Setup**:
-   Ensure your `.env` file contains a valid `DATABASE_URL` pointing to your PostgreSQL instance.
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-3. **Run Development Server**:
-   ```bash
-   npm run dev
-   ```
-   *Navigate to `http://localhost:3000` to view the application.*
+## Security & Middleware
+- Uses Next.js Edge Middleware (`middleware.ts`) for route protection.
+- Requires valid session/JWT cookies to access `/solo/*` routes.
+- Unauthorized API requests return `401 JSON`.
+- **Security Headers**: Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options implemented via `next.config.ts`.
+- Removed legacy public-facing `/share` routes in favor of authenticated PDF exports.

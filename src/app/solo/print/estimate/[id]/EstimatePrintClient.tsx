@@ -16,6 +16,12 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
   const [showColDiscount, setShowColDiscount] = useState(true);
   const jobCard = estimate.jobCard || {};
 
+  // Combine direct jobcard media with selected vehicle photos
+  const jobCardMedia = (jobCard.media || []).map((m: any) => ({ ...m, url: m.url || m.fileUrl }));
+  const vehiclePhotos = (jobCard.vehicle?.photos || [])
+    .filter((p: any) => p.printOnEstimate === true)
+    .map((p: any) => ({ ...p, url: p.fileUrl }));
+  const printPhotos = [...vehiclePhotos, ...jobCardMedia];
   useEffect(() => {
     fetch('/api/settings/print?documentType=JOBCARD')
       .then(res => res.json())
@@ -458,11 +464,11 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
           </div>
 
           {/* Photos section — always show if photos exist */}
-          {jobCard.media && jobCard.media.length > 0 && (
+          {printPhotos.length > 0 && (
             <div className="mt-6 pt-4 border-t border-black page-break-inside-avoid">
               <div className="font-bold italic text-xs mb-2 text-center">VEHICLE PHOTOS</div>
               <div className="grid grid-cols-4 gap-2">
-                {jobCard.media.slice(0, 8).map((media: any, idx: number) => (
+                {printPhotos.slice(0, 8).map((media: any, idx: number) => (
                   <div key={idx} className="aspect-square border border-gray-300 relative">
                     {media.url ? (
                       <img src={media.url} alt={`Vehicle Photo ${idx + 1}`} className="object-cover w-full h-full" />

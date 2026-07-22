@@ -201,3 +201,40 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+// ─── PATCH — update print selection flags ────────────────────────────────────
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: vehicleId } = await params;
+
+  try {
+    const { photoId, printOnJobcard, printOnEstimate } = await req.json();
+    if (!photoId) {
+      return NextResponse.json({ success: false, error: 'photoId required' }, { status: 400 });
+    }
+
+    const photo = await prisma.vehiclePhoto.findFirst({
+      where: { id: photoId, vehicleId },
+    });
+
+    if (!photo) {
+      return NextResponse.json({ success: false, error: 'Photo not found' }, { status: 404 });
+    }
+
+    const updated = await prisma.vehiclePhoto.update({
+      where: { id: photoId },
+      data: {
+        printOnJobcard: printOnJobcard !== undefined ? printOnJobcard : photo.printOnJobcard,
+        printOnEstimate: printOnEstimate !== undefined ? printOnEstimate : photo.printOnEstimate,
+      },
+    });
+
+    return NextResponse.json({ success: true, photo: updated });
+  } catch (err: any) {
+    console.error('[vehicle-photos] PATCH error:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
