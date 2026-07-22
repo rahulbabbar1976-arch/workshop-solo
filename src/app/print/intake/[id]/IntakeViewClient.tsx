@@ -34,6 +34,7 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
     try {
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.getElementById('intake-printable-area');
+      if (!element) return;
       const opt = {
         margin:       10,
         filename:     `Intake_${jobCard.jobNumber || jobCard.id.substring(0, 8)}.pdf`,

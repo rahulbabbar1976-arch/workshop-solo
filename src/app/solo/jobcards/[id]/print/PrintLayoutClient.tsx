@@ -54,6 +54,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
     try {
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.getElementById('printable-area');
+      if (!element) return;
       const opt = {
         margin:       10,
         filename:     `JobCard_${jobCard.jobNumber || jobCard.id.substring(0, 8)}.pdf`,
