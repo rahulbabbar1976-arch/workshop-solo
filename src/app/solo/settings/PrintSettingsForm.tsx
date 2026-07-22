@@ -30,6 +30,12 @@ export default function PrintSettingsForm() {
     showColTaxRate: true,
     showColTotal: true,
     showColDiscount: true,
+    // Intake Receipt
+    intakeShowPhotos: true,
+    intakeShowSignature: true,
+    intakeShowProblems: true,
+    intakeShowEstimate: true,
+    intakeShowExtendedVehicle: true,
   });
 
   useEffect(() => {
@@ -66,6 +72,12 @@ export default function PrintSettingsForm() {
           showColTaxRate: printSettings?.showColTaxRate ?? true,
           showColTotal: printSettings?.showColTotal ?? true,
           showColDiscount: printSettings?.showColDiscount ?? true,
+          // Intake Receipt – parse from layoutConfig
+          intakeShowPhotos: (() => { try { return JSON.parse(docTemplate?.layoutConfig || '{}').intakeShowPhotos ?? true; } catch(e) { return true; } })(),
+          intakeShowSignature: (() => { try { return JSON.parse(docTemplate?.layoutConfig || '{}').intakeShowSignature ?? true; } catch(e) { return true; } })(),
+          intakeShowProblems: (() => { try { return JSON.parse(docTemplate?.layoutConfig || '{}').intakeShowProblems ?? true; } catch(e) { return true; } })(),
+          intakeShowEstimate: (() => { try { return JSON.parse(docTemplate?.layoutConfig || '{}').intakeShowEstimate ?? true; } catch(e) { return true; } })(),
+          intakeShowExtendedVehicle: (() => { try { return JSON.parse(docTemplate?.layoutConfig || '{}').intakeShowExtendedVehicle ?? true; } catch(e) { return true; } })(),
         });
       } catch (e: any) {
         console.error("PrintSettings Error:", e);
@@ -195,6 +207,23 @@ export default function PrintSettingsForm() {
               <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="showColTaxRate" checked={formData.showColTaxRate} onChange={handleChange} className="mr-2" /> Tax Rate</label>
               <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="showColDiscount" checked={formData.showColDiscount} onChange={handleChange} className="mr-2" /> Discount</label>
               <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="showColTotal" checked={formData.showColTotal} onChange={handleChange} className="mr-2" /> Total</label>
+            </div>
+          </div>
+
+          <hr className="border-gray-100" />
+
+          {/* Intake Receipt Settings */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1 flex items-center">
+              <Printer className="w-4 h-4 mr-1 text-gray-400" /> Customer Intake Receipt
+            </h3>
+            <p className="text-xs text-gray-400 mb-3">Controls what appears on the printed customer intake copy.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="intakeShowPhotos" checked={formData.intakeShowPhotos} onChange={handleChange} className="mr-2" /> Include Vehicle Photos on Receipt</label>
+              <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="intakeShowSignature" checked={formData.intakeShowSignature} onChange={handleChange} className="mr-2" /> Show Signature Block</label>
+              <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="intakeShowProblems" checked={formData.intakeShowProblems} onChange={handleChange} className="mr-2" /> Show Reported Problems</label>
+              <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="intakeShowEstimate" checked={formData.intakeShowEstimate} onChange={handleChange} className="mr-2" /> Show Estimate / Delivery Date</label>
+              <label className="flex items-center text-sm text-gray-700"><input type="checkbox" name="intakeShowExtendedVehicle" checked={formData.intakeShowExtendedVehicle} onChange={handleChange} className="mr-2" /> Show Extended Vehicle Details</label>
             </div>
           </div>
 

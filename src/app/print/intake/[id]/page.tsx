@@ -12,7 +12,13 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ i
     where: { id },
     include: {
       customer: true,
-      vehicle: true,
+      vehicle: {
+        include: {
+          photos: {
+            orderBy: { capturedAt: 'asc' }
+          }
+        }
+      },
       complaints: {
         include: { icons: true }
       },

@@ -20,7 +20,16 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
       .catch(e => console.error(e));
   }, []);
 
-  const photos = jobCard.media || [];
+  // Photos from vehicle photo storage (VehiclePhoto model) - the dedicated photo store
+  const vehiclePhotos: any[] = jobCard.vehicle?.photos || [];
+  // Also include any media attached directly to this job card
+  const jobCardMedia: any[] = (jobCard.media || []).map((m: any) => ({ ...m, url: m.url || m.fileUrl }));
+  // Combine both sources — vehicle photos first, then job card attachments
+  const photos = [
+    ...vehiclePhotos.map((p: any) => ({ ...p, url: p.fileUrl })),
+    ...jobCardMedia,
+  ];
+  const hasPhotos = photos.length > 0;
 
   const openLightbox = (index: number) => {
     setCurrentPhotoIndex(index);
