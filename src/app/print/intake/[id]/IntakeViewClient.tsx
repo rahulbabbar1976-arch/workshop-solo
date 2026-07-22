@@ -541,26 +541,18 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
               <h2 className="text-xs font-bold uppercase text-gray-400 mb-3 flex items-center gap-2 border-b pb-2">
                 <Camera className="w-3.5 h-3.5" /> Intake Photos ({photos.length})
               </h2>
-              {/* Screen grid with lightbox */}
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 print:hidden">
+              {/* Grid for both screen and print */}
+              <div className="grid grid-cols-3 sm:grid-cols-4 print:grid-cols-2 gap-2 print:gap-4">
                 {photos.map((photo: any, index: number) => (
                   <div
                     key={photo.id || index}
-                    className="aspect-square rounded-lg overflow-hidden border cursor-pointer relative group bg-gray-100"
+                    className="aspect-square print:aspect-video rounded-lg overflow-hidden border cursor-pointer relative group bg-gray-100 print:page-break-inside-avoid"
                     onClick={() => openLightbox(index)}
                   >
-                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-cover print:object-contain transition-transform group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center print:hidden">
                       <ZoomIn className="text-white opacity-0 group-hover:opacity-100 w-5 h-5 drop-shadow-md" />
                     </div>
-                  </div>
-                ))}
-              </div>
-              {/* Print grid */}
-              <div className="hidden print:grid grid-cols-2 gap-4">
-                {photos.map((photo: any, index: number) => (
-                  <div key={photo.id || index} className="border border-gray-300 relative aspect-video page-break-inside-avoid">
-                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-contain" />
                   </div>
                 ))}
               </div>
