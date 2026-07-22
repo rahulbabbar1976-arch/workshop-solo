@@ -147,6 +147,32 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
     }
   }, [jobCard.id]);
 
+  const preloadParts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/parts?q=");
+      if (res.ok) {
+        const data = await res.json();
+        setPartSearchResults(data.parts || data || []);
+        setShowPartResults(true);
+      }
+    } catch (e) {
+      console.error("Failed to preload parts", e);
+    }
+  }, []);
+
+  const preloadLabour = useCallback(async () => {
+    try {
+      const res = await fetch("/api/labour?q=");
+      if (res.ok) {
+        const data = await res.json();
+        setLaborSearchResults(data.labours || data || []);
+        setShowLaborResults(true);
+      }
+    } catch (e) {
+      console.error("Failed to preload labour", e);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'pictures') fetchVehiclePhotos();
     if (activeTab === 'estimates') fetchEstimates();
@@ -744,6 +770,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
     setNewPartDiscountValue(p.discountValue?.toString() || "");
     setSelectedSerialNumberId(p.serialNumberId || null);
     setIsPartModalOpen(true);
+    preloadParts();
   };
 
   const handleDeletePart = async (pId: string) => {
@@ -781,6 +808,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
     setNewLaborDiscountType(l.discountType || "percent");
     setNewLaborDiscountValue(l.discountValue?.toString() || "");
     setIsLaborModalOpen(true);
+    preloadLabour();
   };
 
   const handleDeleteLabor = async (lId: string) => {
@@ -971,8 +999,12 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                 <Printer className="w-5 h-5" />
               </button>
               {showPrintDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl z-50 text-gray-800 py-1 font-bold text-sm">
-                  <Link href={`/solo/jobcards/${jobCard.id}/print?docType=INTAKE`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Intake</Link>
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl z-50 text-gray-800 py-1 font-bold text-sm">
+                  <div className="px-3 py-1.5 text-xs text-gray-400 uppercase tracking-wide font-normal border-b">Print / Share</div>
+                  <Link href={`/print/intake/${jobCard.id}`} target="_blank" className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>Customer Intake Copy
+                  </Link>
+                  <Link href={`/solo/jobcards/${jobCard.id}/print?docType=INTAKE`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Intake (Staff)</Link>
                   <Link href={`/solo/jobcards/${jobCard.id}/print?docType=JOBCARD`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Jobcard</Link>
                   {estimates && estimates.length > 0 && (
                     <Link href={`/solo/print/estimate/${jobCard.id}`} className="block px-4 py-2 hover:bg-gray-100 flex items-center">Print Estimate</Link>
@@ -1397,6 +1429,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                   setSelectedSerialNumberId(null);
                   setAvailableSerialNumbers([]);
                   setIsPartModalOpen(true);
+                  preloadParts();
                 }}
                 className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
                 Add Part
@@ -1440,6 +1473,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                   setNewLaborDiscountType("percent");
                   setNewLaborDiscountValue("");
                   setIsLaborModalOpen(true);
+                  preloadLabour();
                 }}
                 className="w-full py-3 bg-white border-2 border-dashed border-gray-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex items-center justify-center text-sm uppercase tracking-wide">
                 Add Labor
@@ -1658,6 +1692,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                   type="text" 
                   value={newPartName}
                   onChange={handlePartNameChange}
+                  onFocus={() => { if (!newPartName) preloadParts(); }}
                   className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                   placeholder="e.g. Engine Oil"
                 />
@@ -1762,6 +1797,7 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                   type="text" 
                   value={newLaborName}
                   onChange={handleLaborNameChange}
+                  onFocus={() => { if (!newLaborName) preloadLabour(); }}
                   className="w-full border-2 border-gray-200 rounded-md p-3 focus:border-orange-500 focus:ring-0 outline-none font-medium text-gray-900"
                   placeholder="e.g. General Service"
                 />

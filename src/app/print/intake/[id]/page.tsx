@@ -7,14 +7,19 @@ export const dynamic = "force-dynamic";
 export default async function PublicIntakePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
-  // Fetch JobCard acting as Intake
+  // Fetch JobCard with all data needed for the customer intake copy
   const jobCard = await prisma.jobCard.findUnique({
     where: { id },
     include: {
       customer: true,
       vehicle: true,
-      complaints: true,
-      media: true,
+      complaints: {
+        include: { icons: true }
+      },
+      media: {
+        orderBy: { createdAt: 'asc' }
+      },
+      snapshot: true,
     }
   });
 

@@ -388,35 +388,37 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
             </tfoot>
           </table>
 
-          {/* SUM */}
-          <div className="font-bold italic text-xs mb-1 mt-6">SUM</div>
+          {/* SUMMARY — Labour + Parts subtotals then Grand Total */}
+          <div className="font-bold italic text-xs mb-1 mt-6 border-t border-black pt-2">COST SUMMARY</div>
           <table className="w-full text-xs mb-1">
-            <thead>
-              <tr className="italic border-b border-black font-bold">
-                <td className="text-center w-1/4">Tax rate</td>
-                <td className="text-center w-1/4">Net sum</td>
-                <td className="text-center w-1/4">Tax sum</td>
-                <td className="text-center w-1/4">Gross sum</td>
-              </tr>
-            </thead>
             <tbody>
-              <tr>
-                <td className="text-center">0.0%</td>
-                <td className="text-center">{totalNetSum.toFixed(2)} INR</td>
-                <td className="text-center">{totalTaxSum.toFixed(2)} INR</td>
-                <td className="text-center">{grandGrossSum.toFixed(2)} INR</td>
-              </tr>
+              {totalServicesGross > 0 && (
+                <tr>
+                  <td className="py-0.5 text-left pl-1">Labour subtotal</td>
+                  <td className="py-0.5 text-right pr-1 font-semibold">{totalServicesGross.toFixed(2)} INR</td>
+                </tr>
+              )}
+              {totalProductsGross > 0 && (
+                <tr>
+                  <td className="py-0.5 text-left pl-1">Parts subtotal</td>
+                  <td className="py-0.5 text-right pr-1 font-semibold">{totalProductsGross.toFixed(2)} INR</td>
+                </tr>
+              )}
+              {totalTaxSum > 0 && (
+                <tr>
+                  <td className="py-0.5 text-left pl-1">Tax</td>
+                  <td className="py-0.5 text-right pr-1">{totalTaxSum.toFixed(2)} INR</td>
+                </tr>
+              )}
             </tbody>
             <tfoot>
               <tr className="border-t border-black">
-                <td className="text-right font-normal">Sum:</td>
-                <td className="text-center">{totalNetSum.toFixed(2)} INR</td>
-                <td className="text-center">{totalTaxSum.toFixed(2)} INR</td>
-                <td className="text-center">{grandGrossSum.toFixed(2)} INR</td>
+                <td className="text-left font-bold italic text-sm py-1 pl-1">Grand Total:</td>
+                <td className="text-right font-bold italic text-sm py-1 pr-1">{grandGrossSum.toFixed(2)} INR</td>
               </tr>
-              <tr className="border-b border-black">
-                <td colSpan={3} className="text-left font-bold italic text-sm py-1">To be paid:</td>
-                <td className="text-center font-bold italic text-sm py-1">
+              <tr className="border-t-2 border-black bg-gray-50">
+                <td className="text-left font-black text-sm py-1.5 pl-1">AMOUNT PAYABLE:</td>
+                <td className="text-right font-black text-sm py-1.5 pr-1">
                   {estimate.flexibleCost ? estimate.flexibleCost : `${finalTotalToPay.toFixed(2)} INR`}
                 </td>
               </tr>
@@ -455,23 +457,18 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
             </div>
           </div>
 
-          {/* Optional Photos section */}
-          {cols?.photos && jobCard.media && jobCard.media.length > 0 && (
+          {/* Photos section — always show if photos exist */}
+          {jobCard.media && jobCard.media.length > 0 && (
             <div className="mt-6 pt-4 border-t border-black page-break-inside-avoid">
               <div className="font-bold italic text-xs mb-2 text-center">VEHICLE PHOTOS</div>
               <div className="grid grid-cols-4 gap-2">
-                {jobCard.media.filter((m: any) => {
-                  if (cols.photos?.intake && m.type === 'intake') return true;
-                  if (cols.photos?.work && m.type === 'work') return true;
-                  if (cols.photos?.delivery && m.type === 'delivery') return true;
-                  return false;
-                }).slice(0, 8).map((media: any, idx: number) => (
+                {jobCard.media.slice(0, 8).map((media: any, idx: number) => (
                   <div key={idx} className="aspect-square border border-gray-300 relative">
-                     {media.url ? (
-                        <img src={media.url} alt={`Vehicle Photo ${idx}`} className="object-cover w-full h-full" />
-                     ) : (
-                        <div className="flex items-center justify-center h-full text-[8px] text-gray-400">No Image</div>
-                     )}
+                    {media.url ? (
+                      <img src={media.url} alt={`Vehicle Photo ${idx + 1}`} className="object-cover w-full h-full" />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-[8px] text-gray-400">No Image</div>
+                    )}
                   </div>
                 ))}
               </div>
