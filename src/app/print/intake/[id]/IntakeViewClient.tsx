@@ -372,11 +372,16 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
                   </div>
                 ))}
               </div>
-              {/* Print-friendly grid (no lightbox, always visible) */}
-              <div className="hidden print:grid print:grid-cols-4 print:gap-2">
-                {photos.slice(0, 8).map((photo: any, index: number) => (
-                  <div key={photo.id || index} className="aspect-square border border-gray-200 overflow-hidden">
-                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-cover" />
+              {/* Print-friendly Full Page Photos (no lightbox, A4 clear size) */}
+              <div className="hidden print:block w-full">
+                {photos.map((photo: any, index: number) => (
+                  <div key={photo.id || index} className="break-before-page pt-8">
+                    <h2 className="text-xs font-bold uppercase text-gray-800 mb-4 border-b border-gray-300 pb-2">
+                      Intake Photo {index + 1} of {photos.length}
+                    </h2>
+                    <div className="w-full border border-gray-200 p-2 bg-white">
+                      <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-auto max-h-[250mm] object-contain mx-auto" />
+                    </div>
                   </div>
                 ))}
               </div>
