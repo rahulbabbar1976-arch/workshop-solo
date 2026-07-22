@@ -114,10 +114,152 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pt-6 print:pt-0 print:px-0">
+      <div className="hidden print:block w-full mx-auto px-8 pt-8 text-black" style={{ maxWidth: '210mm' }}>
+        {/* 1.5 inches: Company details (Left) & JC Number (Right) */}
+        <div className="flex justify-between items-start border-b-2 border-black pb-2 mb-2" style={{ height: '1.5in', maxHeight: '1.5in', overflow: 'hidden' }}>
+          <div className="text-left w-1/2">
+            <h1 className="text-2xl font-black uppercase tracking-tight">{workshopProfile?.workshopName || workshopProfile?.name || "Workshop"}</h1>
+            {workshopProfile?.addressLine1 && <p className="text-sm mt-1">{workshopProfile.addressLine1}{workshopProfile.addressLine2 ? `, ${workshopProfile.addressLine2}` : ''}</p>}
+            {(workshopProfile?.city || workshopProfile?.state) && <p className="text-sm">{[workshopProfile.city, workshopProfile.state, workshopProfile.postalCode].filter(Boolean).join(', ')}</p>}
+            {workshopProfile?.contactPhone && <p className="text-sm font-semibold mt-1">Ph: {workshopProfile.contactPhone}</p>}
+            {workshopProfile?.gstNumber && <p className="text-xs mt-1">GSTIN: {workshopProfile.gstNumber}</p>}
+          </div>
+          <div className="text-right w-1/2 flex flex-col justify-start items-end">
+            <div className="text-sm font-bold uppercase tracking-widest border border-black px-2 py-1 mb-1">Vehicle Intake Receipt</div>
+            <div className="text-xl font-black">{jobCard.jobNumber || `JC-${jobCard.id.substring(0, 8).toUpperCase()}`}</div>
+            <div className="text-sm mt-1">Date: {formatDate(jobCard.createdAt)}</div>
+          </div>
+        </div>
+
+        {/* 2 inches: 3 Columns (Customer, Vehicle, Extended) */}
+        <div className="flex border-b-2 border-black pb-2 mb-2" style={{ height: '2in', maxHeight: '2in', overflow: 'hidden' }}>
+          <div className="w-1/3 pr-2 border-r border-gray-300">
+            <h2 className="font-bold underline uppercase text-xs mb-2">Customer Details</h2>
+            <div className="text-sm space-y-1">
+              <p><span className="font-semibold">Name:</span> {customer.displayName || "N/A"}</p>
+              <p><span className="font-semibold">Mobile:</span> {customer.primaryMobile || "N/A"}</p>
+              {customer.email && <p><span className="font-semibold">Email:</span> {customer.email}</p>}
+              {customer.addressLine1 && <p><span className="font-semibold">Address:</span> {customer.addressLine1}</p>}
+              {customer.driverName && <p><span className="font-semibold">Driver:</span> {customer.driverName} {customer.driverMobile ? `(${customer.driverMobile})` : ''}</p>}
+            </div>
+          </div>
+          <div className="w-1/3 px-2 border-r border-gray-300">
+            <h2 className="font-bold underline uppercase text-xs mb-2">Vehicle Details</h2>
+            <div className="text-sm space-y-1">
+              <p><span className="font-semibold">Reg No:</span> <span className="font-black text-base ml-1">{vehicle.registrationNumberRaw || "N/A"}</span></p>
+              <p><span className="font-semibold">Make/Model:</span> {vehicle.manufacturer || vehicle.make} {vehicle.model}</p>
+              <p><span className="font-semibold">Year/Color:</span> {vehicle.year} / {vehicle.color}</p>
+              <p><span className="font-semibold">Odometer:</span> {jobCard.intakeOdometer ? `${jobCard.intakeOdometer.toLocaleString()} km` : "N/A"}</p>
+              <p><span className="font-semibold">Fuel Type:</span> {vehicle.fuelType}</p>
+              <p><span className="font-semibold">Fuel Level:</span> {jobCard.fuelLevel}</p>
+            </div>
+          </div>
+          <div className="w-1/3 pl-2">
+            <h2 className="font-bold underline uppercase text-xs mb-2">Extended Details</h2>
+            <div className="text-sm space-y-1">
+              {vehicle.vin && <p><span className="font-semibold">VIN:</span> {vehicle.vin}</p>}
+              {vehicle.engineNumber && <p><span className="font-semibold">Engine:</span> {vehicle.engineNumber}</p>}
+              {vehicle.insurerName && <p><span className="font-semibold">Insurer:</span> {vehicle.insurerName}</p>}
+              {vehicle.insurancePolicyNumber && <p><span className="font-semibold">Policy:</span> {vehicle.insurancePolicyNumber}</p>}
+              {vehicle.emissionInspectionNumber && <p><span className="font-semibold">PUC No:</span> {vehicle.emissionInspectionNumber}</p>}
+              {vehicle.batteryMake && <p><span className="font-semibold">Battery:</span> {vehicle.batteryMake}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* 6 inches: Problems, Notes */}
+        <div className="border-b-2 border-black pb-2 mb-2 flex flex-col" style={{ height: '6in', maxHeight: '6in', overflow: 'hidden' }}>
+          <h2 className="font-bold underline uppercase text-xs mb-2">Reported Problems & Requested Work</h2>
+          <div className="flex-1 overflow-hidden">
+            {jobCard.complaints && jobCard.complaints.length > 0 ? (
+              <ul className="list-decimal pl-5 space-y-1 text-sm font-semibold">
+                {jobCard.complaints.map((c: any, idx: number) => (
+                  <li key={c.id || idx}>{c.description}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm italic">General service / as per workshop assessment.</p>
+            )}
+            
+            {jobCard.externalNotes && (
+              <div className="mt-4 pt-2 border-t border-dashed border-gray-300">
+                <h3 className="font-bold underline uppercase text-xs mb-1">Additional Notes</h3>
+                <p className="text-sm whitespace-pre-wrap">{jobCard.externalNotes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Estimate time and price */}
+        <div className="flex justify-between items-center text-sm mb-6 border-b-2 border-black pb-4 font-semibold">
+          <div>
+            <span className="uppercase text-xs text-gray-500 mr-2">Estimated Delivery Date:</span> 
+            {jobCard.expectedDeliveryAt ? formatDate(jobCard.expectedDeliveryAt) : (jobCard.estimatedCompletionDate ? formatDate(jobCard.estimatedCompletionDate) : "To be confirmed")}
+          </div>
+          <div className="text-right">
+            <span className="uppercase text-xs text-gray-500 mr-2">Estimated Cost:</span> 
+            To be confirmed after inspection
+          </div>
+        </div>
+
+        {/* ─── Customer Acknowledgement & Signature (Print Only) ─── */}
+        <div className="mt-8 page-break-inside-avoid border-2 border-gray-800 p-4 rounded-lg">
+          <h2 className="text-xs font-bold uppercase text-gray-800 mb-3 flex items-center gap-2 border-b-2 border-gray-300 pb-2">
+            <CheckCircle className="w-4 h-4" /> Customer Acknowledgement
+          </h2>
+          <div className="text-xs text-gray-800 space-y-1.5 mb-8">
+            <p>I, the undersigned, hereby confirm and acknowledge the following:</p>
+            <ul className="list-disc pl-4 space-y-1 mt-2">
+              <li>I have handed over the above-mentioned vehicle to <strong>{workshopProfile?.workshopName || workshopProfile?.name || 'the workshop'}</strong> for the reported repairs/service.</li>
+              <li>The vehicle condition and odometer reading noted above are accurate to the best of my knowledge.</li>
+              <li>I authorize the workshop to proceed with the requested work and any additional necessary repairs (subject to prior approval for significant additional work).</li>
+              <li>I understand that the estimated delivery date is indicative and subject to change based on parts availability and repair complexity.</li>
+            </ul>
+          </div>
+          <div className="flex justify-between gap-12 px-4">
+            <div className="text-center w-1/2">
+              <div className="border-b-2 border-gray-800 h-16 mb-2"></div>
+              <div className="text-xs font-bold text-gray-800 uppercase tracking-wide">Customer Signature</div>
+              <div className="text-xs text-gray-600 mt-1">Name: {customer.displayName || '_____________________'}</div>
+              <div className="text-xs text-gray-600 mt-1">Date: {formatDate(new Date())}</div>
+            </div>
+            <div className="text-center w-1/2">
+              <div className="border-b-2 border-gray-800 h-16 mb-2 flex items-end justify-center pb-2">
+                <span className="text-xs text-gray-400 italic">Official Stamp</span>
+              </div>
+              <div className="text-xs font-bold text-gray-800 uppercase tracking-wide">Workshop Representative</div>
+              <div className="text-xs text-gray-600 mt-1">{workshopProfile?.workshopName || workshopProfile?.name || ''}</div>
+              <div className="text-xs text-gray-600 mt-1">Date: {formatDate(new Date())}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Print Footer */}
+        <div className="text-center text-xs text-gray-500 pt-6 mt-6 border-t border-gray-300">
+          <p>This is a system-generated intake receipt. For queries, contact {workshopProfile?.contactPhone || ''}.</p>
+        </div>
+
+        {/* ─── Intake Photos — A4 Print Size ─── */}
+        {photos.length > 0 && (
+          <div className="w-full">
+            {photos.map((photo: any, index: number) => (
+              <div key={photo.id || index} className="break-before-page pt-8">
+                <h2 className="text-xs font-bold uppercase text-gray-800 mb-4 border-b border-gray-800 pb-2">
+                  Intake Photo {index + 1} of {photos.length}
+                </h2>
+                <div className="w-full border-2 border-gray-300 p-2">
+                  <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-auto max-h-[250mm] object-contain mx-auto" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="print:hidden max-w-3xl mx-auto px-4 pt-6">
 
         {/* ─── Workshop Header ─── */}
-        <div className="bg-white rounded-xl shadow-sm border print:shadow-none print:border-none print:border-b-2 print:border-gray-800 mb-6 p-6">
+        <div className="bg-white rounded-xl shadow-sm border mb-6 p-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-center sm:text-left">
               {workshopProfile?.logoUrl && (
@@ -371,20 +513,6 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
                     </div>
                   </div>
                 ))}
-              </div>
-              {/* Print-friendly Full Page Photos (no lightbox, A4 clear size) */}
-              <div className="hidden print:block w-full">
-                {photos.map((photo: any, index: number) => (
-                  <div key={photo.id || index} className="break-before-page pt-8">
-                    <h2 className="text-xs font-bold uppercase text-gray-800 mb-4 border-b border-gray-300 pb-2">
-                      Intake Photo {index + 1} of {photos.length}
-                    </h2>
-                    <div className="w-full border border-gray-200 p-2 bg-white">
-                      <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-auto max-h-[250mm] object-contain mx-auto" />
-                    </div>
-                  </div>
-                ))}
-              </div>
             </section>
           )}
 
@@ -419,11 +547,6 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
               </div>
             </div>
           </section>
-
-          {/* ─── Print Footer ─── */}
-          <div className="hidden print:block text-center text-xs text-gray-400 pt-4 border-t">
-            <p>This is a system-generated intake receipt. For queries, contact {workshopProfile?.contactPhone || ''}.</p>
-          </div>
 
         </div>
       </div>
