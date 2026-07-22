@@ -2,30 +2,31 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/db';
+import * as xlsx from 'xlsx';
 
-const DOC_DIR = 'C:\\Users\\rahul\\OneDrive\\Documents';
+const DOC_DIR = 'C:\\Users\\rahul\\OneDrive\\Documents\\jc transfer';
 
-function normalizePhone(phone: string): string | null {
+function normalizePhone(phone: string | undefined | null): string | null {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 10) {
-    return `+91${digits}`;
-  }
-  if (digits.length === 12 && digits.startsWith('91')) {
-    return `+${digits}`;
-  }
-  return phone.trim();
+  const digits = String(phone).replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  return String(phone).trim();
 }
 
-function normalizeLPN(lpn: string): string {
+function normalizeLPN(lpn: string | undefined | null): string {
   if (!lpn) return 'UNKNOWN';
-  const clean = lpn.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const clean = String(lpn).toUpperCase().replace(/[^A-Z0-9]/g, '');
   return clean || 'UNKNOWN';
 }
 
-function parseDate(dateStr: string): Date | null {
-  if (!dateStr || dateStr.trim() === '') return null;
-  const parts = dateStr.split('-');
+function parseDate(dateStr: any): Date | null {
+  if (!dateStr || String(dateStr).trim() === '') return null;
+  // Handle Excel serial dates
+  if (typeof dateStr === 'number') {
+    return new Date((dateStr - (25567 + 2)) * 86400 * 1000);
+  }
+  const parts = String(dateStr).split('-');
   if (parts.length === 3) {
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10) - 1;
@@ -38,16 +39,18 @@ function parseDate(dateStr: string): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function parseAmount(amtStr: string): number {
+function parseAmount(amtStr: any): number {
   if (!amtStr) return 0;
-  const clean = amtStr.replace(/,/g, '').trim();
+  if (typeof amtStr === 'number') return amtStr;
+  const clean = String(amtStr).replace(/,/g, '').trim();
   const val = parseFloat(clean);
   return isNaN(val) ? 0 : val;
 }
 
-function parseTaxRate(taxStr: string): number {
+function parseTaxRate(taxStr: any): number {
   if (!taxStr) return 0;
-  const clean = taxStr.replace(/%/g, '').trim();
+  if (typeof taxStr === 'number') return taxStr * 100 > 100 ? taxStr : taxStr * 100; // if it's 0.18 -> 18. If it's 18 -> 18
+  const clean = String(taxStr).replace(/%/g, '').trim();
   const val = parseFloat(clean);
   return isNaN(val) ? 0 : val;
 }
@@ -72,9 +75,7 @@ function parseCSVLine(line: string): string[] {
 }
 
 function parseCSV(filePath: string): any[] {
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`File not found: ${filePath}`);
-  }
+  if (!fs.existsSync(filePath)) return [];
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split(/\r?\n/);
   if (lines.length === 0 || lines[0] === '') return [];
@@ -93,21 +94,30 @@ function parseCSV(filePath: string): any[] {
   return rows;
 }
 
+function parseXLSX(filePath: string): any[] {
+  if (!fs.existsSync(filePath)) return [];
+  const workbook = xlsx.readFile(filePath);
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  return xlsx.utils.sheet_to_json(worksheet, { defval: '' });
+}
+
 export async function POST() {
   const start = Date.now();
   try {
     const summary: Record<string, any> = {};
-    console.log('--- STARTING HIGH-PERFORMANCE IMPORT WORKFLOW ---');
+    console.log('--- STARTING SOFT-MERGE IMPORT WORKFLOW ---');
 
-    // Pre-load all database entities into memory for instant O(1) matching
     console.log('Loading database caches into memory...');
     const allCustomers = await prisma.customer.findMany({ where: { isActive: true } });
     const allVehicles = await prisma.vehicle.findMany({ where: { isActive: true } });
+    const allParts = await prisma.partsMaster.findMany();
+    const allLabour = await prisma.labourMaster.findMany();
+    const allJobCards = await prisma.jobCard.findMany();
 
-    // Maps to store cached lookup records
     const customerByMobile = new Map<string, any>();
     const customerByEmail = new Map<string, any>();
-    const customerBySourceId = new Map<string, string>(); // sourceRecordId -> dbId
+    const customerBySourceId = new Map<string, string>(); 
     
     allCustomers.forEach(c => {
       if (c.primaryMobile) customerByMobile.set(c.primaryMobile, c);
@@ -116,21 +126,27 @@ export async function POST() {
     });
 
     const vehicleByLpn = new Map<string, any>();
-    const vehicleBySourceId = new Map<string, string>(); // sourceRecordId -> dbId
-
+    const vehicleBySourceId = new Map<string, string>(); 
     allVehicles.forEach(v => {
       vehicleByLpn.set(v.registrationNumberNormalized, v);
       if (v.sourceRecordId) vehicleBySourceId.set(v.sourceRecordId, v.id);
     });
 
-    // 1. PROCESS CUSTOMERS (Partners.csv)
-    const partnersFile = path.join(DOC_DIR, 'Partners.csv');
-    const partnersData = parseCSV(partnersFile);
-    
-    const customersToCreate: any[] = [];
-    const customerUpdates: { id: string; data: any }[] = [];
+    const partsByName = new Map<string, string>();
+    allParts.forEach(p => {
+      partsByName.set(p.partName.toLowerCase(), p.id);
+    });
 
-    // Pre-generate seed primary key for dummy unresolved owner
+    const laborByName = new Map<string, string>();
+    allLabour.forEach(l => {
+      laborByName.set(l.labourName.toLowerCase(), l.id);
+    });
+
+    const jobcardsBySourceId = new Map<string, string>();
+    allJobCards.forEach(jc => {
+      if (jc.sourceRecordId) jobcardsBySourceId.set(jc.sourceRecordId, jc.id);
+    });
+
     let legacyUnresolvedId = customerBySourceId.get('legacy-unresolved-owner');
     if (!legacyUnresolvedId) {
       const createdDummy = await prisma.customer.upsert({
@@ -146,47 +162,53 @@ export async function POST() {
       customerBySourceId.set('legacy-unresolved-owner', legacyUnresolvedId);
     }
 
-    for (const row of partnersData) {
-      if (!row.Name || row.Name.trim() === '') continue;
-      
-      const displayName = row.Name.trim();
-      const rawMobile = row['Mobile Numer'] || row['Phone number'] || '';
-      const primaryMobile = normalizePhone(rawMobile);
-      const email = row['E-mail'] ? row['E-mail'].toLowerCase().trim() : null;
-      const taxId = row['Vat number'] ? row['Vat number'].trim() : null;
-      const addressLine1 = row.Address ? row.Address.trim() : null;
-      const state = row.State ? row.State.trim() : null;
-      const postalCode = row.ZIP ? row.ZIP.trim() : null;
-      const notes = row.Notes ? row.Notes.trim() : null;
-      const sourceRecordId = row.Id ? row.Id.trim() : null;
-      
-      const driverName = (row['Driver name'] || row['Driver Name'] || row.driverName || row.DriverName || row.Driver)?.trim() || null;
-      const driverMobile = normalizePhone(row['Driver mobile'] || row['Driver Mobile'] || row.driverMobile || row.DriverMobile || row.DriverPhone);
-      
-      const priorityRaw = row.Priority || row.Importance || row['Customer Importance'] || row.isPriority || '';
-      const isPriority = String(priorityRaw).trim().toLowerCase() === 'yes' || String(priorityRaw).trim().toLowerCase() === 'true' || priorityRaw === 1 || priorityRaw === '1';
+    // 1. PROCESS CUSTOMERS (Partners.xls)
+    const partnersFile = path.join(DOC_DIR, 'Partners.xls');
+    const partnersData = parseXLSX(partnersFile);
+    
+    const customersToCreate: any[] = [];
+    const customerUpdates: { id: string; data: any }[] = [];
 
-      // Find match in memory
+    for (const row of partnersData) {
+      if (!row.Name || String(row.Name).trim() === '') continue;
+      
+      const displayName = String(row.Name).trim();
+      const rawMobile = row['Mobile Numer'] || row['Phone number'] || row['Mobile'] || '';
+      const primaryMobile = normalizePhone(rawMobile);
+      const email = row['E-mail'] ? String(row['E-mail']).toLowerCase().trim() : null;
+      const taxId = row['Vat number'] ? String(row['Vat number']).trim() : null;
+      const addressLine1 = row.Address ? String(row.Address).trim() : null;
+      const state = row.State ? String(row.State).trim() : null;
+      const postalCode = row.ZIP ? String(row.ZIP).trim() : null;
+      const notes = row.Notes ? String(row.Notes).trim() : null;
+      const sourceRecordId = row.Id ? String(row.Id).trim() : null;
+      
+      const driverName = (row['Driver name'] || row.DriverName || row.Driver)?.toString().trim() || null;
+      const driverMobile = normalizePhone(row['Driver mobile'] || row.DriverMobile || row.DriverPhone);
+      
       let matchedCust = null;
-      if (primaryMobile) matchedCust = customerByMobile.get(primaryMobile);
+      if (sourceRecordId && customerBySourceId.has(sourceRecordId)) {
+        matchedCust = allCustomers.find(c => c.id === customerBySourceId.get(sourceRecordId));
+      }
+      if (!matchedCust && primaryMobile) matchedCust = customerByMobile.get(primaryMobile);
       if (!matchedCust && email) matchedCust = customerByEmail.get(email);
 
       if (matchedCust) {
-        customerUpdates.push({
-          id: matchedCust.id,
-          data: {
-            alternateMobile: matchedCust.alternateMobile || normalizePhone(row['Phone number']),
-            driverName: matchedCust.driverName || driverName,
-            driverMobile: matchedCust.driverMobile || driverMobile,
-            isPriority: isPriority || matchedCust.isPriority,
-            addressLine1: matchedCust.addressLine1 || addressLine1,
-            state: matchedCust.state || state,
-            postalCode: matchedCust.postalCode || postalCode,
-            taxId: matchedCust.taxId || taxId,
-            notes: matchedCust.notes ? `${matchedCust.notes}\n${notes || ''}`.trim() : notes,
-            sourceRecordId: sourceRecordId || matchedCust.sourceRecordId
-          }
-        });
+        // Soft Merge: ONLY update if current value is null/empty
+        const updateData: any = {};
+        if (!matchedCust.alternateMobile && normalizePhone(row['Phone number'])) updateData.alternateMobile = normalizePhone(row['Phone number']);
+        if (!matchedCust.driverName && driverName) updateData.driverName = driverName;
+        if (!matchedCust.driverMobile && driverMobile) updateData.driverMobile = driverMobile;
+        if (!matchedCust.addressLine1 && addressLine1) updateData.addressLine1 = addressLine1;
+        if (!matchedCust.state && state) updateData.state = state;
+        if (!matchedCust.postalCode && postalCode) updateData.postalCode = postalCode;
+        if (!matchedCust.taxId && taxId) updateData.taxId = taxId;
+        if (!matchedCust.notes && notes) updateData.notes = notes;
+        if (!matchedCust.sourceRecordId && sourceRecordId) updateData.sourceRecordId = sourceRecordId;
+
+        if (Object.keys(updateData).length > 0) {
+          customerUpdates.push({ id: matchedCust.id, data: updateData });
+        }
         if (sourceRecordId) customerBySourceId.set(sourceRecordId, matchedCust.id);
       } else {
         const newId = crypto.randomUUID();
@@ -198,7 +220,6 @@ export async function POST() {
           alternateMobile: normalizePhone(row['Phone number']),
           driverName,
           driverMobile,
-          isPriority,
           email,
           taxId,
           addressLine1,
@@ -214,72 +235,57 @@ export async function POST() {
       }
     }
 
-    // Execute customer DB writes in batch
-    await prisma.$transaction([
-      prisma.customer.createMany({ data: customersToCreate }),
-      ...customerUpdates.map(u => prisma.customer.update({ where: { id: u.id }, data: u.data }))
-    ]);
-    summary.customers = { created: customersToCreate.length, updated: customerUpdates.length, total: customersToCreate.length + customerUpdates.length };
+    if (customersToCreate.length > 0) await prisma.customer.createMany({ data: customersToCreate });
+    for (const u of customerUpdates) {
+      await prisma.customer.update({ where: { id: u.id }, data: u.data });
+    }
+    summary.customers = { created: customersToCreate.length, updated: customerUpdates.length };
 
-    // 2. PROCESS VEHICLES (Auto object table.csv)
-    const autosFile = path.join(DOC_DIR, 'Auto object table.csv');
-    const autosData = parseCSV(autosFile);
+    // 2. PROCESS VEHICLES (Auto object table.xls)
+    const autosFile = path.join(DOC_DIR, 'Auto object table.xls');
+    const autosData = parseXLSX(autosFile);
 
     const vehiclesToCreate: any[] = [];
     const vehicleUpdates: { id: string; data: any }[] = [];
     const ownershipHistoryToCreate: any[] = [];
 
     for (const row of autosData) {
-      const rawLPN = row.LPN || '';
+      const rawLPN = String(row.LPN || '');
       const registrationNumberNormalized = normalizeLPN(rawLPN);
       if (registrationNumberNormalized === 'UNKNOWN' && !row.Manufacturer) continue;
 
-      const sourceRecordId = row.Id ? row.Id.trim() : null;
-      const manufacturer = row.Manufacturer ? row.Manufacturer.trim() : null;
-      const model = row.Model ? row.Model.trim() : null;
-      const variant = row['Engine type'] ? row['Engine type'].trim() : null;
-      const fuelType = row['Fuel type'] ? row['Fuel type'].trim() : null;
-      const vin = row.VIN ? row.VIN.trim() : null;
-      const engineNumber = row['Engine number'] ? row['Engine number'].trim() : null;
-      const manufactureYear = row['Manufacture year'] ? parseInt(row['Manufacture year'], 10) || null : null;
-      const color = row.Color ? row.Color.trim() : null;
-      const batteryDetails = row['Battery Details'] ? row['Battery Details'].trim() : null;
-      const currentOdometer = row['Next oil change dist.'] ? parseInt(row['Next oil change dist.'], 10) || null : null;
-      const insurerName = row.Insurer ? row.Insurer.trim() : null;
-      const notes = row.Notes ? row.Notes.trim() : null;
-
-      const nextServiceDate = parseDate(row['Next service']);
-      const nextPucDate = parseDate(row['Next P.U.C']);
-      const nextOilChangeDate = parseDate(row['Next oil change']);
-      const nextTimingBeltChangeDate = parseDate(row['Next timing belt change']);
-
-      // Resolve Owner
+      const sourceRecordId = row.Id ? String(row.Id).trim() : null;
+      const manufacturer = row.Manufacturer ? String(row.Manufacturer).trim() : null;
+      const model = row.Model ? String(row.Model).trim() : null;
+      const vin = row.VIN ? String(row.VIN).trim() : null;
+      const engineNumber = row['Engine number'] ? String(row['Engine number']).trim() : null;
+      const manufactureYear = row['Manufacture year'] ? parseInt(String(row['Manufacture year']), 10) || null : null;
+      const color = row.Color ? String(row.Color).trim() : null;
+      const currentOdometer = row['Next oil change dist.'] ? parseInt(String(row['Next oil change dist.']), 10) || null : null;
+      
       let customerId = customerBySourceId.get(row['Customer id.']) || legacyUnresolvedId!;
-
-      const existingVeh = vehicleByLpn.get(registrationNumberNormalized);
+      let existingVeh = null;
+      if (sourceRecordId && vehicleBySourceId.has(sourceRecordId)) {
+        existingVeh = allVehicles.find(v => v.id === vehicleBySourceId.get(sourceRecordId));
+      }
+      if (!existingVeh) {
+        existingVeh = vehicleByLpn.get(registrationNumberNormalized);
+      }
 
       if (existingVeh) {
-        vehicleUpdates.push({
-          id: existingVeh.id,
-          data: {
-            vin: existingVeh.vin || vin,
-            engineNumber: existingVeh.engineNumber || engineNumber,
-            manufacturer: existingVeh.manufacturer || manufacturer,
-            model: existingVeh.model || model,
-            variant: existingVeh.variant || variant,
-            fuelType: existingVeh.fuelType || fuelType,
-            color: existingVeh.color || color,
-            batteryDetails: existingVeh.batteryDetails || batteryDetails,
-            currentOdometer: currentOdometer || existingVeh.currentOdometer,
-            nextServiceDate: nextServiceDate || existingVeh.nextServiceDate,
-            emissionInspectionExpiryDate: nextPucDate || existingVeh.emissionInspectionExpiryDate,
-            nextOilChangeDate: nextOilChangeDate || existingVeh.nextOilChangeDate,
-            nextTimingBeltChangeDate: nextTimingBeltChangeDate || existingVeh.nextTimingBeltChangeDate,
-            notes: existingVeh.notes ? `${existingVeh.notes}\n${notes || ''}`.trim() : notes,
-            currentCustomerId: customerId,
-            sourceRecordId: sourceRecordId || existingVeh.sourceRecordId
-          }
-        });
+        // Soft Merge
+        const updateData: any = {};
+        if (!existingVeh.vin && vin) updateData.vin = vin;
+        if (!existingVeh.engineNumber && engineNumber) updateData.engineNumber = engineNumber;
+        if (!existingVeh.manufacturer && manufacturer) updateData.manufacturer = manufacturer;
+        if (!existingVeh.model && model) updateData.model = model;
+        if (!existingVeh.color && color) updateData.color = color;
+        if (!existingVeh.currentOdometer && currentOdometer) updateData.currentOdometer = currentOdometer;
+        if (!existingVeh.sourceRecordId && sourceRecordId) updateData.sourceRecordId = sourceRecordId;
+
+        if (Object.keys(updateData).length > 0) {
+          vehicleUpdates.push({ id: existingVeh.id, data: updateData });
+        }
         if (sourceRecordId) vehicleBySourceId.set(sourceRecordId, existingVeh.id);
       } else {
         const newVehId = crypto.randomUUID();
@@ -291,18 +297,9 @@ export async function POST() {
           engineNumber,
           manufacturer,
           model,
-          variant,
-          fuelType,
           color,
           manufactureYear,
-          batteryDetails,
           currentOdometer,
-          insurerName,
-          nextServiceDate,
-          emissionInspectionExpiryDate: nextPucDate,
-          nextOilChangeDate,
-          nextTimingBeltChangeDate,
-          notes,
           currentCustomerId: customerId,
           sourceSystem: 'legacy_csv_autos',
           sourceRecordId
@@ -320,84 +317,84 @@ export async function POST() {
       }
     }
 
-    // Execute vehicle DB batch writes
-    await prisma.$transaction([
-      prisma.vehicle.createMany({ data: vehiclesToCreate }),
-      prisma.vehicleOwnershipHistory.createMany({ data: ownershipHistoryToCreate }),
-      ...vehicleUpdates.map(u => prisma.vehicle.update({ where: { id: u.id }, data: u.data }))
-    ]);
-    summary.vehicles = { created: vehiclesToCreate.length, updated: vehicleUpdates.length, total: vehiclesToCreate.length + vehicleUpdates.length };
+    if (vehiclesToCreate.length > 0) {
+      await prisma.vehicle.createMany({ data: vehiclesToCreate });
+      await prisma.vehicleOwnershipHistory.createMany({ data: ownershipHistoryToCreate });
+    }
+    for (const u of vehicleUpdates) {
+      await prisma.vehicle.update({ where: { id: u.id }, data: u.data });
+    }
+    summary.vehicles = { created: vehiclesToCreate.length, updated: vehicleUpdates.length };
 
-    // 3. PROCESS PARTS CATALOG (Items.csv -> PartsMaster)
-    const itemsFile = path.join(DOC_DIR, 'Items.csv');
-    const itemsData = parseCSV(itemsFile);
-    
-    // Clear and do bulk insert for catalog items
-    await prisma.partsMaster.deleteMany();
+    // 3. PROCESS PARTS CATALOG (Items.xls)
+    const itemsFile = path.join(DOC_DIR, 'Items.xls');
+    const itemsData = parseXLSX(itemsFile);
     const partsToCreate: any[] = [];
 
     for (const row of itemsData) {
-      if (row.Type !== 'Product') continue;
-      if (!row.Name || row.Name.trim() === '') continue;
+      const pName = String(row.Name || '').trim();
+      if (!pName) continue;
 
       const defaultSellingPrice = parseAmount(row['Net list price'] || row['Net price']);
       if (defaultSellingPrice <= 0) continue;
 
-      partsToCreate.push({
-        id: crypto.randomUUID(),
-        partName: row.Name.trim(),
-        itemCode: row['Item code'] || null,
-        partNumber: row['Part number'] || null,
-        barcode: row.Barcode || null,
-        brand: row.Seller || null,
-        unit: row.Unit || 'pcs',
-        defaultTaxRate: parseTaxRate(row['Tax r.']),
-        defaultSellingPrice,
-        stockQuantity: parseFloat(row.Stock) || 0,
-        sourceSystem: 'legacy_csv_items',
-        sourceRecordId: row.Id || null
-      });
+      const existingPartId = partsByName.get(pName.toLowerCase());
+      if (!existingPartId) {
+        const newPartId = crypto.randomUUID();
+        partsToCreate.push({
+          id: newPartId,
+          partName: pName,
+          itemCode: row['Item code'] ? String(row['Item code']) : null,
+          partNumber: row['Part number'] ? String(row['Part number']) : null,
+          brand: row.Seller ? String(row.Seller) : null,
+          unit: row.Unit ? String(row.Unit) : 'pcs',
+          defaultTaxRate: parseTaxRate(row['Tax r.'] || 0),
+          defaultSellingPrice,
+          stockQuantity: parseFloat(row.Stock) || 0,
+          sourceSystem: 'legacy_csv_items',
+          sourceRecordId: row.Id ? String(row.Id) : null
+        });
+        partsByName.set(pName.toLowerCase(), newPartId);
+      }
     }
+    if (partsToCreate.length > 0) await prisma.partsMaster.createMany({ data: partsToCreate });
+    summary.parts = { created: partsToCreate.length };
 
-    // Bulk creation in single step
-    await prisma.partsMaster.createMany({ data: partsToCreate });
-    summary.partsCatalog = { imported: partsToCreate.length };
-
-    // 4. PROCESS LABOUR CATALOG (Items 1.csv -> LabourMaster)
-    const items1File = path.join(DOC_DIR, 'Items 1.csv');
-    const items1Data = parseCSV(items1File);
-    
-    await prisma.labourMaster.deleteMany();
+    // 4. PROCESS LABOR CATALOG (services.xls)
+    const servicesFile = path.join(DOC_DIR, 'services.xls');
+    const servicesData = parseXLSX(servicesFile);
     const labourToCreate: any[] = [];
 
-    for (const row of items1Data) {
-      if (row.Type !== 'Service') continue;
-      if (!row.Name || row.Name.trim() === '') continue;
+    for (const row of servicesData) {
+      const lName = String(row.Name || '').trim();
+      if (!lName) continue;
 
       const defaultSellingPrice = parseAmount(row['Net list price'] || row['Net price']);
       if (defaultSellingPrice <= 0) continue;
 
-      labourToCreate.push({
-        id: crypto.randomUUID(),
-        labourName: row.Name.trim(),
-        labourCode: row['Item code'] || null,
-        unitType: row.Unit || 'job',
-        defaultTaxRate: parseTaxRate(row['Tax r.']),
-        defaultSellingPrice,
-        sourceSystem: 'legacy_csv_items1',
-        sourceRecordId: row.Id || null
-      });
+      const existingLaborId = laborByName.get(lName.toLowerCase());
+      if (!existingLaborId) {
+        const newLaborId = crypto.randomUUID();
+        labourToCreate.push({
+          id: newLaborId,
+          labourName: lName,
+          labourCode: row['Item code'] ? String(row['Item code']) : null,
+          unitType: row.Unit ? String(row.Unit) : 'job',
+          defaultTaxRate: parseTaxRate(row['Tax r.'] || 0),
+          defaultSellingPrice,
+          sourceSystem: 'legacy_csv_items1',
+          sourceRecordId: row.Id ? String(row.Id) : null
+        });
+        laborByName.set(lName.toLowerCase(), newLaborId);
+      }
     }
+    if (labourToCreate.length > 0) await prisma.labourMaster.createMany({ data: labourToCreate });
+    summary.labor = { created: labourToCreate.length };
 
-    await prisma.labourMaster.createMany({ data: labourToCreate });
-    summary.labourCatalog = { imported: labourToCreate.length };
-
-    // 5. PROCESS JOB CARDS (Job cards.csv -> JobCard & JobCardSnapshot)
+    // 5. PROCESS JOB CARDS (Job cards.csv)
+    // ONLY ADD MISSING
     const jobsFile = path.join(DOC_DIR, 'Job cards.csv');
-    const jobsData = parseCSV(jobsFile);
-    
-    // Clean old legacy job cards to avoid primary key/unique clashes during re-migration
-    await prisma.jobCard.deleteMany({ where: { legacyImportFlag: true } });
+    const jobsData = parseCSV(jobsFile); // assuming it's still CSV as per dir listing
     
     const jobcardsToCreate: any[] = [];
     const snapshotsToCreate: any[] = [];
@@ -405,16 +402,17 @@ export async function POST() {
     for (const row of jobsData) {
       if (!row.Id) continue;
       
-      const jobcardNumber = `LEGACY-${row.Id.trim()}`;
-      const sourceRecordId = row.Id.trim();
-      
-      const cleanLpn = normalizeLPN(row.LPN || 'LEGACY-TEMP');
-      let vehicleId = vehicleBySourceId.get(row['Auto id.']);
-      if (!vehicleId) {
-        vehicleId = vehicleByLpn.get(cleanLpn)?.id;
+      const sourceRecordId = String(row.Id).trim();
+      if (jobcardsBySourceId.has(sourceRecordId)) {
+        continue; // Exists, DO NOT TOUCH IT! (Soft merge only means adding missing ones for JobCards)
       }
+      
+      const jobcardNumber = `LEGACY-${sourceRecordId}`;
+      const cleanLpn = normalizeLPN(row.LPN || 'LEGACY-TEMP');
+      
+      let vehicleId = vehicleBySourceId.get(row['Auto id.']);
+      if (!vehicleId) vehicleId = vehicleByLpn.get(cleanLpn)?.id;
 
-      // If vehicle still unresolved, skip or link to a dummy legacy vehicle
       if (!vehicleId) {
         const dummyVehId = crypto.randomUUID();
         await prisma.vehicle.create({
@@ -435,11 +433,8 @@ export async function POST() {
       let customerId = customerBySourceId.get(row['Customer id.']) || legacyUnresolvedId!;
 
       let status = 'legacy_imported_read_only';
-      if (row.State === 'Opened') {
-        status = 'open';
-      } else if (row.State === 'Closed') {
-        status = 'closed';
-      }
+      if (row.State === 'Opened') status = 'open';
+      else if (row.State === 'Closed') status = 'closed';
 
       const dateIn = parseDate(row.Created) || new Date();
       const expectedDeliveryAt = parseDate(row.Deadline);
@@ -476,28 +471,27 @@ export async function POST() {
       snapshotsToCreate.push({
         id: crypto.randomUUID(),
         jobcardId,
-        customerName: row.Customer ? row.Customer.trim() : 'Legacy Customer',
-        customerAddress: row.Address ? row.Address.trim() : null,
+        customerName: row.Customer ? String(row.Customer).trim() : 'Legacy Customer',
+        customerAddress: row.Address ? String(row.Address).trim() : null,
         vehicleRegistrationNumber: row.LPN || 'UNKNOWN',
         vehicleManufacturer: row.Manufacturer || null,
         vehicleModel: row.Model || null,
-        vehicleColor: row.Color || null,
         intakeOdometerSnapshot: intakeOdometer
       });
     }
 
-    await prisma.$transaction([
-      prisma.jobCard.createMany({ data: jobcardsToCreate }),
-      prisma.jobCardSnapshot.createMany({ data: snapshotsToCreate })
-    ]);
-    summary.jobcards = { imported: jobcardsToCreate.length };
+    if (jobcardsToCreate.length > 0) {
+      await prisma.jobCard.createMany({ data: jobcardsToCreate });
+      await prisma.jobCardSnapshot.createMany({ data: snapshotsToCreate });
+    }
+    summary.jobcards = { created: jobcardsToCreate.length };
 
     const durationSeconds = ((Date.now() - start) / 1000).toFixed(2);
     console.log(`--- IMPORT COMPLETED IN ${durationSeconds}s ---`);
 
     return NextResponse.json({
       success: true,
-      message: 'Legacy CSV data imported and merged successfully!',
+      message: 'Soft merge import completed successfully!',
       durationSeconds,
       summary
     });

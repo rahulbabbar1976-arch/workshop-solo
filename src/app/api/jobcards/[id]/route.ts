@@ -79,6 +79,7 @@ export async function PUT(
       overallDiscountType,
       overallDiscountValue,
       paymentStatus,
+      amountPaid,
       externalNotes,
       internalNotes,
       intakeOdometer,
@@ -225,6 +226,7 @@ export async function PUT(
           overallDiscountType: overallDiscountType !== undefined ? overallDiscountType : existing.overallDiscountType,
           overallDiscountValue: overallDiscountValue !== undefined ? parseFloat(overallDiscountValue) || 0 : existing.overallDiscountValue,
           paymentStatus: paymentStatus || existing.paymentStatus,
+          amountPaid: amountPaid !== undefined ? parseFloat(amountPaid) || 0 : existing.amountPaid,
           externalNotes: externalNotes !== undefined ? externalNotes : existing.externalNotes,
           internalNotes: internalNotes !== undefined ? internalNotes : existing.internalNotes,
           intakeOdometer: intakeOdometer !== undefined ? parseInt(intakeOdometer, 10) || null : existing.intakeOdometer,
@@ -668,14 +670,17 @@ export async function PUT(
       });
 
       return updatedJobCardState;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     return NextResponse.json({ success: true, jobcard: result });
 
-  } catch (err: any) {
-    console.error('Update failed:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
-  }
+    } catch (err: any) {
+      console.error('Error updating job card details:', err);
+      if (err.name === 'PrismaClientValidationError') {
+        console.error('Prisma validation error detailed:', err.message);
+      }
+      return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    }
 }
 
 export async function DELETE(

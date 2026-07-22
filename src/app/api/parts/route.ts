@@ -7,18 +7,18 @@ export async function GET(request: Request) {
   const all = searchParams.get('all') === 'true';
 
   try {
-    const whereClause = q ? {
+    const whereClause: any = q ? {
       OR: [
-        { partName: { contains: q } },
-        { itemCode: { contains: q } },
-        { partNumber: { contains: q } }
+        { partName: { contains: q, mode: 'insensitive' } },
+        { itemCode: { contains: q, mode: 'insensitive' } },
+        { partNumber: { contains: q, mode: 'insensitive' } }
       ],
       isActive: true
     } : { isActive: true };
 
     const parts = await prisma.partsMaster.findMany({
       where: whereClause,
-      take: all ? undefined : 15,
+      take: all ? undefined : 50,
       include: {
         serialNumbers: {
           where: { status: 'AVAILABLE' }

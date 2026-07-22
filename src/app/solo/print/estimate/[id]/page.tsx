@@ -7,9 +7,17 @@ export const dynamic = "force-dynamic";
 export default async function PrintEstimatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
-  // Fetch Estimate
-  const estimate = await prisma.estimate.findUnique({
-    where: { id },
+  // Fetch Estimate (by Estimate ID or latest for JobCard ID)
+  const estimate = await prisma.estimate.findFirst({
+    where: { 
+      OR: [
+        { id },
+        { jobCardId: id }
+      ]
+    },
+    orderBy: {
+      createdAt: 'desc'
+    },
     include: {
       jobCard: {
         include: {

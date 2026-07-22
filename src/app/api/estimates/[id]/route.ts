@@ -33,3 +33,28 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    
+    const updateData: any = {};
+    if (body.flexibleCost !== undefined) updateData.flexibleCost = body.flexibleCost;
+    if (body.estimatedTime !== undefined) updateData.estimatedTime = body.estimatedTime;
+    
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ success: true });
+    }
+
+    const updated = await prisma.estimate.update({
+      where: { id },
+      data: updateData
+    });
+
+    return NextResponse.json({ success: true, estimate: updated });
+  } catch (error: any) {
+    console.error("Update estimate error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

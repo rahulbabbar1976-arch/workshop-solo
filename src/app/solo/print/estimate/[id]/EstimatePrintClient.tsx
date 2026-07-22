@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Printer, Settings2, ChevronLeft, Loader2 } from "lucide-react";
+import { Printer, Settings2, ChevronLeft, Loader2, Download } from "lucide-react";
 import Link from "next/link";
 
 export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: any, workshopProfile?: any }) {
@@ -45,6 +45,24 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const element = document.getElementById('printable-area');
+      const opt = {
+        margin:       10,
+        filename:     `Estimate_${estimate.estimateNumber || estimate.id.substring(0, 8)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().from(element).set(opt).save();
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      alert("Failed to generate PDF. You can still use the Print button to Save as PDF.");
+    }
   };
 
   const formatDate = (d: string | Date | null) => {
@@ -154,9 +172,15 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
         </div>
         <button 
           onClick={handlePrint}
-          className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded shadow flex items-center justify-center transition-colors"
+          className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded shadow flex items-center justify-center transition-colors mb-2"
         >
           <Printer className="w-5 h-5 mr-2" /> Print
+        </button>
+        <button 
+          onClick={handleDownloadPDF}
+          className="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-4 rounded shadow flex items-center justify-center transition-colors"
+        >
+          <Download className="w-5 h-5 mr-2" /> Download PDF
         </button>
       </div>
 
@@ -183,10 +207,22 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
           }
         }
       `}} />
-      <div className="flex-1 p-4 md:p-8 overflow-y-auto print:p-0 print:overflow-visible flex justify-center">
-        <div className="bg-white shadow-xl print:shadow-none print:w-full w-full max-w-4xl text-black" style={{ fontFamily: fontFamily === 'serif' ? 'Times New Roman, serif' : `"${fontFamily}", sans-serif`, fontSize: baseFontSize, padding: '1cm 1.5cm' }}>
-          
-          {/* Header */}
+      <div id="printable-area" className={`flex-1 overflow-auto bg-gray-100 ${isSettingsOpen ? 'md:p-8' : 'p-0'}`}>
+        <div 
+          className="bg-white shadow-xl mx-auto print:shadow-none print:m-0" 
+          style={{
+            width: '210mm',
+            minHeight: '297mm',
+            paddingTop: cols?.headerMargin || '10mm',
+            paddingBottom: cols?.footerMargin || '10mm',
+            paddingLeft: '10mm',
+            paddingRight: '10mm',
+            fontFamily: fontFamily,
+            fontSize: baseFontSize,
+            lineHeight: 1.5,
+            color: 'black'
+          }}
+        >  {/* Header */}
           {showWorkshopHeader && workshopProfile && (
             <div className="mb-4 text-center">
               <h1 className="text-2xl font-bold uppercase">{workshopProfile.workshopName}</h1>
@@ -230,7 +266,7 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
             <tbody>
               <tr>
                 <td className="py-1">{formatDate(estimate.createdAt)}</td>
-                <td className="py-1 text-center"></td>
+                <td className="py-1 text-center">{estimate.estimatedTime || ""}</td>
                 <td className="py-1 text-right"></td>
               </tr>
             </tbody>
@@ -244,6 +280,17 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
               <div>Next oil change dist.: {jobCard.vehicle?.nextOilChangeDistance || 0} Km</div>
             </div>
             <div>Model: &nbsp;{jobCard.vehicle?.model || ''}</div>
+            
+            {cols?.showExtendedVehicleDetails && jobCard.vehicle && (
+              <div className="mt-2 pt-2 border-t border-gray-300">
+                <div className="flex gap-4">
+                  <div><strong>Make:</strong> {jobCard.vehicle?.make || 'N/A'}</div>
+                  <div><strong>Year:</strong> {jobCard.vehicle?.year || 'N/A'}</div>
+                  <div><strong>VIN:</strong> {jobCard.vehicle?.vin || 'N/A'}</div>
+                </div>
+                {jobCard.vehicle.odometer && <div><strong>Odometer:</strong> {jobCard.vehicle.odometer} Km</div>}
+              </div>
+            )}
           </div>
 
           {/* Services */}
@@ -368,7 +415,9 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
               </tr>
               <tr className="border-b border-black">
                 <td colSpan={3} className="text-left font-bold italic text-sm py-1">To be paid:</td>
-                <td className="text-center font-bold italic text-sm py-1">{finalTotalToPay.toFixed(2)} INR</td>
+                <td className="text-center font-bold italic text-sm py-1">
+                  {estimate.flexibleCost ? estimate.flexibleCost : `${finalTotalToPay.toFixed(2)} INR`}
+                </td>
               </tr>
             </tfoot>
           </table>
@@ -377,6 +426,29 @@ export function EstimatePrintClient({ estimate, workshopProfile }: { estimate: a
           {footerText && (
             <div className="mt-8 pt-4 border-t border-black text-[10px] text-center whitespace-pre-wrap">
               {footerText}
+            </div>
+          )}
+
+          {/* Optional Photos section */}
+          {cols?.photos && jobCard.media && jobCard.media.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-black page-break-inside-avoid">
+              <div className="font-bold italic text-xs mb-2 text-center">VEHICLE PHOTOS</div>
+              <div className="grid grid-cols-4 gap-2">
+                {jobCard.media.filter((m: any) => {
+                  if (cols.photos?.intake && m.type === 'intake') return true;
+                  if (cols.photos?.work && m.type === 'work') return true;
+                  if (cols.photos?.delivery && m.type === 'delivery') return true;
+                  return false;
+                }).slice(0, 8).map((media: any, idx: number) => (
+                  <div key={idx} className="aspect-square border border-gray-300 relative">
+                     {media.url ? (
+                        <img src={media.url} alt={`Vehicle Photo ${idx}`} className="object-cover w-full h-full" />
+                     ) : (
+                        <div className="flex items-center justify-center h-full text-[8px] text-gray-400">No Image</div>
+                     )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

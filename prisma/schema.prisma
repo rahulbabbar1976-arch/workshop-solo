@@ -122,6 +122,8 @@ model DocumentTemplate {
 model TaxSettings {
   id                  String   @id @default(uuid())
   workshopProfileId   String
+  taxesApplicable     Boolean  @default(false)
+  gstNumber           String?
   defaultTaxMode      String   @default("exclusive") // exclusive / inclusive
   intrastateCgstRate  Float    @default(9.00)
   intrastateSgstRate  Float    @default(9.00)
@@ -541,6 +543,7 @@ model JobCard {
   totalAmount               Float?    @default(0)
   placeOfSupplyState        String?
   paymentStatus             String?   @default("unpaid") // unpaid / partial / paid
+  amountPaid                Float?    @default(0)
   zohoSyncStatus            String?
   zohoInvoiceId             String?
   zohoInvoiceUrl            String?
@@ -898,6 +901,8 @@ model Estimate {
   convertedJobId String? // ID of the jobcard if converted
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  estimatedTime  String?
+  flexibleCost   String?
 
   lines     EstimateLine[]
   jobCard   JobCard?       @relation(fields: [jobCardId], references: [id])

@@ -9,12 +9,12 @@ export async function GET(request: Request) {
     const labour = await prisma.labourMaster.findMany({
       where: {
         OR: [
-          { labourName: { contains: q } },
-          { labourCode: { contains: q } }
+          { labourName: { contains: q, mode: 'insensitive' } },
+          { labourCode: { contains: q, mode: 'insensitive' } }
         ],
         isActive: true
       },
-      take: 15
+      take: 50
     });
 
     return NextResponse.json({ success: true, labour });

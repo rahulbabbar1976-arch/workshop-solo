@@ -12,6 +12,9 @@ export default function PrintSettingsPage() {
   const [showLogo, setShowLogo] = useState(true);
   const [showTaxId, setShowTaxId] = useState(true);
   const [showWorkshopHeader, setShowWorkshopHeader] = useState(true);
+  const [headerMargin, setHeaderMargin] = useState("20mm");
+  const [footerMargin, setFooterMargin] = useState("20mm");
+  const [showExtendedVehicleDetails, setShowExtendedVehicleDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -55,6 +58,11 @@ export default function PrintSettingsPage() {
           try {
             const cols = JSON.parse(data.template.columnsConfig);
             setShowWorkshopHeader(cols.showWorkshopHeader ?? true);
+            if (cols.headerMargin) setHeaderMargin(cols.headerMargin);
+            if (cols.footerMargin) setFooterMargin(cols.footerMargin);
+            if (cols.showExtendedVehicleDetails !== undefined) setShowExtendedVehicleDetails(cols.showExtendedVehicleDetails);
+            if (cols.photos) setPhotos(cols.photos);
+            
             setFields({
               partNo: cols.parts?.includes("partNo") ?? true,
               brand: cols.parts?.includes("brand") ?? true,
@@ -80,6 +88,10 @@ export default function PrintSettingsPage() {
       
       const columnsConfig = {
         showWorkshopHeader,
+        headerMargin,
+        footerMargin,
+        showExtendedVehicleDetails,
+        photos,
         labour: ["description", fields.qty ? "qty" : "", fields.rate ? "rate" : "", fields.taxRate ? "tax" : "", fields.discount ? "discount" : "", fields.total ? "total" : ""].filter(Boolean),
         parts: ["partName", fields.partNo ? "partNo" : "", fields.brand ? "brand" : "", fields.qty ? "qty" : "", fields.rate ? "rate" : "", fields.taxRate ? "tax" : "", fields.discount ? "discount" : "", fields.total ? "total" : ""].filter(Boolean)
       };
@@ -212,6 +224,32 @@ export default function PrintSettingsPage() {
                   <span>Show Workshop Details in Header</span>
                 </label>
               </div>
+              <div className="flex gap-4 pt-2">
+                <div className="flex-1">
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">Top Margin</label>
+                  <select 
+                    className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm text-gray-800 focus:ring-2 focus:ring-teal-500 outline-none"
+                    value={headerMargin}
+                    onChange={(e) => setHeaderMargin(e.target.value)}
+                  >
+                    <option value="10mm">Small (10mm)</option>
+                    <option value="20mm">Standard (20mm)</option>
+                    <option value="30mm">Large (30mm)</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">Bottom Margin</label>
+                  <select 
+                    className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm text-gray-800 focus:ring-2 focus:ring-teal-500 outline-none"
+                    value={footerMargin}
+                    onChange={(e) => setFooterMargin(e.target.value)}
+                  >
+                    <option value="10mm">Small (10mm)</option>
+                    <option value="20mm">Standard (20mm)</option>
+                    <option value="30mm">Large (30mm)</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -231,6 +269,17 @@ export default function PrintSettingsPage() {
                   <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
                 </label>
               ))}
+              <div className="col-span-2 mt-2 pt-2 border-t border-gray-100">
+                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={showExtendedVehicleDetails} 
+                    onChange={(e) => setShowExtendedVehicleDetails(e.target.checked)}
+                    className="rounded text-teal-500 focus:ring-teal-500 h-4 w-4"
+                  />
+                  <span className="font-semibold text-teal-700">Include Extended Vehicle Details</span>
+                </label>
+              </div>
             </div>
           </div>
 

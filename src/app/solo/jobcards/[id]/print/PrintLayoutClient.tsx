@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Printer, Settings2, ChevronLeft, Loader2 } from "lucide-react";
+import { Printer, Settings2, ChevronLeft, Loader2, Download } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, workshopProfile?: any }) {
+  const searchParams = useSearchParams();
+  const docType = searchParams.get("docType") || "JOBCARD";
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
   const [fontFamily, setFontFamily] = useState("Inter");
   const [baseFontSize, setBaseFontSize] = useState("12px");
@@ -16,7 +20,7 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
   const [showColDiscount, setShowColDiscount] = useState(true);
 
   useEffect(() => {
-    fetch('/api/settings/print?documentType=JOBCARD')
+    fetch(`/api/settings/print?documentType=${docType}`)
       .then(res => res.json())
       .then(data => {
         if (data.template) {
@@ -44,6 +48,24 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const element = document.getElementById('printable-area');
+      const opt = {
+        margin:       10,
+        filename:     `JobCard_${jobCard.jobNumber || jobCard.id.substring(0, 8)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().from(element).set(opt).save();
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      alert("Failed to generate PDF. You can still use the Print button to Save as PDF.");
+    }
   };
 
   const formatDate = (d: string | Date | null) => {
@@ -136,16 +158,22 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
       {/* Settings Panel - Hidden when printing */}
       <div className={`print:hidden bg-white shadow-lg border-r border-gray-200 transition-all duration-300 ${isSettingsOpen ? 'w-full md:w-64 p-6' : 'w-0 overflow-hidden'}`}>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Print Options</h2>
+          <h2 className="text-xl font-bold text-gray-800">Print Options ({docType})</h2>
           <Link href={`/solo/jobcards/${jobCard.id}`} className="text-teal-600 hover:text-teal-800">
              <ChevronLeft className="w-5 h-5" />
           </Link>
         </div>
         <button 
           onClick={handlePrint}
-          className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded shadow flex items-center justify-center transition-colors"
+          className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded shadow flex items-center justify-center transition-colors mb-2"
         >
           <Printer className="w-5 h-5 mr-2" /> Print
+        </button>
+        <button 
+          onClick={handleDownloadPDF}
+          className="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-4 rounded shadow flex items-center justify-center transition-colors"
+        >
+          <Download className="w-5 h-5 mr-2" /> Download PDF
         </button>
       </div>
 
@@ -172,10 +200,22 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
           }
         }
       `}} />
-      <div className="flex-1 p-4 md:p-8 overflow-y-auto print:p-0 print:overflow-visible flex justify-center">
-        <div className="bg-white shadow-xl print:shadow-none print:w-full w-full max-w-4xl text-black" style={{ fontFamily: fontFamily === 'serif' ? 'Times New Roman, serif' : `"${fontFamily}", sans-serif`, fontSize: baseFontSize, padding: '1cm 1.5cm' }}>
-          
-          {/* Header */}
+      <div id="printable-area" className={`flex-1 overflow-auto bg-gray-100 ${isSettingsOpen ? 'md:p-8' : 'p-0'}`}>
+        <div 
+          className="bg-white shadow-xl mx-auto print:shadow-none print:m-0" 
+          style={{
+            width: '210mm',
+            minHeight: '297mm',
+            paddingTop: cols.headerMargin || '10mm',
+            paddingBottom: cols.footerMargin || '10mm',
+            paddingLeft: '10mm',
+            paddingRight: '10mm',
+            fontFamily: fontFamily === 'serif' ? 'Times New Roman, serif' : `"${fontFamily}", sans-serif`,
+            fontSize: baseFontSize,
+            lineHeight: 1.5,
+            color: 'black'
+          }}
+        >  {/* Header */}
           {showWorkshopHeader && workshopProfile && (
             <div className="mb-4 text-center">
               <h1 className="text-2xl font-bold uppercase">{workshopProfile.workshopName}</h1>
@@ -193,9 +233,19 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
           )}
           <div className="text-center italic font-bold text-xs border-b border-black pb-1 mb-2">JOB CARD</div>
 
-          {/* Customer */}
-          <div className="mb-2 flex justify-between">
+          {/* Top Section */}
+          <div className="flex justify-between items-start mb-6">
             <div>
+              <h2 className="text-2xl font-bold uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-3 inline-block">
+                {docType}
+              </h2>
+              <div className="text-sm">
+                <p><strong>{docType} No:</strong> {jobCard.jobcardNumber}</p>
+                <p><strong>Date:</strong> {formatDate(new Date())}</p>
+              </div>
+            </div>
+            {/* Customer */}
+            <div className="text-right">
               <div className="font-bold italic text-xs">CUSTOMER</div>
               <div className="font-bold italic text-xs">{jobCard.customer?.displayName || 'Unknown Customer'}</div>
             </div>
@@ -233,9 +283,22 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
               <div>Next oil change dist.: {jobCard.vehicle?.nextOilChangeDistance || 0} Km</div>
             </div>
             <div>Model: &nbsp;{jobCard.vehicle?.model || ''}</div>
+            
+            {cols.showExtendedVehicleDetails && jobCard.vehicle && (
+              <div className="mt-2 pt-2 border-t border-gray-300">
+                <div className="flex gap-4">
+                  <div><strong>Make:</strong> {jobCard.vehicle?.make || 'N/A'}</div>
+                  <div><strong>Year:</strong> {jobCard.vehicle?.year || 'N/A'}</div>
+                  <div><strong>VIN:</strong> {jobCard.vehicle?.vin || 'N/A'}</div>
+                </div>
+                {jobCard.vehicle.odometer && <div><strong>Odometer:</strong> {jobCard.vehicle.odometer} Km</div>}
+              </div>
+            )}
           </div>
 
-          {/* Services */}
+          {docType !== 'INTAKE' && (
+<>
+{/* Services */}
           <div className="font-bold italic text-xs mb-1">SERVICES</div>
           <table className="w-full text-xs mb-2">
             <thead>
@@ -362,12 +425,38 @@ export function PrintLayoutClient({ jobCard, workshopProfile }: { jobCard: any, 
             </tfoot>
           </table>
 
-          {/* User Custom Footer */}
+          </>
+)}
+{/* User Custom Footer */}
           {footerText && (
             <div className="mt-8 pt-4 border-t border-black text-[10px] text-center whitespace-pre-wrap">
               {footerText}
             </div>
           )}
+
+          {/* Optional Photos section */}
+          {cols.photos && jobCard.media && jobCard.media.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-black page-break-inside-avoid">
+              <div className="font-bold italic text-xs mb-2 text-center">VEHICLE PHOTOS</div>
+              <div className="grid grid-cols-4 gap-2">
+                {jobCard.media.filter((m: any) => {
+                  if (cols.photos?.intake && m.type === 'intake') return true;
+                  if (cols.photos?.work && m.type === 'work') return true;
+                  if (cols.photos?.delivery && m.type === 'delivery') return true;
+                  return false;
+                }).slice(0, 8).map((media: any, idx: number) => (
+                  <div key={idx} className="aspect-square border border-gray-300 relative">
+                     {media.url ? (
+                        <img src={media.url} alt={`Vehicle Photo ${idx}`} className="object-cover w-full h-full" />
+                     ) : (
+                        <div className="flex items-center justify-center h-full text-[8px] text-gray-400">No Image</div>
+                     )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

@@ -344,6 +344,7 @@ export default function SoloNewJobcardPage() {
   };
 
   const handleSubmit = async () => {
+    if (loading) return;
     setLoading(true);
     
     if (mode === 'jobcard') {

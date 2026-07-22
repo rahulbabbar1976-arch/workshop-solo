@@ -41,7 +41,7 @@ export default function WhatsAppButton({
 
   return (
     <button onClick={handleClick} className={className} title="Send WhatsApp Message">
-      <MessageCircle className="w-4 h-4 mr-1" /> {label}
+      <MessageCircle className="w-5 h-5 " /> {label && <span>{label}</span>}
     </button>
   );
 }
