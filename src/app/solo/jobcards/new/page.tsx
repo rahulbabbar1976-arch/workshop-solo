@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, ThermometerSnowflake, Droplets, BatteryWarning, Volume2, Lightbulb, Camera, Save, ArrowRight, Contact, Loader2, UploadCloud } from "lucide-react";
 import Link from "next/link";
+import { CameraPicker } from "@/components/CameraPicker";
 import { useContactPicker } from "@/hooks/useContactPicker";
 import { useSaveContact } from "@/hooks/useSaveContact";
 import { searchVehicleAction, createJobCardAction, ensureVehicleAction } from "@/app/actions/jobcardActions";
@@ -726,20 +727,12 @@ export default function SoloNewJobcardPage() {
               </div>
               
               <div className="pt-2">
-                 <input 
-                   type="file" 
-                   accept="image/*" 
-                   capture="environment"
-                   className="hidden" 
-                   ref={fileInputRef}
-                   onChange={handleFileUpload}
-                 />
-                 <input 
-                   type="file" 
-                   accept="image/*" 
-                   className="hidden" 
-                   ref={galleryInputRef}
-                   onChange={handleFileUpload}
+                 <CameraPicker 
+                   onPhotosSelected={(files) => {
+                     const syntheticEvent = { target: { files } } as any;
+                     handleFileUpload(syntheticEvent);
+                   }}
+                   isUploading={loading}
                  />
 
             {/* Quota bar */}

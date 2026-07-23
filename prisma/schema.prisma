@@ -24,6 +24,10 @@ model Tenant {
   bookings         Booking[]
   attendanceLogs   AttendanceLog[]
   payrollLedgers   PayrollLedger[]
+  servicePackages  ServicePackage[]
+  systemEventLogs  SystemEventLog[]
+  agentActionQueues AgentActionQueue[]
+  agentApiKeys     AgentApiKey[]
 }
 
 model TenantInvite {
@@ -1073,3 +1077,85 @@ model PayrollLedger {
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+// ======= SERVICE PACKAGES & BUNDLES =======
+
+model ServicePackage {
+  id          String   @id @default(uuid())
+  packageName String
+  packageCode String?
+  description String?
+  category    String?  // e.g. "Periodic Maintenance", "AC Service", "Brake Care"
+  basePrice   Float?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenantId    String?
+
+  tenant Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  ServicePackageItem[]
+}
+
+model ServicePackageItem {
+  id               String   @id @default(uuid())
+  servicePackageId String
+  itemType         String   // "PART" or "LABOUR"
+  partMasterId     String?
+  labourMasterId   String?
+  itemDescription  String
+  quantity         Float    @default(1)
+  defaultUnitPrice Float    @default(0)
+  gstRate          Float    @default(18)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  servicePackage ServicePackage @relation(fields: [servicePackageId], references: [id], onDelete: Cascade)
+}
+
+// ======= AGENTIC EXPANSION & EVENT LOGGING =======
+
+model SystemEventLog {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  eventType  String   // e.g. "JOBCARD_CREATED", "JOBCARD_STATUS_CHANGED", "PART_LOW_STOCK", "INVOICE_PAID"
+  entityType String   // "JobCard", "PartsMaster", "Customer", "Vehicle"
+  entityId   String
+  actorType  String   // "USER", "SYSTEM", "AI_AGENT"
+  actorId    String?
+  payload    String   // JSON string containing key metrics at time of event
+  createdAt  DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([eventType])
+}
+
+model AgentActionQueue {
+  id             String    @id @default(uuid())
+  tenantId       String?
+  actionType     String    // e.g. "SEND_SERVICE_REMINDER", "DRAFT_REORDER_PO", "APPLY_DISCOUNT"
+  targetEntity   String    // "Customer", "PartsMaster", "JobCard"
+  targetEntityId String
+  explanation    String    // Human readable reason: "Customer is 15 days overdue for periodic service."
+  proposedData   String    // JSON payload of proposed action
+  status         String    @default("PENDING") // PENDING, APPROVED, REJECTED, EXECUTED
+  createdAt      DateTime  @default(now())
+  executedAt     DateTime?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model AgentApiKey {
+  id          String    @id @default(uuid())
+  tenantId    String?
+  agentName   String    @default("AI CEO Agent")
+  apiKeyHash  String    @unique
+  permissions String    @default("read_only") // read_only, propose_only, full_execution
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+

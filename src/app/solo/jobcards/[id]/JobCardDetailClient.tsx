@@ -7,6 +7,7 @@ import { useSaveContact } from "@/hooks/useSaveContact";
 import { compressInBrowser } from "@/hooks/useImageCompressor";
 import { useRouter } from "next/navigation";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { CameraPicker } from "@/components/CameraPicker";
 
 const QUOTA_BYTES = 1_048_576; // 1 MB
 
@@ -1500,10 +1501,6 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
 
         {activeTab === "pictures" && (
           <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-            {/* Hidden file inputs */}
-            <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-            <input type="file" accept="image/*" className="hidden" ref={galleryInputRef} onChange={handleFileUpload} />
-
             {/* Quota bar */}
             {(() => {
               const pct     = Math.min(100, Math.round((quotaUsed / QUOTA_BYTES) * 100));
@@ -1525,15 +1522,19 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
               );
             })()}
 
-            {/* Upload button */}
-            <button
-              onClick={() => setIsPhotoModalOpen(true)}
-              disabled={isUploading}
-              className="w-full py-5 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide"
-            >
-              {isUploading ? <Loader2 className="w-7 h-7 mb-1.5 animate-spin" /> : <Camera className="w-7 h-7 mb-1.5" />}
-              {isUploading ? 'Compressing & Saving…' : 'Take / Upload Photo'}
-            </button>
+            {/* Device-Aware Camera Upload Button */}
+            <div className="w-full">
+              <CameraPicker
+                className="w-full"
+                isUploading={isUploading}
+                onPhotosSelected={(files) => {
+                  if (files && files.length > 0) {
+                    const syntheticEvent = { target: { files } } as any;
+                    handleFileUpload(syntheticEvent);
+                  }
+                }}
+              />
+            </div>
 
             {/* Gallery grid */}
             {!photosLoaded ? (
