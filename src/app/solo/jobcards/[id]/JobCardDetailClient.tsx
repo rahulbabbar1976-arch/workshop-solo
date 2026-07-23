@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowLeft, Edit2, Camera, Car, Calendar, Package, Wrench, CheckCircle, Clock, Trash2, ZoomIn, X, Loader2, Save, Send, ShieldAlert, BadgeCheck, FileText, ChevronRight, PenLine, Phone, Contact, MessageCircle, Printer, Plus, UploadCloud, ImageOff, Calculator } from "lucide-react";
+import { ArrowLeft, Edit2, Camera, Car, Calendar, Package, Wrench, CheckCircle, Clock, Trash2, ZoomIn, X, Loader2, Save, Send, ShieldAlert, BadgeCheck, FileText, ChevronRight, PenLine, Phone, Contact, MessageCircle, Printer, Plus, UploadCloud, ImageOff, Calculator, Lock } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
 import { compressInBrowser } from "@/hooks/useImageCompressor";
@@ -266,11 +266,103 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
         if (res.ok) {
           setEstimates(estimates.filter(e => e.id !== estimateId));
         } else {
-          alert("Failed to delete estimate");
+          const data = await res.json();
+          alert(`Failed to delete estimate: ${data.error || 'Unknown error'}`);
         }
       } catch (e) {
         console.error(e);
       }
+    }
+  };
+
+  const refreshJobCardData = async () => {
+    try {
+      const res = await fetch(`/api/jobcards/${jobCard.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.jobcard) {
+          setJobCard(data.jobcard);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to refresh jobcard data", e);
+    }
+  };
+
+  const handleSendEstimateApproval = async (est: any) => {
+    try {
+      const res = await fetch(`/api/estimates/${est.id}/send`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        // Update estimates list
+        setEstimates(prev => prev.map(e => e.id === est.id ? { ...e, status: "sent", sentAt: new Date() } : e));
+        
+        // Formulate WhatsApp text
+        const approveUrl = `${window.location.origin}/solo/print/estimate/${est.id}`;
+        const text = `Hello ${jobCard.customer?.displayName || 'Customer'}, please review and approve the estimate for your vehicle (${jobCard.vehicle?.regNo || ''}) here: ${approveUrl}`;
+        
+        const phone = jobCard.customer?.primaryMobile || '';
+        let formattedNum = phone.replace(/\D/g, "");
+        if (formattedNum.length === 10) formattedNum = "91" + formattedNum;
+        window.open(`https://wa.me/${formattedNum}?text=${encodeURIComponent(text)}`, '_blank');
+      } else {
+        alert("Failed to update estimate status to sent");
+      }
+    } catch (e) {
+      console.error("Error sending estimate", e);
+    }
+  };
+
+  const handleApproveEstimate = async (estimateId: string) => {
+    const approverName = prompt("Enter approver name (e.g. Customer Name):", jobCard.customer?.displayName || "Customer");
+    if (approverName === null) return; // cancelled
+
+    const method = prompt("Enter approval method (whatsapp / email / in_person / phone):", "whatsapp");
+    if (method === null) return; // cancelled
+
+    try {
+      const res = await fetch(`/api/estimates/${estimateId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvedByName: approverName, approvalMethod: method })
+      });
+      if (res.ok) {
+        alert("Estimate approved! Parts and labor have been applied to the JobCard.");
+        // Refresh estimates list
+        fetchEstimates();
+        // Refresh jobcard state (to reload parts/labor lines on screen)
+        refreshJobCardData();
+      } else {
+        const data = await res.json();
+        alert(`Failed to approve estimate: ${data.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error("Approve estimate error:", e);
+      alert("Error approving estimate");
+    }
+  };
+
+  const handleRejectEstimate = async (estimateId: string) => {
+    const reason = prompt("Enter reason for rejection:", "Customer rejected the price");
+    if (reason === null) return; // cancelled
+
+    try {
+      const res = await fetch(`/api/estimates/${estimateId}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejectionReason: reason })
+      });
+      if (res.ok) {
+        alert("Estimate marked as rejected.");
+        fetchEstimates();
+      } else {
+        const data = await res.json();
+        alert(`Failed to reject estimate: ${data.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error("Reject estimate error:", e);
+      alert("Error rejecting estimate");
     }
   };
 
@@ -1623,49 +1715,106 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
             ) : (
               <div className="space-y-3">
                 {estimates.map((est) => (
-                  <div key={est.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    <div>
-                      <h3 className="font-bold text-gray-800">{est.estimateNumber}</h3>
+                  <div key={est.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-gray-800">{est.estimateNumber}</h3>
+                        <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
+                          est.status === 'approved' ? 'bg-green-100 text-green-800 border border-green-200' :
+                          est.status === 'rejected' ? 'bg-red-100 text-red-800 border border-red-200' :
+                          est.status === 'sent' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                          'bg-gray-100 text-gray-800 border border-gray-200'
+                        }`}>
+                          {(est.status || 'draft').toUpperCase()}
+                        </span>
+                        {est.isLocked && (
+                          <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            <Lock className="w-3 h-3" /> LOCKED
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500">Generated: {new Date(est.createdAt).toLocaleDateString()}</p>
+                      
+                      {est.status === 'approved' && (
+                        <p className="text-xs text-green-700 font-medium mt-1">
+                          ✓ Approved by {est.approvedByName || 'Customer'} via {(est.approvalMethod || 'whatsapp').toUpperCase()} on {est.approvedAt ? new Date(est.approvedAt).toLocaleDateString() : ''}
+                        </p>
+                      )}
+                      
+                      {est.status === 'rejected' && (
+                        <p className="text-xs text-red-700 font-medium mt-1">
+                          ✗ Rejected on {est.rejectedAt ? new Date(est.rejectedAt).toLocaleDateString() : ''}. Reason: {est.rejectionReason || 'No reason specified'}
+                        </p>
+                      )}
                     </div>
-                    <div className="mt-2 sm:mt-0 text-left sm:text-right">
+                    <div className="text-left md:text-right">
                       <div className="font-bold text-lg text-gray-800">₹{est.grandTotal?.toFixed(2)}</div>
-                      <div className="text-xs text-gray-500">Disc: ₹{est.discountAmount?.toFixed(2)}</div>
+                      {est.discountAmount > 0 && <div className="text-xs text-gray-500">Disc: ₹{est.discountAmount?.toFixed(2)}</div>}
                     </div>
-                    <div className="mt-3 sm:mt-0 flex gap-2 w-full sm:w-auto border-t sm:border-0 pt-3 sm:pt-0">
+                    <div className="flex flex-wrap gap-2 w-full md:w-auto border-t md:border-0 pt-3 md:pt-0">
                       <button 
                         onClick={() => window.open(`/solo/print/estimate/${est.id}`, '_blank')}
-                        className="flex-1 sm:flex-none flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded font-bold transition-colors text-sm"
+                        className="flex-1 md:flex-none flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded font-bold transition-colors text-sm"
                       >
-                        <Printer className="w-4 h-4 mr-2" /> Print
+                        <Printer className="w-4 h-4 mr-1.5" /> Print
                       </button>
-                      <button 
-                        onClick={() => {
-                          const text = `Hello ${jobCard.customer?.displayName}, please find the estimate for your vehicle attached.`;
-                          const phone = jobCard.customer?.primaryMobile || '';
-                          let formattedNum = phone.replace(/\D/g, "");
-                          if (formattedNum.length === 10) formattedNum = "91" + formattedNum;
-                          window.open(`https://wa.me/${formattedNum}?text=${encodeURIComponent(text)}`, '_blank');
-                        }}
-                        className="flex-1 sm:flex-none flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-bold transition-colors text-sm"
-                      >
-                        <svg className="w-4 h-4 mr-2 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg> Share
-                      </button>
+                      
+                      {/* Send / WhatsApp Trigger */}
+                      {est.status === 'draft' && (
+                        <button 
+                          onClick={() => handleSendEstimateApproval(est)}
+                          className="flex-1 md:flex-none flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded font-bold transition-colors text-sm"
+                        >
+                          Send for Approval
+                        </button>
+                      )}
+
+                      {/* Approval options when draft or sent */}
+                      {(est.status === 'draft' || est.status === 'sent') && (
+                        <>
+                          <button 
+                            onClick={() => handleApproveEstimate(est.id)}
+                            className="flex-1 md:flex-none flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded font-bold transition-colors text-sm"
+                          >
+                            Approve
+                          </button>
+                          <button 
+                            onClick={() => handleRejectEstimate(est.id)}
+                            className="flex-1 md:flex-none flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded font-bold transition-colors text-sm"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      
+                      {/* Edit Details */}
                       <button 
                         onClick={() => {
                           setEditingEstimate(est);
                           setFlexibleCost(est.flexibleCost || "");
                           setEstimatedTime(est.estimatedTime || "");
                         }}
-                        className="flex-1 sm:flex-none flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded font-bold transition-colors text-sm"
-                        title="Edit Details"
+                        disabled={est.isLocked}
+                        className={`flex-1 md:flex-none flex items-center justify-center px-3 py-2 rounded font-bold transition-colors text-sm ${
+                          est.isLocked 
+                            ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100' 
+                            : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+                        }`}
+                        title={est.isLocked ? "Locked - Cannot Edit" : "Edit Details"}
                       >
                         <Edit2 className="w-4 h-4 mr-1" /> Edit
                       </button>
+                      
+                      {/* Delete */}
                       <button 
                         onClick={() => handleDeleteEstimate(est.id)}
-                        className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded font-bold transition-colors"
-                        title="Delete Estimate"
+                        disabled={est.isLocked}
+                        className={`flex items-center justify-center px-3 py-2 rounded font-bold transition-colors ${
+                          est.isLocked 
+                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100' 
+                            : 'bg-red-50 hover:bg-red-100 text-red-600'
+                        }`}
+                        title={est.isLocked ? "Locked - Cannot Delete" : "Delete Estimate"}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

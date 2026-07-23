@@ -23,6 +23,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
     }
 
+    if (estimate.isLocked) {
+      return NextResponse.json({ error: "Locked estimates cannot be deleted" }, { status: 400 });
+    }
+
     await prisma.estimate.delete({
       where: { id }
     });
@@ -38,6 +42,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const body = await req.json();
+
+    const estimate = await prisma.estimate.findUnique({
+      where: { id }
+    });
+
+    if (!estimate) {
+      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
+    }
+
+    if (estimate.isLocked) {
+      return NextResponse.json({ error: "Locked estimates cannot be modified" }, { status: 400 });
+    }
     
     const updateData: any = {};
     if (body.flexibleCost !== undefined) updateData.flexibleCost = body.flexibleCost;

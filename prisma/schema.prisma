@@ -917,6 +917,15 @@ model Estimate {
   partsSnapshot  String?
   laborSnapshot  String?
   grandTotal     Float    @default(0)
+
+  // Customer Approval Workflow
+  approvedAt       DateTime?
+  approvedByName   String?
+  approvalMethod   String?      // whatsapp / email / in_person / phone
+  isLocked         Boolean  @default(false)
+  sentAt           DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?
 }
 
 model EstimateLine {
