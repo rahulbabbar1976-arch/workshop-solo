@@ -1,0 +1,1998 @@
+commit 027f4c322f0410fb18d6e21545c56ea256020837
+Author: Chirag Club <pickleatchirag@gmail.com>
+Date:   Thu Jul 23 15:32:21 2026 +0530
+
+    feat: babbarsons branding and estimate approval
+
+diff --git a/package-lock.json b/package-lock.json
+index 09ab6fe..9c1c4b7 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -11,6 +11,7 @@
+         "@google/genai": "^2.10.0",
+         "@google/generative-ai": "^0.24.1",
+         "@hello-pangea/dnd": "^18.0.1",
++        "@napi-rs/canvas": "^1.0.2",
+         "@prisma/adapter-better-sqlite3": "^7.8.0",
+         "@prisma/adapter-pg": "^7.8.0",
+         "@prisma/client": "^7.8.0",
+@@ -38,8 +39,10 @@
+         "@types/react": "^19",
+         "@types/react-dom": "^19",
+         "autoprefixer": "^10.5.2",
++        "canvas": "^3.2.3",
+         "eslint": "^9",
+         "eslint-config-next": "16.2.9",
++        "pdfjs-dist": "^6.1.200",
+         "postcss": "^8.5.16",
+         "prisma": "^7.8.0",
+         "tailwindcss": "^3.4.19",
+@@ -1692,6 +1695,270 @@
+       "devOptional": true,
+       "license": "MIT"
+     },
++    "node_modules/@napi-rs/canvas": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas/-/canvas-1.0.2.tgz",
++      "integrity": "sha512-EYEqlMYaCbpZDz+IgDH5xp9MTd3ui4dmGqbQYryhMLnSRxrhHKq5KQWHHKxFUcEP4Hp8/BWgvqXocX4j7iSbOQ==",
++      "license": "MIT",
++      "workspaces": [
++        "e2e/*"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      },
++      "optionalDependencies": {
++        "@napi-rs/canvas-android-arm64": "1.0.2",
++        "@napi-rs/canvas-darwin-arm64": "1.0.2",
++        "@napi-rs/canvas-darwin-x64": "1.0.2",
++        "@napi-rs/canvas-linux-arm-gnueabihf": "1.0.2",
++        "@napi-rs/canvas-linux-arm64-gnu": "1.0.2",
++        "@napi-rs/canvas-linux-arm64-musl": "1.0.2",
++        "@napi-rs/canvas-linux-riscv64-gnu": "1.0.2",
++        "@napi-rs/canvas-linux-x64-gnu": "1.0.2",
++        "@napi-rs/canvas-linux-x64-musl": "1.0.2",
++        "@napi-rs/canvas-win32-arm64-msvc": "1.0.2",
++        "@napi-rs/canvas-win32-x64-msvc": "1.0.2"
++      }
++    },
++    "node_modules/@napi-rs/canvas-android-arm64": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-android-arm64/-/canvas-android-arm64-1.0.2.tgz",
++      "integrity": "sha512-IMXKVQod0ol4vt3gmClUfXz4JAgHYESGPCUqmH3lQxBoL0K/2greJaQE1HVBVxWWFKfLc4OLZVdxg7kXVyXv+g==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-darwin-arm64": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-darwin-arm64/-/canvas-darwin-arm64-1.0.2.tgz",
++      "integrity": "sha512-Sc8tPi6cF+5lqOzCCKFALJHhDiRwyMzTPYm3bbhdXsOunU0lQO5f05ucyOzN2r55I23Hg5bsjH63uSCvWp3EgQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-darwin-x64": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-darwin-x64/-/canvas-darwin-x64-1.0.2.tgz",
++      "integrity": "sha512-niDXZ9LhKB1zLrUdYB64RHQFDGz9rr0eGx061qtJJU3U20EMMIx28ADF5fVYbhtOgkWQrBjFicfaye1yM0U62A==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-arm-gnueabihf": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-arm-gnueabihf/-/canvas-linux-arm-gnueabihf-1.0.2.tgz",
++      "integrity": "sha512-sgatQL9JxGRH/Amzcvu0P3t8Am3duou74CisfuJ41Dwt8cWy723z/9KZ8LlgmxfypEwEZxSTNFJtU8d281lmhQ==",
++      "cpu": [
++        "arm"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-arm64-gnu": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-arm64-gnu/-/canvas-linux-arm64-gnu-1.0.2.tgz",
++      "integrity": "sha512-dgKuX0peF3xwY6ZF5QxGS4wbfDqpoFAJYXiLSp+guZKARQUKMkRqZSDrXKj7nfrec3UCMzC0PFCPte0ES98AiA==",
++      "cpu": [
++        "arm64"
++      ],
++      "libc": [
++        "glibc"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-arm64-musl": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-arm64-musl/-/canvas-linux-arm64-musl-1.0.2.tgz",
++      "integrity": "sha512-qwROoDIC9upfvDoRLuPn2aNg9CGW1x0Ygr4k2Or+8paA9d0qBLwk87U+g8KQpoOviKoPoiwl97kvBYuYD7qZoA==",
++      "cpu": [
++        "arm64"
++      ],
++      "libc": [
++        "musl"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-riscv64-gnu": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-riscv64-gnu/-/canvas-linux-riscv64-gnu-1.0.2.tgz",
++      "integrity": "sha512-fXRjnPihdnbO6qy1QQOgxAonb68A0TCEG7rj1x7v7rxNElsE8EVIKIEUTvyDtU+sthYSbX+8e7g3oZiLGnOmxw==",
++      "cpu": [
++        "riscv64"
++      ],
++      "libc": [
++        "glibc"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-x64-gnu": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-x64-gnu/-/canvas-linux-x64-gnu-1.0.2.tgz",
++      "integrity": "sha512-nPR97DXhbWIAy7yazF3jc06kEPMqYMLmPzFOVNlwKPfIoSChnI+x7dc0hTLaihz3jxrjL6j4BbA7earxfx4X3g==",
++      "cpu": [
++        "x64"
++      ],
++      "libc": [
++        "glibc"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-x64-musl": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-x64-musl/-/canvas-linux-x64-musl-1.0.2.tgz",
++      "integrity": "sha512-l7zZY5+jL5qnBZtDz7CoBtY6p7EkHu422g/0zWwrOrzIwWyWxZFRfZZORY1UG7YApymPLx+UbOkN206xXn/c1Q==",
++      "cpu": [
++        "x64"
++      ],
++      "libc": [
++        "musl"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-win32-arm64-msvc": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-win32-arm64-msvc/-/canvas-win32-arm64-msvc-1.0.2.tgz",
++      "integrity": "sha512-yE0koHCFF4PIbMc2o2SEALhnipz7WBISh5glLvQiomtIoCcW0np3H4Lw93ceJAfJttTTeIIWFbwH84F7EVzjMQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-win32-x64-msvc": {
++      "version": "1.0.2",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-win32-x64-msvc/-/canvas-win32-x64-msvc-1.0.2.tgz",
++      "integrity": "sha512-okU8/t2foV6C31n0GtvEMbfD5rOFc70+/6xUNME9Guld29sgSOIGUEDScAWFlcP3k5TYQRl9TNkwJEEjh15w8A==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
+     "node_modules/@napi-rs/wasm-runtime": {
+       "version": "1.1.6",
+       "resolved": "https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.6.tgz",
+@@ -3965,6 +4232,21 @@
+       ],
+       "license": "CC-BY-4.0"
+     },
++    "node_modules/canvas": {
++      "version": "3.2.3",
++      "resolved": "https://registry.npmjs.org/canvas/-/canvas-3.2.3.tgz",
++      "integrity": "sha512-PzE5nJZPz72YUAfo8oTp0u3fqqY7IzlTubneAihqDYAUcBk7ryeCmBbdJBEdaH0bptSOe2VT2Zwcb3UaFyaSWw==",
++      "dev": true,
++      "hasInstallScript": true,
++      "license": "MIT",
++      "dependencies": {
++        "node-addon-api": "^7.0.0",
++        "prebuild-install": "^7.1.3"
++      },
++      "engines": {
++        "node": "^18.12.0 || >= 20.9.0"
++      }
++    },
+     "node_modules/canvg": {
+       "version": "3.0.11",
+       "resolved": "https://registry.npmjs.org/canvg/-/canvg-3.0.11.tgz",
+@@ -7914,6 +8196,13 @@
+         "node": ">=10"
+       }
+     },
++    "node_modules/node-addon-api": {
++      "version": "7.1.1",
++      "resolved": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-7.1.1.tgz",
++      "integrity": "sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/node-domexception": {
+       "version": "1.0.0",
+       "resolved": "https://registry.npmjs.org/node-domexception/-/node-domexception-1.0.0.tgz",
+@@ -8310,6 +8599,19 @@
+       "devOptional": true,
+       "license": "MIT"
+     },
++    "node_modules/pdfjs-dist": {
++      "version": "6.1.200",
++      "resolved": "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-6.1.200.tgz",
++      "integrity": "sha512-o8MolyzirkkLrcdsae/HEOiIcXWI7DS5zGpvqW8xTC2YUsW30rltFw2bDGvw/fskUdEMrQm2br68jzDS5BH2vw==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "engines": {
++        "node": ">=22.13.0 || >=24"
++      },
++      "optionalDependencies": {
++        "@napi-rs/canvas": "^1.0.0"
++      }
++    },
+     "node_modules/perfect-debounce": {
+       "version": "2.1.0",
+       "resolved": "https://registry.npmjs.org/perfect-debounce/-/perfect-debounce-2.1.0.tgz",
+diff --git a/package.json b/package.json
+index 8f228d3..c7f4d70 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,7 @@
+     "@google/genai": "^2.10.0",
+     "@google/generative-ai": "^0.24.1",
+     "@hello-pangea/dnd": "^18.0.1",
++    "@napi-rs/canvas": "^1.0.2",
+     "@prisma/adapter-better-sqlite3": "^7.8.0",
+     "@prisma/adapter-pg": "^7.8.0",
+     "@prisma/client": "^7.8.0",
+@@ -40,8 +41,10 @@
+     "@types/react": "^19",
+     "@types/react-dom": "^19",
+     "autoprefixer": "^10.5.2",
++    "canvas": "^3.2.3",
+     "eslint": "^9",
+     "eslint-config-next": "16.2.9",
++    "pdfjs-dist": "^6.1.200",
+     "postcss": "^8.5.16",
+     "prisma": "^7.8.0",
+     "tailwindcss": "^3.4.19",
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 2964433..5bf4164 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -917,6 +917,15 @@ model Estimate {
+   partsSnapshot  String?
+   laborSnapshot  String?
+   grandTotal     Float    @default(0)
++
++  // Customer Approval Workflow
++  approvedAt       DateTime?
++  approvedByName   String?
++  approvalMethod   String?      // whatsapp / email / in_person / phone
++  isLocked         Boolean  @default(false)
++  sentAt           DateTime?
++  rejectedAt       DateTime?
++  rejectionReason  String?
+ }
+ 
+ model EstimateLine {
+diff --git a/public/uploads/babbarsons_logo.png b/public/uploads/babbarsons_logo.png
+new file mode 100644
+index 0000000..2cbbcaa
+Binary files /dev/null and b/public/uploads/babbarsons_logo.png differ
+diff --git a/scripts/check_pdf.ts b/scripts/check_pdf.ts
+new file mode 100644
+index 0000000..37e9e52
+--- /dev/null
++++ b/scripts/check_pdf.ts
+@@ -0,0 +1,40 @@
++import "dotenv/config";
++import { readFileSync, writeFileSync, existsSync } from "fs";
++import * as path from "path";
++
++const pdfPath = "C:/Users/rahul/OneDrive/Desktop/New folder/CARDS BABBARSONS 2.pdf";
++
++async function main() {
++  if (!existsSync(pdfPath)) {
++    console.log("❌ PDF not found at:", pdfPath);
++    process.exit(1);
++  }
++  
++  const buf = readFileSync(pdfPath);
++  console.log("✅ File read — Size:", buf.length, "bytes");
++  console.log("   Header:", buf.slice(0, 8).toString("ascii"));
++  
++  // Check if pdfjs-dist is available
++  try {
++    const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
++    console.log("✅ pdfjs-dist loaded");
++    
++    const pdfData = new Uint8Array(buf);
++    const loadingTask = pdfjsLib.getDocument({ data: pdfData });
++    const pdf = await loadingTask.promise;
++    console.log("   Pages:", pdf.numPages);
++    
++  } catch (e: any) {
++    console.log("❌ pdfjs-dist not available:", e.code || e.message?.slice(0, 80));
++  }
++
++  // Check if canvas is available
++  try {
++    const { createCanvas } = require("canvas");
++    console.log("✅ canvas available");
++  } catch (e: any) {
++    console.log("❌ canvas not available:", e.code || e.message?.slice(0, 80));
++  }
++}
++
++main().catch(console.error);
+diff --git a/scripts/check_tools.js b/scripts/check_tools.js
+new file mode 100644
+index 0000000..06c48de
+--- /dev/null
++++ b/scripts/check_tools.js
+@@ -0,0 +1,33 @@
++const { execSync } = require('child_process');
++const fs = require('fs');
++const path = require('path');
++
++// Check if sharp is available
++try {
++  const sharp = require('sharp');
++  console.log('sharp available:', require('./node_modules/sharp/package.json').version);
++} catch (e) {
++  console.log('sharp not available');
++}
++
++// Check if pdf-parse or pdfjs-dist is available
++try {
++  require('pdfjs-dist');
++  console.log('pdfjs-dist available');
++} catch (e) {
++  console.log('pdfjs-dist not available');
++}
++
++try {
++  require('canvas');
++  console.log('canvas available');
++} catch (e) {
++  console.log('canvas not available');
++}
++
++// List what's in node_modules that could help with PDF
++const nmPath = path.join(__dirname, 'node_modules');
++const dirs = fs.readdirSync(nmPath).filter(d => 
++  d.includes('pdf') || d.includes('canvas') || d.includes('sharp') || d.includes('jimp')
++);
++console.log('PDF/Image related packages:', dirs.join(', '));
+diff --git a/scripts/convert_pdf_to_png.ps1 b/scripts/convert_pdf_to_png.ps1
+new file mode 100644
+index 0000000..6e6241c
+--- /dev/null
++++ b/scripts/convert_pdf_to_png.ps1
+@@ -0,0 +1,59 @@
++
++param()
++
++$pdfPath = "C:\Users\rahul\OneDrive\Desktop\New folder\CARDS BABBARSONS 2.pdf"
++$outputPath = "C:\Users\rahul\OneDrive\Desktop\workshop-solo\public\uploads\babbarsons_logo.png"
++$outputDir = Split-Path $outputPath -Parent
++if (!(Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir -Force | Out-Null }
++
++# Helper to await WinRT async ops
++function Await($WinRtTask, $ResultType) {
++    $asTask = [System.WindowsRuntimeSystemExtensions]::AsTask($WinRtTask, [System.Threading.CancellationToken]::None)
++    $null = $asTask.ConfigureAwait($false)
++    $asTask.Wait()
++    $asTask.Result
++}
++
++Add-Type -AssemblyName System.Runtime.WindowsRuntime
++
++$async = [Windows.Data.Pdf.PdfDocument, Windows.Data.Pdf, ContentType=WindowsRuntime]
++$async = [Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime]
++$async = [Windows.Storage.Streams.InMemoryRandomAccessStream, Windows.Storage.Streams, ContentType=WindowsRuntime]
++$async = [Windows.Data.Pdf.PdfPageRenderOptions, Windows.Data.Pdf, ContentType=WindowsRuntime]
++
++# Load WinRT extensions
++$null = [System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeMarshal]
++
++try {
++    $storageFileTask = [Windows.Storage.StorageFile]::GetFileFromPathAsync($pdfPath)
++    $storageFile = Await $storageFileTask ([Windows.Storage.StorageFile])
++    Write-Host "Loaded: $($storageFile.Name)"
++
++    $pdfDocTask = [Windows.Data.Pdf.PdfDocument]::LoadFromFileAsync($storageFile)
++    $pdfDoc = Await $pdfDocTask ([Windows.Data.Pdf.PdfDocument])
++    Write-Host "Pages: $($pdfDoc.PageCount)"
++
++    $page = $pdfDoc.GetPage(0)
++    $stream = New-Object Windows.Storage.Streams.InMemoryRandomAccessStream
++    
++    $options = New-Object Windows.Data.Pdf.PdfPageRenderOptions
++    $options.DestinationWidth = 2480  # A4 at 300dpi width
++
++    $renderTask = $page.RenderToStreamAsync($stream, $options)
++    $null = Await $renderTask ([System.Object])
++    Write-Host "Rendered page 0 — stream size: $($stream.Size) bytes"
++
++    # Read bytes from stream
++    $reader = New-Object Windows.Storage.Streams.DataReader($stream.GetInputStreamAt(0))
++    $loadTask = $reader.LoadAsync([uint32]$stream.Size)
++    $null = Await $loadTask ([System.UInt32])
++    
++    $bytes = New-Object byte[] $stream.Size
++    $reader.ReadBytes($bytes)
++
++    [System.IO.File]::WriteAllBytes($outputPath, $bytes)
++    Write-Host "✅ Saved: $outputPath ($($bytes.Length) bytes)"
++}
++catch {
++    Write-Host "❌ Error: $_"
++}
+diff --git a/scripts/extract_logo.ts b/scripts/extract_logo.ts
+new file mode 100644
+index 0000000..cffe773
+--- /dev/null
++++ b/scripts/extract_logo.ts
+@@ -0,0 +1,33 @@
++import "dotenv/config";
++import * as fs from "fs";
++import * as path from "path";
++
++// Use pdfjs-dist to render PDF to canvas then save as PNG
++async function extractLogoFromPDF() {
++  const pdfPath = "C:/Users/rahul/OneDrive/Desktop/New folder/CARDS BABBARSONS 2.pdf";
++  const outputPath = "public/uploads/babbarsons_logo.png";
++
++  // Try dynamic import of pdfjs
++  try {
++    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs" as any);
++    console.log("pdfjs-dist available, loading PDF...");
++    const loadingTask = pdfjsLib.getDocument(pdfPath);
++    const pdf = await loadingTask.promise;
++    console.log("PDF loaded, pages:", pdf.numPages);
++  } catch (e: any) {
++    console.log("pdfjs not available:", e.message);
++  }
++
++  // Check if sharp is in workspace node_modules
++  try {
++    const sharp = (await import("sharp")).default;
++    const info = await sharp(pdfPath).metadata();
++    console.log("Sharp metadata:", info);
++  } catch (e: any) {
++    console.log("Sharp cannot read PDF:", e.message);
++  }
++
++  console.log("Manual extraction needed - PDF path:", pdfPath);
++}
++
++extractLogoFromPDF().catch(console.error);
+diff --git a/scripts/find_pdfjs_files.js b/scripts/find_pdfjs_files.js
+new file mode 100644
+index 0000000..5f704db
+--- /dev/null
++++ b/scripts/find_pdfjs_files.js
+@@ -0,0 +1,21 @@
++const fs = require('fs');
++const path = require('path');
++
++function walk(dir) {
++  let files = [];
++  if (!fs.existsSync(dir)) return files;
++  const list = fs.readdirSync(dir);
++  for (const file of list) {
++    const fullPath = path.join(dir, file);
++    const stat = fs.statSync(fullPath);
++    if (stat.isDirectory()) {
++      files = files.concat(walk(fullPath));
++    } else if (file.endsWith('.js') || file.endsWith('.mjs')) {
++      files.push(fullPath);
++    }
++  }
++  return files;
++}
++
++const pdfjsDir = path.join(__dirname, 'node_modules', 'pdfjs-dist');
++console.log('Files in pdfjs-dist:', walk(pdfjsDir).slice(0, 20));
+diff --git a/scripts/get_profile.ts b/scripts/get_profile.ts
+new file mode 100644
+index 0000000..65fa7c5
+--- /dev/null
++++ b/scripts/get_profile.ts
+@@ -0,0 +1,9 @@
++import "dotenv/config";
++import { prisma } from "../src/lib/db";
++
++async function main() {
++  const profile = await prisma.workshopProfile.findFirst();
++  console.log(JSON.stringify(profile, null, 2));
++}
++
++main().catch(console.error).finally(() => prisma.$disconnect());
+diff --git a/scripts/inspect_pdfjs.js b/scripts/inspect_pdfjs.js
+new file mode 100644
+index 0000000..9dc1f88
+--- /dev/null
++++ b/scripts/inspect_pdfjs.js
+@@ -0,0 +1,17 @@
++const fs = require('fs');
++const path = require('path');
++
++try {
++  const p = path.join(__dirname, '..', 'node_modules', 'pdfjs-dist');
++  if (fs.existsSync(p)) {
++    console.log('pdfjs-dist folders:', fs.readdirSync(p));
++    const legacyBuild = path.join(p, 'legacy', 'build');
++    if (fs.existsSync(legacyBuild)) {
++      console.log('legacy build content:', fs.readdirSync(legacyBuild));
++    }
++  } else {
++    console.log('pdfjs-dist folder does not exist');
++  }
++} catch (e) {
++  console.error(e);
++}
+diff --git a/scripts/pdf2png.ps1 b/scripts/pdf2png.ps1
+new file mode 100644
+index 0000000..c1131dc
+--- /dev/null
++++ b/scripts/pdf2png.ps1
+@@ -0,0 +1,32 @@
++﻿Add-Type -AssemblyName System.Runtime.WindowsRuntime
++$null = [Windows.Data.Pdf.PdfDocument, Windows.Data.Pdf, ContentType=WindowsRuntime]
++$null = [Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime]
++$null = [Windows.Storage.Streams.InMemoryRandomAccessStream, Windows.Storage.Streams, ContentType=WindowsRuntime]
++
++function Await {
++    param($Task)
++    $t = [System.WindowsRuntimeSystemExtensions]::AsTask($Task)
++    $t.Wait()
++    return $t.Result
++}
++
++$pdfPath = 'C:\Users\rahul\OneDrive\Desktop\New folder\CARDS BABBARSONS 2.pdf'
++$outputPath = 'C:\Users\rahul\OneDrive\Desktop\workshop-solo\public\uploads\babbarsons_logo.png'
++$outputDir = Split-Path $outputPath
++if (!(Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir -Force | Out-Null }
++
++$f = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($pdfPath))
++Write-Host 'Loaded file'
++$doc = Await ([Windows.Data.Pdf.PdfDocument]::LoadFromFileAsync($f))
++Write-Host ('Pages: ' + $doc.PageCount)
++$page = $doc.GetPage(0)
++$stream = [Windows.Storage.Streams.InMemoryRandomAccessStream]::new()
++$opts = [Windows.Data.Pdf.PdfPageRenderOptions]::new()
++$opts.DestinationWidth = 2480
++Await ($page.RenderToStreamAsync($stream, $opts)) | Out-Null
++$dr = [Windows.Storage.Streams.DataReader]::new($stream.GetInputStreamAt(0))
++Await ($dr.LoadAsync([uint32]$stream.Size)) | Out-Null
++$bytes = New-Object byte[] $stream.Size
++$dr.ReadBytes($bytes)
++[System.IO.File]::WriteAllBytes($outputPath, $bytes)
++Write-Host ('DONE: ' + $outputPath + ' (' + $bytes.Length + ' bytes)')
+diff --git a/scripts/render_pdf.js b/scripts/render_pdf.js
+new file mode 100644
+index 0000000..4e1d1d4
+--- /dev/null
++++ b/scripts/render_pdf.js
+@@ -0,0 +1,52 @@
++const { execSync } = require("child_process");
++const fs = require("fs");
++const path = require("path");
++
++const pdfPath = "C:/Users/rahul/OneDrive/Desktop/New folder/CARDS BABBARSONS 2.pdf";
++const outputDir = "C:/Users/rahul/OneDrive/Desktop/workshop-solo/public/uploads";
++const outputPath = path.join(outputDir, "babbarsons_logo.png");
++
++if (!fs.existsSync(outputDir)) {
++  fs.mkdirSync(outputDir, { recursive: true });
++}
++
++async function run() {
++  // Try pdfjs-dist approach via temp install check
++  try {
++    // Install pdfjs-dist + canvas locally for one-time use
++    console.log("Installing pdfjs-dist + canvas...");
++    execSync("npm install --save-dev pdfjs-dist@4 canvas@2", {
++      cwd: "C:/Users/rahul/OneDrive/Desktop/workshop-solo",
++      stdio: "inherit",
++      timeout: 120000,
++    });
++    console.log("Dependencies installed.");
++  } catch (e) {
++    console.log("Install failed:", e.message.slice(0, 100));
++  }
++
++  try {
++    const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
++    const { createCanvas } = require("canvas");
++    
++    const pdfData = fs.readFileSync(pdfPath);
++    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(pdfData) }).promise;
++    console.log("PDF pages:", pdf.numPages);
++    
++    const page = await pdf.getPage(1);
++    const viewport = page.getViewport({ scale: 3.0 });
++    
++    const canvas = createCanvas(viewport.width, viewport.height);
++    const ctx = canvas.getContext("2d");
++    
++    await page.render({ canvasContext: ctx, viewport }).promise;
++    
++    const buffer = canvas.toBuffer("image/png");
++    fs.writeFileSync(outputPath, buffer);
++    console.log("SUCCESS: Saved", outputPath, "(" + buffer.length + " bytes)");
++  } catch (e) {
++    console.log("Render error:", e.message?.slice(0, 200));
++  }
++}
++
++run().catch(console.error);
+diff --git a/scripts/render_pdf_napi.js b/scripts/render_pdf_napi.js
+new file mode 100644
+index 0000000..75c15d0
+--- /dev/null
++++ b/scripts/render_pdf_napi.js
+@@ -0,0 +1,59 @@
++const fs = require("fs");
++const path = require("path");
++
++const pdfPath = "C:/Users/rahul/OneDrive/Desktop/New folder/CARDS BABBARSONS 2.pdf";
++const outputDir = "C:/Users/rahul/OneDrive/Desktop/workshop-solo/public/uploads";
++const outputPath = path.join(outputDir, "babbarsons_logo.png");
++
++if (!fs.existsSync(outputDir)) {
++  fs.mkdirSync(outputDir, { recursive: true });
++}
++
++async function renderPdf() {
++  console.log("Loading pdfjs-dist and @napi-rs/canvas...");
++  
++  // Dynamic imports / requires
++  let pdfjsLib;
++  try {
++    pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
++  } catch (e) {
++    console.log("pdfjs-dist/legacy/build/pdf.js not found, trying import...");
++    pdfjsLib = require("pdfjs-dist");
++  }
++  
++  const { createCanvas } = require("@napi-rs/canvas");
++
++  console.log("Reading PDF file...");
++  const data = new Uint8Array(fs.readFileSync(pdfPath));
++  
++  console.log("Parsing PDF...");
++  const loadingTask = pdfjsLib.getDocument({ data });
++  const pdf = await loadingTask.promise;
++  console.log(`PDF loaded. Total pages: ${pdf.numPages}`);
++
++  const page = await pdf.getPage(1);
++  console.log("Page 1 loaded. Rendering to canvas...");
++  
++  // Set scale (3.0 for high resolution)
++  const viewport = page.getViewport({ scale: 3.0 });
++  const canvas = createCanvas(viewport.width, viewport.height);
++  const context = canvas.getContext("2d");
++
++  // Render context
++  const renderContext = {
++    canvasContext: context,
++    viewport: viewport
++  };
++
++  await page.render(renderContext).promise;
++  console.log("Page rendered. Encoding to PNG...");
++
++  const pngData = await canvas.encode("png");
++  fs.writeFileSync(outputPath, pngData);
++  console.log(`SUCCESS: Logo saved to ${outputPath} (${pngData.length} bytes)`);
++}
++
++renderPdf().catch(e => {
++  console.error("Error during rendering:", e);
++  process.exit(1);
++});
+diff --git a/scripts/render_pdf_napi_legacy.js b/scripts/render_pdf_napi_legacy.js
+new file mode 100644
+index 0000000..70af707
+--- /dev/null
++++ b/scripts/render_pdf_napi_legacy.js
+@@ -0,0 +1,71 @@
++const fs = require("fs");
++const path = require("path");
++
++const pdfPath = "C:/Users/rahul/OneDrive/Desktop/New folder/CARDS BABBARSONS 2.pdf";
++const outputDir = "C:/Users/rahul/OneDrive/Desktop/workshop-solo/public/uploads";
++const outputPath = path.join(outputDir, "babbarsons_logo.png");
++
++if (!fs.existsSync(outputDir)) {
++  fs.mkdirSync(outputDir, { recursive: true });
++}
++
++// Polyfill DOMMatrix if not available globally
++if (typeof global.DOMMatrix === 'undefined') {
++  console.log("Polyfilling global.DOMMatrix...");
++  try {
++    // @napi-rs/canvas does not export DOMMatrix directly sometimes, but let's check
++    const canvas = require("@napi-rs/canvas");
++    if (canvas.DOMMatrix) {
++      global.DOMMatrix = canvas.DOMMatrix;
++    } else {
++      // Simple fallback DOMMatrix implementation if needed, or check if another library has it
++      // Let's create a minimal mockup of DOMMatrix since pdf.js just needs basic matrix ops
++      class DOMMatrix {
++        constructor() {
++          this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0;
++        }
++      }
++      global.DOMMatrix = DOMMatrix;
++    }
++  } catch (e) {
++    console.log("Canvas require failed:", e);
++  }
++}
++
++async function renderPdf() {
++  console.log("Loading legacy pdfjs-dist...");
++  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
++  const { createCanvas } = require("@napi-rs/canvas");
++
++  console.log("Reading PDF file...");
++  const data = new Uint8Array(fs.readFileSync(pdfPath));
++  
++  console.log("Parsing PDF...");
++  const loadingTask = pdfjsLib.getDocument({ data });
++  const pdf = await loadingTask.promise;
++  console.log(`PDF loaded. Total pages: ${pdf.numPages}`);
++
++  const page = await pdf.getPage(1);
++  console.log("Page 1 loaded. Rendering to canvas...");
++  
++  const viewport = page.getViewport({ scale: 3.0 });
++  const canvas = createCanvas(viewport.width, viewport.height);
++  const context = canvas.getContext("2d");
++
++  const renderContext = {
++    canvasContext: context,
++    viewport: viewport
++  };
++
++  await page.render(renderContext).promise;
++  console.log("Page rendered. Encoding to PNG...");
++
++  const pngData = await canvas.encode("png");
++  fs.writeFileSync(outputPath, pngData);
++  console.log(`SUCCESS: Logo saved to ${outputPath} (${pngData.length} bytes)`);
++}
++
++renderPdf().catch(e => {
++  console.error("Error during rendering:", e);
++  process.exit(1);
++});
+diff --git a/scripts/update_babbarsons_profile.ts b/scripts/update_babbarsons_profile.ts
+new file mode 100644
+index 0000000..dbda800
+--- /dev/null
++++ b/scripts/update_babbarsons_profile.ts
+@@ -0,0 +1,44 @@
++import "dotenv/config";
++import { prisma } from "../src/lib/db";
++
++async function updateBabbarsons() {
++  const profile = await prisma.workshopProfile.findFirst();
++
++  const data = {
++    workshopName: "BABBARSONS",
++    brandName: "BABBARSONS",
++    logoUrl: "/uploads/babbarsons_logo.png",
++    addressLine1: "6, Ajit Arcade, Kailash Colony",
++    addressLine2: "The Complete Car Care Center",
++    city: "New Delhi",
++    state: "Delhi",
++    postalCode: "110048",
++    country: "IN",
++    mobile: "+91-7982960183",
++    invoiceFooterText:
++      "Thank you for choosing BABBARSONS — The Complete Car Care Center. Drive safe!",
++    termsConditionsText:
++      "1. All repairs carry a 30-day warranty on labour. 2. Parts warranty as per manufacturer. 3. Vehicle left at owner's risk after 3 days of completion notice.",
++  };
++
++  if (profile) {
++    const updated = await prisma.workshopProfile.update({
++      where: { id: profile.id },
++      data,
++    });
++    console.log("✅ Updated WorkshopProfile:", updated.id);
++    console.log("   workshopName:", updated.workshopName);
++    console.log("   addressLine1:", updated.addressLine1);
++    console.log("   mobile:", updated.mobile);
++  } else {
++    const created = await prisma.workshopProfile.create({ data });
++    console.log("✅ Created WorkshopProfile:", created.id);
++  }
++}
++
++updateBabbarsons()
++  .catch((e) => {
++    console.error("❌ Error:", e);
++    process.exit(1);
++  })
++  .finally(() => prisma.$disconnect());
+diff --git a/src/app/api/estimates/[id]/approve/route.ts b/src/app/api/estimates/[id]/approve/route.ts
+new file mode 100644
+index 0000000..0aa254b
+--- /dev/null
++++ b/src/app/api/estimates/[id]/approve/route.ts
+@@ -0,0 +1,100 @@
++import { NextRequest, NextResponse } from "next/server";
++import { prisma } from "@/lib/db";
++import { cookies } from "next/headers";
++
++export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  try {
++    const { id } = await params;
++    const body = await req.json();
++    const { approvedByName = "Customer", approvalMethod = "whatsapp" } = body;
++
++    const cookieStore = await cookies();
++    const userId = cookieStore.get('workshop_user_id')?.value;
++    
++    let tenantId = null;
++    if (userId) {
++      const user = await prisma.user.findUnique({ where: { id: userId } });
++      tenantId = user?.tenantId || null;
++    }
++
++    const estimate = await prisma.estimate.findUnique({
++      where: { id },
++      include: { jobCard: true }
++    });
++
++    if (!estimate || (tenantId && estimate.jobCard?.tenantId !== tenantId)) {
++      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
++    }
++
++    // Use a transaction to ensure all operations succeed or fail together
++    const result = await prisma.$transaction(async (tx) => {
++      // 1. Update Estimate Status & Lock it
++      const updatedEstimate = await tx.estimate.update({
++        where: { id },
++        data: {
++          status: "approved",
++          isLocked: true,
++          approvedAt: new Date(),
++          approvedByName,
++          approvalMethod
++        }
++      });
++
++      // 2. Clean current job card parts and labor
++      await tx.jobCardPart.deleteMany({
++        where: { jobcardId: estimate.jobCardId! }
++      });
++      await tx.jobCardLabour.deleteMany({
++        where: { jobcardId: estimate.jobCardId! }
++      });
++
++      // 3. Re-populate JobCardPart from snapshot
++      if (estimate.partsSnapshot) {
++        const parts = JSON.parse(estimate.partsSnapshot);
++        if (Array.isArray(parts)) {
++          for (const p of parts) {
++            await tx.jobCardPart.create({
++              data: {
++                jobcardId: estimate.jobCardId!,
++                partName: p.partName || "Unknown Part",
++                partNumber: p.partNumber || null,
++                quantityRequested: parseFloat(String(p.quantity)) || 1,
++                sellingPrice: parseFloat(String(p.sellingPrice)) || 0,
++                discountType: p.discountType || null,
++                discountValue: parseFloat(String(p.discountValue)) || null,
++                status: "requested"
++              }
++            });
++          }
++        }
++      }
++
++      // 4. Re-populate JobCardLabour from snapshot
++      if (estimate.laborSnapshot) {
++        const labors = JSON.parse(estimate.laborSnapshot);
++        if (Array.isArray(labors)) {
++          for (const l of labors) {
++            await tx.jobCardLabour.create({
++              data: {
++                jobcardId: estimate.jobCardId!,
++                labourName: l.labourName || "Unknown Service",
++                quantity: parseFloat(String(l.quantity)) || 1,
++                sellingPrice: parseFloat(String(l.sellingPrice)) || 0,
++                discountType: l.discountType || null,
++                discountValue: parseFloat(String(l.discountValue)) || null,
++                status: "pending"
++              }
++            });
++          }
++        }
++      }
++
++      return updatedEstimate;
++    });
++
++    return NextResponse.json({ success: true, estimate: result });
++  } catch (error: any) {
++    console.error("Approve estimate error:", error);
++    return NextResponse.json({ error: error.message }, { status: 500 });
++  }
++}
+diff --git a/src/app/api/estimates/[id]/reject/route.ts b/src/app/api/estimates/[id]/reject/route.ts
+new file mode 100644
+index 0000000..40d5146
+--- /dev/null
++++ b/src/app/api/estimates/[id]/reject/route.ts
+@@ -0,0 +1,43 @@
++import { NextRequest, NextResponse } from "next/server";
++import { prisma } from "@/lib/db";
++import { cookies } from "next/headers";
++
++export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  try {
++    const { id } = await params;
++    const body = await req.json();
++    const { rejectionReason = "Customer rejected" } = body;
++
++    const cookieStore = await cookies();
++    const userId = cookieStore.get('workshop_user_id')?.value;
++    
++    let tenantId = null;
++    if (userId) {
++      const user = await prisma.user.findUnique({ where: { id: userId } });
++      tenantId = user?.tenantId || null;
++    }
++
++    const estimate = await prisma.estimate.findUnique({
++      where: { id },
++      include: { jobCard: true }
++    });
++
++    if (!estimate || (tenantId && estimate.jobCard?.tenantId !== tenantId)) {
++      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
++    }
++
++    const updated = await prisma.estimate.update({
++      where: { id },
++      data: {
++        status: "rejected",
++        rejectedAt: new Date(),
++        rejectionReason
++      }
++    });
++
++    return NextResponse.json({ success: true, estimate: updated });
++  } catch (error: any) {
++    console.error("Reject estimate error:", error);
++    return NextResponse.json({ error: error.message }, { status: 500 });
++  }
++}
+diff --git a/src/app/api/estimates/[id]/route.ts b/src/app/api/estimates/[id]/route.ts
+index 1d5d0be..a92dc8d 100644
+--- a/src/app/api/estimates/[id]/route.ts
++++ b/src/app/api/estimates/[id]/route.ts
+@@ -23,6 +23,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
+       return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
+     }
+ 
++    if (estimate.isLocked) {
++      return NextResponse.json({ error: "Locked estimates cannot be deleted" }, { status: 400 });
++    }
++
+     await prisma.estimate.delete({
+       where: { id }
+     });
+@@ -38,6 +42,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
+   try {
+     const { id } = await params;
+     const body = await req.json();
++
++    const estimate = await prisma.estimate.findUnique({
++      where: { id }
++    });
++
++    if (!estimate) {
++      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
++    }
++
++    if (estimate.isLocked) {
++      return NextResponse.json({ error: "Locked estimates cannot be modified" }, { status: 400 });
++    }
+     
+     const updateData: any = {};
+     if (body.flexibleCost !== undefined) updateData.flexibleCost = body.flexibleCost;
+diff --git a/src/app/api/estimates/[id]/send/route.ts b/src/app/api/estimates/[id]/send/route.ts
+new file mode 100644
+index 0000000..d38331b
+--- /dev/null
++++ b/src/app/api/estimates/[id]/send/route.ts
+@@ -0,0 +1,39 @@
++import { NextRequest, NextResponse } from "next/server";
++import { prisma } from "@/lib/db";
++import { cookies } from "next/headers";
++
++export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  try {
++    const { id } = await params;
++    const cookieStore = await cookies();
++    const userId = cookieStore.get('workshop_user_id')?.value;
++    
++    let tenantId = null;
++    if (userId) {
++      const user = await prisma.user.findUnique({ where: { id: userId } });
++      tenantId = user?.tenantId || null;
++    }
++
++    const estimate = await prisma.estimate.findUnique({
++      where: { id },
++      include: { jobCard: true }
++    });
++
++    if (!estimate || (tenantId && estimate.jobCard?.tenantId !== tenantId)) {
++      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
++    }
++
++    const updated = await prisma.estimate.update({
++      where: { id },
++      data: {
++        status: "sent",
++        sentAt: new Date()
++      }
++    });
++
++    return NextResponse.json({ success: true, estimate: updated });
++  } catch (error: any) {
++    console.error("Send estimate error:", error);
++    return NextResponse.json({ error: error.message }, { status: 500 });
++  }
++}
+diff --git a/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx b/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
+index e599791..347fee7 100644
+--- a/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
++++ b/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ 
+ import { useState, useRef, useEffect, useCallback } from "react";
+-import { ArrowLeft, Edit2, Camera, Car, Calendar, Package, Wrench, CheckCircle, Clock, Trash2, ZoomIn, X, Loader2, Save, Send, ShieldAlert, BadgeCheck, FileText, ChevronRight, PenLine, Phone, Contact, MessageCircle, Printer, Plus, UploadCloud, ImageOff, Calculator } from "lucide-react";
++import { ArrowLeft, Edit2, Camera, Car, Calendar, Package, Wrench, CheckCircle, Clock, Trash2, ZoomIn, X, Loader2, Save, Send, ShieldAlert, BadgeCheck, FileText, ChevronRight, PenLine, Phone, Contact, MessageCircle, Printer, Plus, UploadCloud, ImageOff, Calculator, Lock } from "lucide-react";
+ import Link from "next/link";
+ import { useSaveContact } from "@/hooks/useSaveContact";
+ import { compressInBrowser } from "@/hooks/useImageCompressor";
+@@ -266,7 +266,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
+         if (res.ok) {
+           setEstimates(estimates.filter(e => e.id !== estimateId));
+         } else {
+-          alert("Failed to delete estimate");
++          const data = await res.json();
++          alert(`Failed to delete estimate: ${data.error || 'Unknown error'}`);
+         }
+       } catch (e) {
+         console.error(e);
+@@ -274,6 +275,97 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
+     }
+   };
+ 
++  const refreshJobCardData = async () => {
++    try {
++      const res = await fetch(`/api/jobcards/${jobCard.id}`);
++      if (res.ok) {
++        const data = await res.json();
++        if (data.success && data.jobcard) {
++          setJobCard(data.jobcard);
++        }
++      }
++    } catch (e) {
++      console.error("Failed to refresh jobcard data", e);
++    }
++  };
++
++  const handleSendEstimateApproval = async (est: any) => {
++    try {
++      const res = await fetch(`/api/estimates/${est.id}/send`, {
++        method: "POST"
++      });
++      if (res.ok) {
++        // Update estimates list
++        setEstimates(prev => prev.map(e => e.id === est.id ? { ...e, status: "sent", sentAt: new Date() } : e));
++        
++        // Formulate WhatsApp text
++        const approveUrl = `${window.location.origin}/solo/print/estimate/${est.id}`;
++        const text = `Hello ${jobCard.customer?.displayName || 'Customer'}, please review and approve the estimate for your vehicle (${jobCard.vehicle?.regNo || ''}) here: ${approveUrl}`;
++        
++        const phone = jobCard.customer?.primaryMobile || '';
++        let formattedNum = phone.replace(/\D/g, "");
++        if (formattedNum.length === 10) formattedNum = "91" + formattedNum;
++        window.open(`https://wa.me/${formattedNum}?text=${encodeURIComponent(text)}`, '_blank');
++      } else {
++        alert("Failed to update estimate status to sent");
++      }
++    } catch (e) {
++      console.error("Error sending estimate", e);
++    }
++  };
++
++  const handleApproveEstimate = async (estimateId: string) => {
++    const approverName = prompt("Enter approver name (e.g. Customer Name):", jobCard.customer?.displayName || "Customer");
++    if (approverName === null) return; // cancelled
++
++    const method = prompt("Enter approval method (whatsapp / email / in_person / phone):", "whatsapp");
++    if (method === null) return; // cancelled
++
++    try {
++      const res = await fetch(`/api/estimates/${estimateId}/approve`, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ approvedByName: approverName, approvalMethod: method })
++      });
++      if (res.ok) {
++        alert("Estimate approved! Parts and labor have been applied to the JobCard.");
++        // Refresh estimates list
++        fetchEstimates();
++        // Refresh jobcard state (to reload parts/labor lines on screen)
++        refreshJobCardData();
++      } else {
++        const data = await res.json();
++        alert(`Failed to approve estimate: ${data.error || 'Unknown error'}`);
++      }
++    } catch (e) {
++      console.error("Approve estimate error:", e);
++      alert("Error approving estimate");
++    }
++  };
++
++  const handleRejectEstimate = async (estimateId: string) => {
++    const reason = prompt("Enter reason for rejection:", "Customer rejected the price");
++    if (reason === null) return; // cancelled
++
++    try {
++      const res = await fetch(`/api/estimates/${estimateId}/reject`, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ rejectionReason: reason })
++      });
++      if (res.ok) {
++        alert("Estimate marked as rejected.");
++        fetchEstimates();
++      } else {
++        const data = await res.json();
++        alert(`Failed to reject estimate: ${data.error || 'Unknown error'}`);
++      }
++    } catch (e) {
++      console.error("Reject estimate error:", e);
++      alert("Error rejecting estimate");
++    }
++  };
++
+   const handleSaveGeneralDetails = async () => {
+     try {
+       setIsSaving(true);
+@@ -1623,49 +1715,106 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
+             ) : (
+               <div className="space-y-3">
+                 {estimates.map((est) => (
+-                  <div key={est.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+-                    <div>
+-                      <h3 className="font-bold text-gray-800">{est.estimateNumber}</h3>
++                  <div key={est.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
++                    <div className="flex-1">
++                      <div className="flex items-center gap-2 mb-1">
++                        <h3 className="font-bold text-gray-800">{est.estimateNumber}</h3>
++                        <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
++                          est.status === 'approved' ? 'bg-green-100 text-green-800 border border-green-200' :
++                          est.status === 'rejected' ? 'bg-red-100 text-red-800 border border-red-200' :
++                          est.status === 'sent' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
++                          'bg-gray-100 text-gray-800 border border-gray-200'
++                        }`}>
++                          {(est.status || 'draft').toUpperCase()}
++                        </span>
++                        {est.isLocked && (
++                          <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
++                            <Lock className="w-3 h-3" /> LOCKED
++                          </span>
++                        )}
++                      </div>
+                       <p className="text-xs text-gray-500">Generated: {new Date(est.createdAt).toLocaleDateString()}</p>
++                      
++                      {est.status === 'approved' && (
++                        <p className="text-xs text-green-700 font-medium mt-1">
++                          ✓ Approved by {est.approvedByName || 'Customer'} via {(est.approvalMethod || 'whatsapp').toUpperCase()} on {est.approvedAt ? new Date(est.approvedAt).toLocaleDateString() : ''}
++                        </p>
++                      )}
++                      
++                      {est.status === 'rejected' && (
++                        <p className="text-xs text-red-700 font-medium mt-1">
++                          ✗ Rejected on {est.rejectedAt ? new Date(est.rejectedAt).toLocaleDateString() : ''}. Reason: {est.rejectionReason || 'No reason specified'}
++                        </p>
++                      )}
+                     </div>
+-                    <div className="mt-2 sm:mt-0 text-left sm:text-right">
++                    <div className="text-left md:text-right">
+                       <div className="font-bold text-lg text-gray-800">₹{est.grandTotal?.toFixed(2)}</div>
+-                      <div className="text-xs text-gray-500">Disc: ₹{est.discountAmount?.toFixed(2)}</div>
++                      {est.discountAmount > 0 && <div className="text-xs text-gray-500">Disc: ₹{est.discountAmount?.toFixed(2)}</div>}
+                     </div>
+-                    <div className="mt-3 sm:mt-0 flex gap-2 w-full sm:w-auto border-t sm:border-0 pt-3 sm:pt-0">
++                    <div className="flex flex-wrap gap-2 w-full md:w-auto border-t md:border-0 pt-3 md:pt-0">
+                       <button 
+                         onClick={() => window.open(`/solo/print/estimate/${est.id}`, '_blank')}
+-                        className="flex-1 sm:flex-none flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded font-bold transition-colors text-sm"
+-                      >
+-                        <Printer className="w-4 h-4 mr-2" /> Print
+-                      </button>
+-                      <button 
+-                        onClick={() => {
+-                          const text = `Hello ${jobCard.customer?.displayName}, please find the estimate for your vehicle attached.`;
+-                          const phone = jobCard.customer?.primaryMobile || '';
+-                          let formattedNum = phone.replace(/\D/g, "");
+-                          if (formattedNum.length === 10) formattedNum = "91" + formattedNum;
+-                          window.open(`https://wa.me/${formattedNum}?text=${encodeURIComponent(text)}`, '_blank');
+-                        }}
+-                        className="flex-1 sm:flex-none flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-bold transition-colors text-sm"
++                        className="flex-1 md:flex-none flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded font-bold transition-colors text-sm"
+                       >
+-                        <svg className="w-4 h-4 mr-2 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg> Share
++                        <Printer className="w-4 h-4 mr-1.5" /> Print
+                       </button>
++                      
++                      {/* Send / WhatsApp Trigger */}
++                      {est.status === 'draft' && (
++                        <button 
++                          onClick={() => handleSendEstimateApproval(est)}
++                          className="flex-1 md:flex-none flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded font-bold transition-colors text-sm"
++                        >
++                          Send for Approval
++                        </button>
++                      )}
++
++                      {/* Approval options when draft or sent */}
++                      {(est.status === 'draft' || est.status === 'sent') && (
++                        <>
++                          <button 
++                            onClick={() => handleApproveEstimate(est.id)}
++                            className="flex-1 md:flex-none flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded font-bold transition-colors text-sm"
++                          >
++                            Approve
++                          </button>
++                          <button 
++                            onClick={() => handleRejectEstimate(est.id)}
++                            className="flex-1 md:flex-none flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded font-bold transition-colors text-sm"
++                          >
++                            Reject
++                          </button>
++                        </>
++                      )}
++                      
++                      {/* Edit Details */}
+                       <button 
+                         onClick={() => {
+                           setEditingEstimate(est);
+                           setFlexibleCost(est.flexibleCost || "");
+                           setEstimatedTime(est.estimatedTime || "");
+                         }}
+-                        className="flex-1 sm:flex-none flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded font-bold transition-colors text-sm"
+-                        title="Edit Details"
++                        disabled={est.isLocked}
++                        className={`flex-1 md:flex-none flex items-center justify-center px-3 py-2 rounded font-bold transition-colors text-sm ${
++                          est.isLocked 
++                            ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100' 
++                            : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
++                        }`}
++                        title={est.isLocked ? "Locked - Cannot Edit" : "Edit Details"}
+                       >
+                         <Edit2 className="w-4 h-4 mr-1" /> Edit
+                       </button>
++                      
++                      {/* Delete */}
+                       <button 
+                         onClick={() => handleDeleteEstimate(est.id)}
+-                        className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded font-bold transition-colors"
+-                        title="Delete Estimate"
++                        disabled={est.isLocked}
++                        className={`flex items-center justify-center px-3 py-2 rounded font-bold transition-colors ${
++                          est.isLocked 
++                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100' 
++                            : 'bg-red-50 hover:bg-red-100 text-red-600'
++                        }`}
++                        title={est.isLocked ? "Locked - Cannot Delete" : "Delete Estimate"}
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </button>
+
+commit b149a453307ef73cd5de3d06260eb0947e1f22e3
+Author: Chirag Club <pickleatchirag@gmail.com>
+Date:   Thu Jul 23 13:06:29 2026 +0530
+
+    feat: complete Phase 1 - database schema expansion, service packages, vehicle pricing history API, and device-aware camera handling
+
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 7409e7f..2964433 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -24,6 +24,10 @@ model Tenant {
+   bookings         Booking[]
+   attendanceLogs   AttendanceLog[]
+   payrollLedgers   PayrollLedger[]
++  servicePackages  ServicePackage[]
++  systemEventLogs  SystemEventLog[]
++  agentActionQueues AgentActionQueue[]
++  agentApiKeys     AgentApiKey[]
+ }
+ 
+ model TenantInvite {
+@@ -1073,3 +1077,85 @@ model PayrollLedger {
+   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+ }
++
++// ======= SERVICE PACKAGES & BUNDLES =======
++
++model ServicePackage {
++  id          String   @id @default(uuid())
++  packageName String
++  packageCode String?
++  description String?
++  category    String?  // e.g. "Periodic Maintenance", "AC Service", "Brake Care"
++  basePrice   Float?
++  isActive    Boolean  @default(true)
++  createdAt   DateTime @default(now())
++  updatedAt   DateTime @updatedAt
++  tenantId    String?
++
++  tenant Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
++  items  ServicePackageItem[]
++}
++
++model ServicePackageItem {
++  id               String   @id @default(uuid())
++  servicePackageId String
++  itemType         String   // "PART" or "LABOUR"
++  partMasterId     String?
++  labourMasterId   String?
++  itemDescription  String
++  quantity         Float    @default(1)
++  defaultUnitPrice Float    @default(0)
++  gstRate          Float    @default(18)
++  createdAt        DateTime @default(now())
++  updatedAt        DateTime @updatedAt
++
++  servicePackage ServicePackage @relation(fields: [servicePackageId], references: [id], onDelete: Cascade)
++}
++
++// ======= AGENTIC EXPANSION & EVENT LOGGING =======
++
++model SystemEventLog {
++  id         String   @id @default(uuid())
++  tenantId   String?
++  eventType  String   // e.g. "JOBCARD_CREATED", "JOBCARD_STATUS_CHANGED", "PART_LOW_STOCK", "INVOICE_PAID"
++  entityType String   // "JobCard", "PartsMaster", "Customer", "Vehicle"
++  entityId   String
++  actorType  String   // "USER", "SYSTEM", "AI_AGENT"
++  actorId    String?
++  payload    String   // JSON string containing key metrics at time of event
++  createdAt  DateTime @default(now())
++
++  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
++
++  @@index([tenantId, createdAt])
++  @@index([eventType])
++}
++
++model AgentActionQueue {
++  id             String    @id @default(uuid())
++  tenantId       String?
++  actionType     String    // e.g. "SEND_SERVICE_REMINDER", "DRAFT_REORDER_PO", "APPLY_DISCOUNT"
++  targetEntity   String    // "Customer", "PartsMaster", "JobCard"
++  targetEntityId String
++  explanation    String    // Human readable reason: "Customer is 15 days overdue for periodic service."
++  proposedData   String    // JSON payload of proposed action
++  status         String    @default("PENDING") // PENDING, APPROVED, REJECTED, EXECUTED
++  createdAt      DateTime  @default(now())
++  executedAt     DateTime?
++
++  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
++}
++
++model AgentApiKey {
++  id          String    @id @default(uuid())
++  tenantId    String?
++  agentName   String    @default("AI CEO Agent")
++  apiKeyHash  String    @unique
++  permissions String    @default("read_only") // read_only, propose_only, full_execution
++  isActive    Boolean   @default(true)
++  lastUsedAt  DateTime?
++  createdAt   DateTime  @default(now())
++
++  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
++}
++
+diff --git a/scripts/seed_packages.ts b/scripts/seed_packages.ts
+new file mode 100644
+index 0000000..123c79b
+--- /dev/null
++++ b/scripts/seed_packages.ts
+@@ -0,0 +1,82 @@
++import "dotenv/config";
++import { prisma } from "../src/lib/db";
++
++async function main() {
++  console.log("Seeding default Service Packages...");
++
++  const count = await prisma.servicePackage.count();
++  if (count > 0) {
++    console.log("Service Packages already exist. Skipping seed.");
++    return;
++  }
++
++  const packages = [
++    {
++      packageName: "Periodic Minor Service",
++      packageCode: "PKG-MINOR",
++      category: "Periodic Maintenance",
++      description: "Includes Engine Oil replacement, Oil Filter replacement, and 20-point General Inspection.",
++      items: {
++        create: [
++          { itemType: "PART", itemDescription: "Synthetic Engine Oil 5W30 (4L)", quantity: 1, defaultUnitPrice: 2200, gstRate: 18 },
++          { itemType: "PART", itemDescription: "Engine Oil Filter", quantity: 1, defaultUnitPrice: 350, gstRate: 18 },
++          { itemType: "LABOUR", itemDescription: "General Service & Inspection Labor", quantity: 1, defaultUnitPrice: 1200, gstRate: 18 },
++        ],
++      },
++    },
++    {
++      packageName: "Periodic Major Service",
++      packageCode: "PKG-MAJOR",
++      category: "Periodic Maintenance",
++      description: "Includes Engine Oil, Oil Filter, Air Filter, Cabin Filter, Spark Plugs, and Complete Checkup.",
++      items: {
++        create: [
++          { itemType: "PART", itemDescription: "Synthetic Engine Oil 5W30 (4L)", quantity: 1, defaultUnitPrice: 2200, gstRate: 18 },
++          { itemType: "PART", itemDescription: "Engine Oil Filter", quantity: 1, defaultUnitPrice: 350, gstRate: 18 },
++          { itemType: "PART", itemDescription: "Air Filter Element", quantity: 1, defaultUnitPrice: 450, gstRate: 18 },
++          { itemType: "PART", itemDescription: "AC Cabin Filter", quantity: 1, defaultUnitPrice: 550, gstRate: 18 },
++          { itemType: "LABOUR", itemDescription: "Major Service Labor", quantity: 1, defaultUnitPrice: 2200, gstRate: 18 },
++        ],
++      },
++    },
++    {
++      packageName: "AC Health Check & Gas Top-up",
++      packageCode: "PKG-AC",
++      category: "AC Service",
++      description: "AC System leak testing, Filter cleaning, and R134a refrigerant gas top-up.",
++      items: {
++        create: [
++          { itemType: "PART", itemDescription: "R134a Refrigerant Gas (450g)", quantity: 1, defaultUnitPrice: 850, gstRate: 18 },
++          { itemType: "LABOUR", itemDescription: "AC Diagnostics & Cleaning Labor", quantity: 1, defaultUnitPrice: 950, gstRate: 18 },
++        ],
++      },
++    },
++    {
++      packageName: "Brake System Overhaul",
++      packageCode: "PKG-BRAKE",
++      category: "Brake Care",
++      description: "Front & Rear Brake pad cleaning, rotor inspection, and Brake Fluid flush.",
++      items: {
++        create: [
++          { itemType: "PART", itemDescription: "DOT4 Brake Fluid (500ml)", quantity: 1, defaultUnitPrice: 350, gstRate: 18 },
++          { itemType: "LABOUR", itemDescription: "Brake Cleaning & Bleeding Labor", quantity: 1, defaultUnitPrice: 1100, gstRate: 18 },
++        ],
++      },
++    },
++  ];
++
++  for (const pkg of packages) {
++    await prisma.servicePackage.create({ data: pkg });
++  }
++
++  console.log("Successfully seeded 4 default Service Packages!");
++}
++
++main()
++  .catch((e) => {
++    console.error(e);
++    process.exit(1);
++  })
++  .finally(async () => {
++    await prisma.$disconnect();
++  });
+diff --git a/src/app/api/inventory/packages/route.ts b/src/app/api/inventory/packages/route.ts
+new file mode 100644
+index 0000000..27c2282
+--- /dev/null
++++ b/src/app/api/inventory/packages/route.ts
+@@ -0,0 +1,65 @@
++import { NextResponse } from "next/server";
++import { prisma } from "@/lib/db";
++
++export async function GET() {
++  try {
++    const packages = await prisma.servicePackage.findMany({
++      where: { isActive: true },
++      include: {
++        items: true,
++      },
++      orderBy: { createdAt: "desc" },
++    });
++
++    return NextResponse.json(packages);
++  } catch (error: any) {
++    console.error("Error fetching service packages:", error);
++    return NextResponse.json(
++      { error: error.message || "Failed to fetch service packages" },
++      { status: 500 }
++    );
++  }
++}
++
++export async function POST(req: Request) {
++  try {
++    const body = await req.json();
++    const { packageName, packageCode, description, category, basePrice, items } = body;
++
++    if (!packageName) {
++      return NextResponse.json({ error: "Package name is required" }, { status: 400 });
++    }
++
++    const createdPackage = await prisma.servicePackage.create({
++      data: {
++        packageName,
++        packageCode,
++        description,
++        category,
++        basePrice: basePrice ? parseFloat(basePrice) : null,
++        items: {
++          create: (items || []).map((item: any) => ({
++            itemType: item.itemType || "PART",
++            partMasterId: item.partMasterId || null,
++            labourMasterId: item.labourMasterId || null,
++            itemDescription: item.itemDescription,
++            quantity: item.quantity ? parseFloat(item.quantity) : 1,
++            defaultUnitPrice: item.defaultUnitPrice ? parseFloat(item.defaultUnitPrice) : 0,
++            gstRate: item.gstRate ? parseFloat(item.gstRate) : 18,
++          })),
++        },
++      },
++      include: {
++        items: true,
++      },
++    });
++
++    return NextResponse.json(createdPackage, { status: 201 });
++  } catch (error: any) {
++    console.error("Error creating service package:", error);
++    return NextResponse.json(
++      { error: error.message || "Failed to create service package" },
++      { status: 500 }
++    );
++  }
++}
+diff --git a/src/app/api/vehicles/[id]/pricing-history/route.ts b/src/app/api/vehicles/[id]/pricing-history/route.ts
+new file mode 100644
+index 0000000..9e64298
+--- /dev/null
++++ b/src/app/api/vehicles/[id]/pricing-history/route.ts
+@@ -0,0 +1,68 @@
++import { NextResponse } from "next/server";
++import { prisma } from "@/lib/db";
++
++export async function GET(
++  req: Request,
++  { params }: { params: Promise<{ id: string }> }
++) {
++  try {
++    const { id: vehicleId } = await params;
++
++    if (!vehicleId) {
++      return NextResponse.json({ error: "Vehicle ID is required" }, { status: 400 });
++    }
++
++    // Find all job cards for this vehicle, ordered by date desc
++    const jobCards = await prisma.jobCard.findMany({
++      where: { vehicleId },
++      orderBy: { createdAt: "desc" },
++      include: {
++        partLines: {
++          orderBy: { createdAt: "desc" },
++        },
++        labourLines: {
++          orderBy: { createdAt: "desc" },
++        },
++      },
++    });
++
++    const partPricingMap: Record<string, { unitPrice: number; jobcardNumber: string; date: Date }> = {};
++    const labourPricingMap: Record<string, { unitPrice: number; jobcardNumber: string; date: Date }> = {};
++
++    jobCards.forEach((jc) => {
++      jc.partLines.forEach((part) => {
++        const key = (part.partName || "").toLowerCase().trim();
++        if (key && !partPricingMap[key]) {
++          partPricingMap[key] = {
++            unitPrice: part.sellingPrice || 0,
++            jobcardNumber: jc.jobcardNumber,
++            date: jc.createdAt,
++          };
++        }
++      });
++
++      jc.labourLines.forEach((labour) => {
++        const key = (labour.labourName || "").toLowerCase().trim();
++        if (key && !labourPricingMap[key]) {
++          labourPricingMap[key] = {
++            unitPrice: labour.sellingPrice || 0,
++            jobcardNumber: jc.jobcardNumber,
++            date: jc.createdAt,
++          };
++        }
++      });
++    });
++
++    return NextResponse.json({
++      vehicleId,
++      partsHistory: partPricingMap,
++      labourHistory: labourPricingMap,
++    });
++  } catch (error: any) {
++    console.error("Error fetching vehicle pricing history:", error);
++    return NextResponse.json(
++      { error: error.message || "Failed to fetch vehicle pricing history" },
++      { status: 500 }
++    );
++  }
++}
+diff --git a/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx b/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
+index 8e26168..e599791 100644
+--- a/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
++++ b/src/app/solo/jobcards/[id]/JobCardDetailClient.tsx
+@@ -7,6 +7,7 @@ import { useSaveContact } from "@/hooks/useSaveContact";
+ import { compressInBrowser } from "@/hooks/useImageCompressor";
+ import { useRouter } from "next/navigation";
+ import WhatsAppButton from "@/components/WhatsAppButton";
++import { CameraPicker } from "@/components/CameraPicker";
+ 
+ const QUOTA_BYTES = 1_048_576; // 1 MB
+ 
+@@ -1500,10 +1501,6 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
+ 
+         {activeTab === "pictures" && (
+           <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+-            {/* Hidden file inputs */}
+-            <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+-            <input type="file" accept="image/*" className="hidden" ref={galleryInputRef} onChange={handleFileUpload} />
+-
+             {/* Quota bar */}
+             {(() => {
+               const pct     = Math.min(100, Math.round((quotaUsed / QUOTA_BYTES) * 100));
+@@ -1525,15 +1522,19 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
+               );
+             })()}
+ 
+-            {/* Upload button */}
+-            <button
+-              onClick={() => setIsPhotoModalOpen(true)}
+-              disabled={isUploading}
+-              className="w-full py-5 bg-white border-2 border-dashed border-orange-300 rounded-md text-orange-500 font-bold hover:bg-orange-50 transition-colors flex flex-col items-center justify-center text-sm uppercase tracking-wide"
+-            >
+-              {isUploading ? <Loader2 className="w-7 h-7 mb-1.5 animate-spin" /> : <Camera className="w-7 h-7 mb-1.5" />}
+-              {isUploading ? 'Compressing & Saving…' : 'Take / Upload Photo'}
+-            </button>
++            {/* Device-Aware Camera Upload Button */}
++            <div className="w-full">
++              <CameraPicker
++                className="w-full"
++                isUploading={isUploading}
++                onPhotosSelected={(files) => {
++                  if (files && files.length > 0) {
++                    const syntheticEvent = { target: { files } } as any;
++                    handleFileUpload(syntheticEvent);
++                  }
++                }}
++              />
++            </div>
+ 
+             {/* Gallery grid */}
+             {!photosLoaded ? (
+diff --git a/src/app/solo/jobcards/new/page.tsx b/src/app/solo/jobcards/new/page.tsx
+index 4c7a821..ae34fa0 100644
+--- a/src/app/solo/jobcards/new/page.tsx
++++ b/src/app/solo/jobcards/new/page.tsx
+@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
+ import { useRouter } from "next/navigation";
+ import { Car, User, FileText, CheckCircle, ArrowLeft, Mic, MicOff, Wrench, ThermometerSnowflake, Droplets, BatteryWarning, Volume2, Lightbulb, Camera, Save, ArrowRight, Contact, Loader2, UploadCloud } from "lucide-react";
+ import Link from "next/link";
++import { CameraPicker } from "@/components/CameraPicker";
+ import { useContactPicker } from "@/hooks/useContactPicker";
+ import { useSaveContact } from "@/hooks/useSaveContact";
+ import { searchVehicleAction, createJobCardAction, ensureVehicleAction } from "@/app/actions/jobcardActions";
+@@ -726,20 +727,12 @@ export default function SoloNewJobcardPage() {
+               </div>
+               
+               <div className="pt-2">
+-                 <input 
+-                   type="file" 
+-                   accept="image/*" 
+-                   capture="environment"
+-                   className="hidden" 
+-                   ref={fileInputRef}
+-                   onChange={handleFileUpload}
+-                 />
+-                 <input 
+-                   type="file" 
+-                   accept="image/*" 
+-                   className="hidden" 
+-                   ref={galleryInputRef}
+-                   onChange={handleFileUpload}
++                 <CameraPicker 
++                   onPhotosSelected={(files) => {
++                     const syntheticEvent = { target: { files } } as any;
++                     handleFileUpload(syntheticEvent);
++                   }}
++                   isUploading={loading}
+                  />
+ 
+             {/* Quota bar */}
+diff --git a/src/components/CameraPicker.tsx b/src/components/CameraPicker.tsx
+new file mode 100644
+index 0000000..9c6b530
+--- /dev/null
++++ b/src/components/CameraPicker.tsx
+@@ -0,0 +1,83 @@
++"use client";
++
++import React, { useState, useEffect, useRef } from "react";
++import { Camera, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
++
++interface CameraPickerProps {
++  onPhotosSelected: (files: File[]) => void;
++  label?: string;
++  className?: string;
++  isUploading?: boolean;
++  multiple?: boolean;
++}
++
++export function CameraPicker({
++  onPhotosSelected,
++  label,
++  className = "",
++  isUploading = false,
++  multiple = true,
++}: CameraPickerProps) {
++  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
++  const inputRef = useRef<HTMLInputElement>(null);
++
++  useEffect(() => {
++    // Detect mobile or tablet device
++    const checkDevice = () => {
++      if (typeof window === "undefined") return false;
++      const ua = navigator.userAgent || "";
++      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
++      const isTouch = navigator.maxTouchPoints > 0;
++      return isMobile || (isTouch && window.innerWidth <= 1024);
++    };
++    setIsMobileOrTablet(checkDevice());
++  }, []);
++
++  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
++    if (e.target.files && e.target.files.length > 0) {
++      const selectedFiles = Array.from(e.target.files);
++      onPhotosSelected(selectedFiles);
++      // Reset input value so the same file can be selected again
++      if (inputRef.current) inputRef.current.value = "";
++    }
++  };
++
++  const triggerPicker = () => {
++    if (inputRef.current) {
++      inputRef.current.click();
++    }
++  };
++
++  return (
++    <div className={`inline-block ${className}`}>
++      <input
++        ref={inputRef}
++        type="file"
++        accept="image/*"
++        multiple={isMobileOrTablet ? false : multiple}
++        // Direct rear camera capture on mobile & tablet
++        capture={isMobileOrTablet ? "environment" : undefined}
++        onChange={handleChange}
++        className="hidden"
++      />
++
++      <button
++        type="button"
++        onClick={triggerPicker}
++        disabled={isUploading}
++        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-medium text-sm rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
++      >
++        {isUploading ? (
++          <Loader2 className="w-4 h-4 animate-spin" />
++        ) : isMobileOrTablet ? (
++          <Camera className="w-4 h-4" />
++        ) : (
++          <Upload className="w-4 h-4" />
++        )}
++        <span>
++          {label || (isMobileOrTablet ? "Take Photo (Rear Camera)" : "Upload Vehicle Photos")}
++        </span>
++      </button>
++    </div>
++  );
++}
+
+commit e4d863935276d83639f73cb307aebfecef94a5a9
+Author: Chirag Club <pickleatchirag@gmail.com>
+Date:   Wed Jul 22 21:05:03 2026 +0530
+
+    fix: make photo grid visible for both screen and print to fix html2pdf rendering
+
+diff --git a/src/app/print/intake/[id]/IntakeViewClient.tsx b/src/app/print/intake/[id]/IntakeViewClient.tsx
+index a5ace64..7dfb99a 100644
+--- a/src/app/print/intake/[id]/IntakeViewClient.tsx
++++ b/src/app/print/intake/[id]/IntakeViewClient.tsx
+@@ -541,29 +541,21 @@ export function IntakeViewClient({ jobCard, workshopProfile }: { jobCard: any, w
+               <h2 className="text-xs font-bold uppercase text-gray-400 mb-3 flex items-center gap-2 border-b pb-2">
+                 <Camera className="w-3.5 h-3.5" /> Intake Photos ({photos.length})
+               </h2>
+-              {/* Screen grid with lightbox */}
+-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 print:hidden">
++              {/* Grid for both screen and print */}
++              <div className="grid grid-cols-3 sm:grid-cols-4 print:grid-cols-2 gap-2 print:gap-4">
+                 {photos.map((photo: any, index: number) => (
+                   <div
+                     key={photo.id || index}
+-                    className="aspect-square rounded-lg overflow-hidden border cursor-pointer relative group bg-gray-100"
++                    className="aspect-square print:aspect-video rounded-lg overflow-hidden border cursor-pointer relative group bg-gray-100 print:page-break-inside-avoid"
+                     onClick={() => openLightbox(index)}
+                   >
+-                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
++                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-cover print:object-contain transition-transform group-hover:scale-105" />
++                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center print:hidden">
+                       <ZoomIn className="text-white opacity-0 group-hover:opacity-100 w-5 h-5 drop-shadow-md" />
+                     </div>
+                   </div>
+                 ))}
+               </div>
+-              {/* Print grid */}
+-              <div className="hidden print:grid grid-cols-2 gap-4">
+-                {photos.map((photo: any, index: number) => (
+-                  <div key={photo.id || index} className="border border-gray-300 relative aspect-video page-break-inside-avoid">
+-                    <img src={photo.url} alt={`Intake photo ${index + 1}`} className="w-full h-full object-contain" />
+-                  </div>
+-                ))}
+-              </div>
+             </section>
+           )}
+ 

@@ -778,8 +778,11 @@ export async function POST(req: Request) {
             count++;
           }
 
-          // Import detailed items from JobCard_Items.csv if available
-          const itemsCsvFile = path.join(folderPath, 'JobCard_Items.csv');
+          // Import detailed items from JobCard_Items.csv or item.csv if available
+          let itemsCsvFile = path.join(folderPath, 'JobCard_Items.csv');
+          if (!fs.existsSync(itemsCsvFile)) {
+            itemsCsvFile = path.join(folderPath, 'item.csv');
+          }
           const jobCardPartsToCreate: any[] = [];
           const jobCardLaboursToCreate: any[] = [];
           
