@@ -155,25 +155,116 @@ function parseItemsCSV(csvText: string): string[][] {
 }
 
 
+function encodeImageFileToBase64(fileUrl: string | null | undefined): string | null {
+  if (!fileUrl) return null;
+  if (fileUrl.startsWith('data:image/')) return fileUrl;
+  
+  if (fileUrl.startsWith('/uploads/')) {
+    try {
+      const relPath = fileUrl.startsWith('/') ? fileUrl.slice(1) : fileUrl;
+      const absPath = path.join(process.cwd(), 'public', relPath);
+      if (fs.existsSync(absPath)) {
+        const buf = fs.readFileSync(absPath);
+        const ext = path.extname(absPath).toLowerCase().replace('.', '') || 'jpeg';
+        return `data:image/${ext === 'jpg' ? 'jpeg' : ext};base64,${buf.toString('base64')}`;
+      }
+    } catch (e) {
+      console.error('Error encoding image file for backup:', e);
+    }
+  }
+  return null;
+}
+
+function restoreBase64ToImageFile(base64Data: string | null | undefined, defaultSubfolder: string, preferredFileName?: string): string | null {
+  if (!base64Data || !base64Data.startsWith('data:image/')) return null;
+
+  try {
+    const parts = base64Data.split(';base64,');
+    if (parts.length !== 2) return null;
+    const header = parts[0];
+    const dataStr = parts[1];
+    const extMatch = header.match(/data:image\/([a-zA-Z0-9]+)/);
+    const ext = extMatch ? (extMatch[1] === 'jpeg' ? 'jpg' : extMatch[1]) : 'jpg';
+
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', defaultSubfolder);
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filename = preferredFileName ? (preferredFileName.includes('.') ? preferredFileName : `${preferredFileName}.${ext}`) : `restored_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+    const absPath = path.join(uploadDir, filename);
+    fs.writeFileSync(absPath, Buffer.from(dataStr, 'base64'));
+
+    return `/uploads/${defaultSubfolder}/${filename}`;
+  } catch (e) {
+    console.error('Error writing restored image to disk:', e);
+    return null;
+  }
+}
+
 export async function GET() {
   try {
+    const rawVehiclePhotos = await prisma.vehiclePhoto.findMany();
+    const vehiclePhotos = rawVehiclePhotos.map(p => ({
+      ...p,
+      imageDataBase64: encodeImageFileToBase64(p.fileUrl)
+    }));
+
+    const rawJobCardMedias = await prisma.jobCardMedia.findMany();
+    const jobCardMedias = rawJobCardMedias.map(m => ({
+      ...m,
+      fileSizeBytes: m.fileSizeBytes ? Number(m.fileSizeBytes) : null,
+      imageDataBase64: encodeImageFileToBase64(m.fileUrl)
+    }));
+
     const data = {
+      version: "2.0",
+      exportDate: new Date().toISOString(),
+      workshopProfiles: await prisma.workshopProfile.findMany(),
+      taxSettings: await prisma.taxSettings.findMany(),
+      numberingSettings: await prisma.numberingSettings.findMany(),
+      workflowSettings: await prisma.workflowSettings.findMany(),
+      printSettings: await prisma.printSettings.findMany(),
+      featureFlags: await prisma.featureFlags.findMany(),
+      documentTemplates: await prisma.documentTemplate.findMany(),
+      zohoIntegrations: await prisma.zohoIntegration.findMany(),
+
+      users: await prisma.user.findMany(),
+      userRoles: await prisma.userRole.findMany(),
+
       customers: await prisma.customer.findMany(),
       vehicles: await prisma.vehicle.findMany(),
+      vehiclePhotos,
+      vehicleOwnershipHistories: await prisma.vehicleOwnershipHistory.findMany(),
+
       partsMaster: await prisma.partsMaster.findMany(),
+      partPurchases: await prisma.partPurchase.findMany(),
+      supplierBills: await prisma.supplierBill.findMany(),
       labourMaster: await prisma.labourMaster.findMany(),
+      complaintIconMasters: await prisma.complaintIconMaster.findMany(),
+
       suppliers: await prisma.supplier.findMany(),
-      supplierTransactions: await prisma.supplierTransaction.findMany(),
-      partReturns: await prisma.partReturn.findMany(),
       purchaseOrders: await prisma.purchaseOrder.findMany(),
       purchaseOrderLines: await prisma.purchaseOrderLine.findMany(),
+      supplierTransactions: await prisma.supplierTransaction.findMany(),
+      partReturns: await prisma.partReturn.findMany(),
+      inventoryLedgers: await prisma.inventoryLedger.findMany(),
+
       jobCards: await prisma.jobCard.findMany(),
       jobCardParts: await prisma.jobCardPart.findMany(),
       jobCardLabours: await prisma.jobCardLabour.findMany(),
       jobCardComplaints: await prisma.jobCardComplaint.findMany(),
+      jobCardComplaintIcons: await prisma.jobCardComplaintIcon.findMany(),
+      jobCardMechanics: await prisma.jobCardMechanic.findMany(),
+      jobCardSnapshots: await prisma.jobCardSnapshot.findMany(),
+      jobCardMedias,
+
+      estimates: await prisma.estimate.findMany(),
+      estimateLines: await prisma.estimateLine.findMany(),
+
+      reminderEvents: await prisma.reminderEvent.findMany(),
+      diagnosticsReports: await prisma.diagnosticsReport.findMany(),
       preBookings: await prisma.preBooking.findMany(),
-      users: await prisma.user.findMany(),
-      userRoles: await prisma.userRole.findMany()
     };
 
     return NextResponse.json({ success: true, backup: data });

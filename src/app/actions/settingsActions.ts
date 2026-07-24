@@ -14,100 +14,379 @@ async function getTenantId() {
   return user.tenantId;
 }
 
-// 1. Export Tenant Data
+function parseDatesInObject(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(obj)) {
+      const d = new Date(obj);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(parseDatesInObject);
+  }
+  if (typeof obj === 'object') {
+    const res: any = {};
+    for (const key of Object.keys(obj)) {
+      res[key] = parseDatesInObject(obj[key]);
+    }
+    return res;
+  }
+  return obj;
+}
+
+import fs from "fs";
+import path from "path";
+
+function encodeImageFileToBase64(fileUrl: string | null | undefined): string | null {
+  if (!fileUrl) return null;
+  if (fileUrl.startsWith('data:image/')) return fileUrl;
+  
+  if (fileUrl.startsWith('/uploads/')) {
+    try {
+      const relPath = fileUrl.startsWith('/') ? fileUrl.slice(1) : fileUrl;
+      const absPath = path.join(process.cwd(), 'public', relPath);
+      if (fs.existsSync(absPath)) {
+        const buf = fs.readFileSync(absPath);
+        const ext = path.extname(absPath).toLowerCase().replace('.', '') || 'jpeg';
+        return `data:image/${ext === 'jpg' ? 'jpeg' : ext};base64,${buf.toString('base64')}`;
+      }
+    } catch (e) {
+      console.error('Error encoding image file for backup:', e);
+    }
+  }
+  return null;
+}
+
+function restoreBase64ToImageFile(base64Data: string | null | undefined, defaultSubfolder: string, preferredFileName?: string): string | null {
+  if (!base64Data || !base64Data.startsWith('data:image/')) return null;
+
+  try {
+    const parts = base64Data.split(';base64,');
+    if (parts.length !== 2) return null;
+    const header = parts[0];
+    const dataStr = parts[1];
+    const extMatch = header.match(/data:image\/([a-zA-Z0-9]+)/);
+    const ext = extMatch ? (extMatch[1] === 'jpeg' ? 'jpg' : extMatch[1]) : 'jpg';
+
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', defaultSubfolder);
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filename = preferredFileName ? (preferredFileName.includes('.') ? preferredFileName : `${preferredFileName}.${ext}`) : `restored_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+    const absPath = path.join(uploadDir, filename);
+    fs.writeFileSync(absPath, Buffer.from(dataStr, 'base64'));
+
+    return `/uploads/${defaultSubfolder}/${filename}`;
+  } catch (e) {
+    console.error('Error writing restored image to disk:', e);
+    return null;
+  }
+}
+
+// 1. Export Complete Tenant Data
 export async function exportTenantDataAction() {
   const tenantId = await getTenantId();
 
-  const customers = await prisma.customer.findMany({ where: { tenantId } });
-  const vehicles = await prisma.vehicle.findMany({ where: { tenantId } });
-  const jobCards = await prisma.jobCard.findMany({ where: { tenantId }, include: { complaints: true } });
+  const rawVehiclePhotos = await prisma.vehiclePhoto.findMany({ where: { vehicle: { tenantId } } });
+  const vehiclePhotos = rawVehiclePhotos.map(p => ({
+    ...p,
+    imageDataBase64: encodeImageFileToBase64(p.fileUrl)
+  }));
+
+  const rawJobCardMedias = await prisma.jobCardMedia.findMany({ where: { jobCard: { tenantId } } });
+  const jobCardMedias = rawJobCardMedias.map(m => ({
+    ...m,
+    fileSizeBytes: m.fileSizeBytes ? Number(m.fileSizeBytes) : null,
+    imageDataBase64: encodeImageFileToBase64(m.fileUrl)
+  }));
 
   const data = {
+    version: "2.0",
     exportDate: new Date().toISOString(),
-    customers,
-    vehicles,
-    jobCards
+    tenantId,
+
+    // Settings & Profiles
+    workshopProfile: await prisma.workshopProfile.findFirst(),
+    taxSettings: await prisma.taxSettings.findFirst(),
+    numberingSettings: await prisma.numberingSettings.findFirst(),
+    workflowSettings: await prisma.workflowSettings.findFirst(),
+    printSettings: await prisma.printSettings.findFirst(),
+    featureFlags: await prisma.featureFlags.findFirst(),
+    documentTemplates: await prisma.documentTemplate.findMany(),
+    zohoIntegration: await prisma.zohoIntegration.findFirst(),
+
+    // Users & Roles
+    users: await prisma.user.findMany({ where: { tenantId } }),
+    userRoles: await prisma.userRole.findMany(),
+
+    // Customers, Vehicles, Pictures & Service Next Data
+    customers: await prisma.customer.findMany({ where: { tenantId } }),
+    vehicles: await prisma.vehicle.findMany({ where: { tenantId } }),
+    vehiclePhotos,
+    vehicleOwnershipHistories: await prisma.vehicleOwnershipHistory.findMany(),
+
+    // Master Catalogs (Parts & Labour)
+    partsMaster: await prisma.partsMaster.findMany({ where: { tenantId } }),
+    partPurchases: await prisma.partPurchase.findMany(),
+    supplierBills: await prisma.supplierBill.findMany(),
+    labourMaster: await prisma.labourMaster.findMany({ where: { tenantId } }),
+    complaintIconMasters: await prisma.complaintIconMaster.findMany(),
+
+    // Procurement & Suppliers
+    suppliers: await prisma.supplier.findMany(),
+    purchaseOrders: await prisma.purchaseOrder.findMany(),
+    purchaseOrderLines: await prisma.purchaseOrderLine.findMany(),
+    supplierTransactions: await prisma.supplierTransaction.findMany(),
+    partReturns: await prisma.partReturn.findMany(),
+    inventoryLedgers: await prisma.inventoryLedger.findMany(),
+
+    // Job Cards & Lines (with complaints, parts, labor, pictures/media)
+    jobCards: await prisma.jobCard.findMany({ where: { tenantId } }),
+    jobCardParts: await prisma.jobCardPart.findMany(),
+    jobCardLabours: await prisma.jobCardLabour.findMany(),
+    jobCardComplaints: await prisma.jobCardComplaint.findMany({ where: { tenantId } }),
+    jobCardComplaintIcons: await prisma.jobCardComplaintIcon.findMany(),
+    jobCardMechanics: await prisma.jobCardMechanic.findMany(),
+    jobCardSnapshots: await prisma.jobCardSnapshot.findMany(),
+    jobCardMedias,
+
+    // Estimates & Line Items
+    estimates: await prisma.estimate.findMany({ where: { tenantId } }),
+    estimateLines: await prisma.estimateLine.findMany(),
+
+    // Reminders & Pre-bookings (Service Next Reminders)
+    reminderEvents: await prisma.reminderEvent.findMany(),
+    diagnosticsReports: await prisma.diagnosticsReport.findMany(),
+    preBookings: await prisma.preBooking.findMany(),
   };
 
   return JSON.stringify(data, null, 2);
 }
 
-// 2. Restore Tenant Data
+// 2. Restore Complete Tenant Data
 export async function restoreTenantDataAction(formData: FormData) {
   const tenantId = await getTenantId();
   const file = formData.get("backupFile") as File;
   if (!file) throw new Error("No file uploaded");
 
   const fileText = await file.text();
-  const data = JSON.parse(fileText);
+  const rawData = JSON.parse(fileText);
+  const data = parseDatesInObject(rawData);
 
-  if (!data.customers || !data.vehicles || !data.jobCards) {
-    throw new Error("Invalid backup file format");
+  if (!data.customers && !data.vehicles && !data.jobCards && !data.partsMaster && !data.estimates) {
+    throw new Error("Invalid backup file format: missing core data structures");
   }
 
   await prisma.$transaction(async (tx) => {
-    // Merge Customers
-    for (const c of data.customers) {
-      await tx.customer.upsert({
-        where: { id: c.id },
-        update: {
-          displayName: c.displayName,
-          primaryMobile: c.primaryMobile,
-          addressLine1: c.addressLine1
-        },
-        create: {
-          id: c.id,
-          tenantId,
-          displayName: c.displayName,
-          primaryMobile: c.primaryMobile,
-          addressLine1: c.addressLine1,
-          sourceSystem: c.sourceSystem,
-          sourceRecordId: c.sourceRecordId
-        }
+    // 1. Settings & Profiles
+    if (data.workshopProfile) {
+      await tx.workshopProfile.upsert({
+        where: { id: data.workshopProfile.id || `profile-${tenantId}` },
+        update: { ...data.workshopProfile },
+        create: { ...data.workshopProfile }
+      });
+    }
+    if (data.printSettings) {
+      await tx.printSettings.upsert({
+        where: { id: data.printSettings.id || `print-${tenantId}` },
+        update: { ...data.printSettings },
+        create: { ...data.printSettings }
+      });
+    }
+    if (data.taxSettings) {
+      await tx.taxSettings.upsert({
+        where: { id: data.taxSettings.id || `tax-${tenantId}` },
+        update: { ...data.taxSettings },
+        create: { ...data.taxSettings }
+      });
+    }
+    if (data.numberingSettings) {
+      await tx.numberingSettings.upsert({
+        where: { id: data.numberingSettings.id || `num-${tenantId}` },
+        update: { ...data.numberingSettings },
+        create: { ...data.numberingSettings }
       });
     }
 
-    // Merge Vehicles
-    for (const v of data.vehicles) {
-      await tx.vehicle.upsert({
-        where: { id: v.id },
-        update: {
-          manufacturer: v.manufacturer,
-          model: v.model,
-          currentOdometer: v.currentOdometer,
-          currentCustomerId: v.currentCustomerId
-        },
-        create: {
-          id: v.id,
-          tenantId,
-          registrationNumberRaw: v.registrationNumberRaw,
-          registrationNumberNormalized: v.registrationNumberNormalized,
-          manufacturer: v.manufacturer,
-          model: v.model,
-          currentOdometer: v.currentOdometer,
-          currentCustomerId: v.currentCustomerId,
-          sourceSystem: v.sourceSystem,
-          sourceRecordId: v.sourceRecordId
-        }
-      });
+    // 2. Customers
+    if (data.customers && Array.isArray(data.customers)) {
+      for (const c of data.customers) {
+        await tx.customer.upsert({
+          where: { id: c.id },
+          update: { ...c, tenantId },
+          create: { ...c, tenantId }
+        });
+      }
     }
 
-    // Merge JobCards
-    for (const j of data.jobCards) {
-      const exists = await tx.jobCard.findUnique({ where: { id: j.id } });
-      if (!exists) {
-        await tx.jobCard.create({
-          data: {
-            id: j.id,
-            tenantId,
-            jobcardNumber: j.jobcardNumber,
-            status: j.status,
-            externalNotes: j.externalNotes,
-            intakeOdometer: j.intakeOdometer,
-            customerId: j.customerId,
-            vehicleId: j.vehicleId,
-            createdAt: j.createdAt ? new Date(j.createdAt) : undefined
-          }
+    // 3. Vehicles (with nextServiceDate, nextServiceKm, emissionInspectionExpiryDate, etc.)
+    if (data.vehicles && Array.isArray(data.vehicles)) {
+      for (const v of data.vehicles) {
+        await tx.vehicle.upsert({
+          where: { id: v.id },
+          update: { ...v, tenantId },
+          create: { ...v, tenantId }
+        });
+      }
+    }
+    if (data.vehiclePhotos && Array.isArray(data.vehiclePhotos)) {
+      for (const vp of data.vehiclePhotos) {
+        let fileUrl = vp.fileUrl;
+        if (vp.imageDataBase64) {
+          const restored = restoreBase64ToImageFile(vp.imageDataBase64, 'v-photos', vp.fileName);
+          if (restored) fileUrl = restored;
+        }
+        const { imageDataBase64, ...vpClean } = vp;
+        await tx.vehiclePhoto.upsert({
+          where: { id: vpClean.id },
+          update: { ...vpClean, fileUrl },
+          create: { ...vpClean, fileUrl }
+        });
+      }
+    }
+
+    // 4. Parts Master & Labour Master
+    if (data.partsMaster && Array.isArray(data.partsMaster)) {
+      for (const p of data.partsMaster) {
+        await tx.partsMaster.upsert({
+          where: { id: p.id },
+          update: { ...p, tenantId },
+          create: { ...p, tenantId }
+        });
+      }
+    }
+    if (data.labourMaster && Array.isArray(data.labourMaster)) {
+      for (const l of data.labourMaster) {
+        await tx.labourMaster.upsert({
+          where: { id: l.id },
+          update: { ...l, tenantId },
+          create: { ...l, tenantId }
+        });
+      }
+    }
+
+    // 5. Suppliers & Procurement
+    if (data.suppliers && Array.isArray(data.suppliers)) {
+      for (const s of data.suppliers) {
+        await tx.supplier.upsert({
+          where: { id: s.id },
+          update: { ...s, tenantId },
+          create: { ...s, tenantId }
+        });
+      }
+    }
+    if (data.purchaseOrders && Array.isArray(data.purchaseOrders)) {
+      for (const po of data.purchaseOrders) {
+        await tx.purchaseOrder.upsert({
+          where: { id: po.id },
+          update: { ...po, tenantId },
+          create: { ...po, tenantId }
+        });
+      }
+    }
+    if (data.purchaseOrderLines && Array.isArray(data.purchaseOrderLines)) {
+      for (const pol of data.purchaseOrderLines) {
+        await tx.purchaseOrderLine.upsert({
+          where: { id: pol.id },
+          update: { ...pol },
+          create: { ...pol }
+        });
+      }
+    }
+
+    // 6. Job Cards & Items
+    if (data.jobCards && Array.isArray(data.jobCards)) {
+      for (const j of data.jobCards) {
+        await tx.jobCard.upsert({
+          where: { id: j.id },
+          update: { ...j, tenantId },
+          create: { ...j, tenantId }
+        });
+      }
+    }
+    if (data.jobCardParts && Array.isArray(data.jobCardParts)) {
+      for (const jp of data.jobCardParts) {
+        await tx.jobCardPart.upsert({
+          where: { id: jp.id },
+          update: { ...jp },
+          create: { ...jp }
+        });
+      }
+    }
+    if (data.jobCardLabours && Array.isArray(data.jobCardLabours)) {
+      for (const jl of data.jobCardLabours) {
+        await tx.jobCardLabour.upsert({
+          where: { id: jl.id },
+          update: { ...jl },
+          create: { ...jl }
+        });
+      }
+    }
+    if (data.jobCardComplaints && Array.isArray(data.jobCardComplaints)) {
+      for (const jc of data.jobCardComplaints) {
+        await tx.jobCardComplaint.upsert({
+          where: { id: jc.id },
+          update: { ...jc, tenantId },
+          create: { ...jc, tenantId }
+        });
+      }
+    }
+    if (data.jobCardMedias && Array.isArray(data.jobCardMedias)) {
+      for (const jm of data.jobCardMedias) {
+        let fileUrl = jm.fileUrl;
+        if (jm.imageDataBase64) {
+          const restored = restoreBase64ToImageFile(jm.imageDataBase64, 'jobcard-media', jm.fileName);
+          if (restored) fileUrl = restored;
+        }
+        const { imageDataBase64, ...jmClean } = jm;
+        const fileSizeBytes = jmClean.fileSizeBytes ? BigInt(jmClean.fileSizeBytes) : null;
+        await tx.jobCardMedia.upsert({
+          where: { id: jmClean.id },
+          update: { ...jmClean, fileUrl, fileSizeBytes },
+          create: { ...jmClean, fileUrl, fileSizeBytes }
+        });
+      }
+    }
+
+    // 7. Estimates & Lines
+    if (data.estimates && Array.isArray(data.estimates)) {
+      for (const est of data.estimates) {
+        await tx.estimate.upsert({
+          where: { id: est.id },
+          update: { ...est, tenantId },
+          create: { ...est, tenantId }
+        });
+      }
+    }
+    if (data.estimateLines && Array.isArray(data.estimateLines)) {
+      for (const el of data.estimateLines) {
+        await tx.estimateLine.upsert({
+          where: { id: el.id },
+          update: { ...el },
+          create: { ...el }
+        });
+      }
+    }
+
+    // 8. Service Reminders & Prebookings
+    if (data.reminderEvents && Array.isArray(data.reminderEvents)) {
+      for (const re of data.reminderEvents) {
+        await tx.reminderEvent.upsert({
+          where: { id: re.id },
+          update: { ...re, tenantId },
+          create: { ...re, tenantId }
+        });
+      }
+    }
+    if (data.preBookings && Array.isArray(data.preBookings)) {
+      for (const pb of data.preBookings) {
+        await tx.preBooking.upsert({
+          where: { id: pb.id },
+          update: { ...pb, tenantId },
+          create: { ...pb, tenantId }
         });
       }
     }
@@ -115,6 +394,9 @@ export async function restoreTenantDataAction(formData: FormData) {
 
   revalidatePath('/solo/dashboard');
   revalidatePath('/solo/vehicles');
+  revalidatePath('/solo/estimates');
+  revalidatePath('/solo/inventory');
+  revalidatePath('/solo/jobcards');
   return { success: true };
 }
 
