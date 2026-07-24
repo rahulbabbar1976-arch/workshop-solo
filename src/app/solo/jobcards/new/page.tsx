@@ -133,14 +133,18 @@ export default function SoloNewJobcardPage() {
         odometer: "",
         customerName: item.displayName || prev.customerName,
         mobile: item.primaryMobile || prev.mobile,
-        address: item.addressLine1 || prev.address
+        address: item.addressLine1 || prev.address,
+        driverName: item.driverName || prev.driverName,
+        driverMobile: item.driverMobile || prev.driverMobile,
       }));
       setSelectedCustomerVehicles(item.vehicles || []);
     } else {
       // Vehicle
+      const reg = item.registrationNumberRaw || item.registrationNumberNormalized || "";
+      setSearchQuery(reg);
       setFormData(prev => ({
         ...prev,
-        regNo: item.registrationNumberRaw || item.registrationNumberNormalized,
+        regNo: reg,
         make: item.manufacturer || prev.make,
         model: item.model || prev.model,
         year: item.manufactureYear?.toString() || prev.year,
@@ -148,7 +152,9 @@ export default function SoloNewJobcardPage() {
         odometer: item.currentOdometer?.toString() || prev.odometer,
         customerName: item.currentCustomer?.displayName || prev.customerName,
         mobile: item.currentCustomer?.primaryMobile || prev.mobile,
-        address: item.currentCustomer?.addressLine1 || prev.address
+        address: item.currentCustomer?.addressLine1 || prev.address,
+        driverName: item.currentCustomer?.driverName || prev.driverName,
+        driverMobile: item.currentCustomer?.driverMobile || prev.driverMobile,
       }));
       setSelectedCustomerVehicles(null);
     }
@@ -579,14 +585,18 @@ export default function SoloNewJobcardPage() {
                         <div 
                           key={i}
                           onClick={() => {
+                            const reg = v.registrationNumberRaw || v.registrationNumberNormalized || "";
+                            setSearchQuery(reg);
                             setFormData(prev => ({
                               ...prev,
-                              regNo: v.registrationNumberRaw || v.registrationNumberNormalized,
+                              regNo: reg,
                               make: v.manufacturer || prev.make,
                               model: v.model || prev.model,
                               year: v.manufactureYear?.toString() || prev.year,
                               color: v.color || prev.color,
                               odometer: v.currentOdometer?.toString() || prev.odometer,
+                              driverName: v.currentCustomer?.driverName || prev.driverName,
+                              driverMobile: v.currentCustomer?.driverMobile || prev.driverMobile,
                             }));
                             setSelectedCustomerVehicles(null);
                           }}

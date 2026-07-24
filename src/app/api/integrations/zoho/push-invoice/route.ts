@@ -179,6 +179,15 @@ export async function POST(request: Request) {
 
     if (!jobCard) return NextResponse.json({ success: false, error: 'Job card not found' }, { status: 404 });
 
+    const currentStatus = (jobCard.status || '').toLowerCase();
+    const allowedStatuses = ['ready_for_delivery', 'closed'];
+    if (!allowedStatuses.includes(currentStatus)) {
+      return NextResponse.json({
+        success: false,
+        error: `Push to Zoho is only permitted when vehicle status is 'Ready for Delivery' or 'Closed' (current status: '${jobCard.status}')`
+      }, { status: 400 });
+    }
+
     const billingCustomer = jobCard.billingCustomer || jobCard.customer;
     const billingInfo = {
        name: billingCustomer.displayName, // Respect billing customer if selected (e.g., RNC legal)

@@ -764,6 +764,12 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
   };
 
   const handlePushToZoho = async () => {
+    const currentStatus = (jobCard.status || '').toLowerCase();
+    if (!['ready_for_delivery', 'closed'].includes(currentStatus)) {
+      alert("Pushing to Zoho Books is only permitted once the vehicle status is 'Ready for Delivery' or 'Closed'.");
+      return;
+    }
+
     setIsPushingToZoho(true);
     try {
       const res = await fetch("/api/integrations/zoho/push-invoice", {
@@ -1329,28 +1335,34 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
             </div>
             
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Status</h3>
-              <div className="flex space-x-2">
-                <span className={`flex-1 text-center py-2 text-white rounded font-bold uppercase tracking-wider text-sm shadow-sm ${isLocked ? 'bg-emerald-500' : 'bg-amber-400'}`}>
-                  {displayStatus}
-                </span>
-                {isLocked ? (
-                  <button 
-                    onClick={() => handleUpdateStatus("open")}
-                    className="flex-1 text-center py-2 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-wider text-sm hover:bg-orange-500 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Mark Open
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => handleUpdateStatus("ready_for_delivery")}
-                    className="flex-1 text-center py-2 bg-gray-100 text-gray-500 rounded font-bold uppercase tracking-wider text-sm hover:bg-gray-900 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Mark Ready
-                  </button>
-                )}
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                Vehicle Status
+              </label>
+              <div className="relative">
+                <select
+                  value={jobCard.status?.toLowerCase() || 'open'}
+                  onChange={(e) => handleUpdateStatus(e.target.value)}
+                  disabled={isSaving}
+                  className={`w-full p-3 rounded-lg font-bold text-sm border shadow-sm outline-none transition-all cursor-pointer ${
+                    jobCard.status === 'closed'
+                      ? 'bg-gray-100 text-gray-800 border-gray-300'
+                      : jobCard.status === 'ready_for_delivery'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : jobCard.status === 'awaiting_approval'
+                      ? 'bg-amber-50 text-amber-800 border-amber-300'
+                      : jobCard.status === 'appointment'
+                      ? 'bg-purple-50 text-purple-800 border-purple-300'
+                      : 'bg-blue-50 text-blue-800 border-blue-300'
+                  }`}
+                >
+                  <option value="appointment">📅 Appointment</option>
+                  <option value="open">🔧 Open</option>
+                  <option value="awaiting_approval">⏳ Awaiting Approval</option>
+                  <option value="ready_for_delivery">🚀 Ready for Delivery</option>
+                  <option value="closed">✅ Closed</option>
+                </select>
               </div>
-              
+
               {/* WhatsApp Quick Actions */}
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {profile?.whatsappJobcardIntakeTemplate && (
@@ -1461,60 +1473,67 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
             </div>
 
             {/* Zoho Integration Actions */}
-            {isLocked && (
-              <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Invoice & Accounting</h3>
-                {jobCard.zohoInvoiceId ? (
-                  <div className="flex flex-col space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-emerald-600 font-bold flex items-center">
-                        <CheckCircle className="w-4 h-4 mr-1" /> Synced to Zoho Books
-                      </div>
-                      <button
-                        onClick={handleDeleteZohoEstimate}
-                        disabled={isPushingToZoho}
-                        className="text-xs font-bold text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors flex items-center"
-                        title="Delete this Estimate from Zoho Books and unlink this Job Card"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
-                      </button>
+            <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Invoice & Accounting</h3>
+              {jobCard.zohoInvoiceId ? (
+                <div className="flex flex-col space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-emerald-600 font-bold flex items-center">
+                      <CheckCircle className="w-4 h-4 mr-1" /> Synced to Zoho Books
                     </div>
-                    {jobCard.zohoInvoiceNumber && <div className="text-sm text-gray-700">Estimate #: <span className="font-mono">{jobCard.zohoInvoiceNumber}</span></div>}
-                    <div className="flex gap-2 pt-1">
-                      {jobCard.zohoInvoiceUrl && (
-                        <a 
-                          href={jobCard.zohoInvoiceUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="flex-1 text-center py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
-                        >
-                          View Estimate ↗
-                        </a>
-                      )}
-                      {jobCard.zohoInvoiceUrl && (
-                        <a 
-                          href={jobCard.zohoInvoiceUrl.replace('/quotes/', '/quotes/')} // Zoho's estimate URL allows direct viewing and editing
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="flex-1 text-center py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors flex items-center justify-center gap-1"
-                        >
-                          <Edit2 className="w-3 h-3" /> Edit in Zoho
-                        </a>
-                      )}
-                    </div>
+                    <button
+                      onClick={handleDeleteZohoEstimate}
+                      disabled={isPushingToZoho}
+                      className="text-xs font-bold text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors flex items-center"
+                      title="Delete this Estimate from Zoho Books and unlink this Job Card"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                    </button>
                   </div>
-                ) : (
-                  <button 
-                    onClick={handlePushToZoho}
-                    disabled={isPushingToZoho}
-                    className="w-full bg-[#0d87e1] text-white py-3 rounded-lg font-bold shadow hover:bg-[#0b74c2] transition-colors flex items-center justify-center disabled:opacity-50"
-                  >
-                    {isPushingToZoho ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    Generate Estimate in Zoho
-                  </button>
-                )}
-              </div>
-            )}
+                  {jobCard.zohoInvoiceNumber && <div className="text-sm text-gray-700">Estimate #: <span className="font-mono">{jobCard.zohoInvoiceNumber}</span></div>}
+                  <div className="flex gap-2 pt-1">
+                    {jobCard.zohoInvoiceUrl && (
+                      <a 
+                        href={jobCard.zohoInvoiceUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="flex-1 text-center py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors"
+                      >
+                        View Estimate ↗
+                      </a>
+                    )}
+                    {jobCard.zohoInvoiceUrl && (
+                      <a 
+                        href={jobCard.zohoInvoiceUrl.replace('/quotes/', '/quotes/')}
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="flex-1 text-center py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" /> Edit in Zoho
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ) : ['ready_for_delivery', 'closed'].includes(jobCard.status?.toLowerCase()) ? (
+                <button 
+                  onClick={handlePushToZoho}
+                  disabled={isPushingToZoho}
+                  className="w-full bg-[#0d87e1] text-white py-3 rounded-lg font-bold shadow hover:bg-[#0b74c2] transition-colors flex items-center justify-center disabled:opacity-50"
+                >
+                  {isPushingToZoho ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Generate Estimate in Zoho
+                </button>
+              ) : (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs font-bold text-amber-800 flex items-center">
+                    🔒 Push to Zoho Restricted
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Jobcard must be marked <strong className="underline">Ready for Delivery</strong> or <strong className="underline">Closed</strong> before pushing estimates to Zoho Books.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Customer Details Panel */}
             <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
