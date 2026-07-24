@@ -1,100 +1,143 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { cookies } from "next/headers";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { cookies } from 'next/headers';
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
-    const body = await req.json();
-    const { approvedByName = "Customer", approvalMethod = "whatsapp" } = body;
-
     const cookieStore = await cookies();
     const userId = cookieStore.get('workshop_user_id')?.value;
-    
-    let tenantId = null;
-    if (userId) {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      tenantId = user?.tenantId || null;
-    }
+    const { approvalMethod = 'IN_PERSON', customerEmail = null } = await req.json();
 
     const estimate = await prisma.estimate.findUnique({
       where: { id },
-      include: { jobCard: true }
+      include: {
+        lines: true,
+        jobCard: true,
+      },
     });
 
-    if (!estimate || (tenantId && estimate.jobCard?.tenantId !== tenantId)) {
-      return NextResponse.json({ error: "Estimate not found" }, { status: 404 });
+    if (!estimate) {
+      return NextResponse.json(
+        { success: false, error: 'Estimate not found' },
+        { status: 404 }
+      );
     }
 
-    // Use a transaction to ensure all operations succeed or fail together
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Update Estimate Status & Lock it
-      const updatedEstimate = await tx.estimate.update({
-        where: { id },
-        data: {
-          status: "approved",
-          isLocked: true,
-          approvedAt: new Date(),
-          approvedByName,
-          approvalMethod
-        }
-      });
+    if (estimate.status === 'APPROVED') {
+      return NextResponse.json(
+        { success: false, error: 'Estimate already approved' },
+        { status: 400 }
+      );
+    }
 
-      // 2. Clean current job card parts and labor
-      await tx.jobCardPart.deleteMany({
-        where: { jobcardId: estimate.jobCardId! }
-      });
-      await tx.jobCardLabour.deleteMany({
-        where: { jobcardId: estimate.jobCardId! }
-      });
-
-      // 3. Re-populate JobCardPart from snapshot
-      if (estimate.partsSnapshot) {
-        const parts = JSON.parse(estimate.partsSnapshot);
-        if (Array.isArray(parts)) {
-          for (const p of parts) {
-            await tx.jobCardPart.create({
-              data: {
-                jobcardId: estimate.jobCardId!,
-                partName: p.partName || "Unknown Part",
-                partNumber: p.partNumber || null,
-                quantityRequested: parseFloat(String(p.quantity)) || 1,
-                sellingPrice: parseFloat(String(p.sellingPrice)) || 0,
-                discountType: p.discountType || null,
-                discountValue: parseFloat(String(p.discountValue)) || null,
-                status: "requested"
-              }
-            });
-          }
-        }
-      }
-
-      // 4. Re-populate JobCardLabour from snapshot
-      if (estimate.laborSnapshot) {
-        const labors = JSON.parse(estimate.laborSnapshot);
-        if (Array.isArray(labors)) {
-          for (const l of labors) {
-            await tx.jobCardLabour.create({
-              data: {
-                jobcardId: estimate.jobCardId!,
-                labourName: l.labourName || "Unknown Service",
-                quantity: parseFloat(String(l.quantity)) || 1,
-                sellingPrice: parseFloat(String(l.sellingPrice)) || 0,
-                discountType: l.discountType || null,
-                discountValue: parseFloat(String(l.discountValue)) || null,
-                status: "pending"
-              }
-            });
-          }
-        }
-      }
-
-      return updatedEstimate;
+    // Update estimate status
+    const updatedEstimate = await prisma.estimate.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        approvedAt: new Date(),
+        approvalMethod,
+        approvedCustomerEmail: customerEmail,
+        isLockedForEditing: true,
+        lockedAt: new Date(),
+        lockedBy: userId,
+      },
     });
 
-    return NextResponse.json({ success: true, estimate: result });
-  } catch (error: any) {
-    console.error("Approve estimate error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // Create approval audit log
+    await prisma.estimateApproval.create({
+      data: {
+        estimateId: id,
+        approvalStatus: 'APPROVED',
+        approvedBy: userId,
+        approvalMethod,
+        customerEmail,
+      },
+    });
+
+    // Auto-apply to JobCard (add items to parts/labor) if jobCard exists
+    if (estimate.jobCardId) {
+      const jobCard = estimate.jobCard;
+
+      for (const item of estimate.lines) {
+        if (item.itemType === 'PART') {
+          await prisma.jobCardPart.create({
+            data: {
+              jobcardId: estimate.jobCardId,
+              partName: item.name || '',
+              partNumber: item.partNumber,
+              brand: item.brand,
+              quantityRequested: item.quantity,
+              sellingPrice: item.unitPrice,
+              taxRate: item.gstPercent,
+              discountType: item.discountType,
+              discountValue: item.discountValue,
+              status: 'requested'
+            },
+          });
+        }
+
+        if (item.itemType === 'LABOR') {
+          await prisma.jobCardLabour.create({
+            data: {
+              jobcardId: estimate.jobCardId,
+              labourName: item.name || '',
+              quantity: item.estimatedHours || 1,
+              sellingPrice: item.unitPrice,
+              taxRate: item.gstPercent,
+              discountType: item.discountType,
+              discountValue: item.discountValue,
+              status: 'pending'
+            },
+          });
+        }
+      }
+
+      // Create variance tracking
+      const estimatedLabourHours = estimate.lines
+        .filter((i) => i.itemType === 'LABOR')
+        .reduce((sum, i) => sum + (i.estimatedHours || 1), 0);
+
+      await prisma.estimateVariance.create({
+        data: {
+          estimateId: id,
+          jobCardId: estimate.jobCardId,
+          estimatedPartsCost: estimate.partsCost,
+          estimatedLabourCost: estimate.labourCost,
+          estimatedTotalCost: estimate.grandTotal,
+          estimatedLabourHours: estimatedLabourHours,
+        },
+      });
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          estimateId: id,
+          status: 'APPROVED',
+          appliedToJobCard: !!estimate.jobCardId,
+          itemsApplied: {
+            parts: estimate.lines.filter((i) => i.itemType === 'PART').length,
+            labour: estimate.lines.filter((i) => i.itemType === 'LABOR').length,
+          },
+          message: 'Estimate approved and applied to JobCard',
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Approve estimate error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to approve estimate',
+      },
+      { status: 500 }
+    );
   }
 }

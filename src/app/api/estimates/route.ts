@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
-// Generate an estimate number
 async function generateEstimateNumber(): Promise<string> {
   const year = new Date().getFullYear();
   const count = await prisma.estimate.count();
@@ -11,10 +10,20 @@ async function generateEstimateNumber(): Promise<string> {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
+  const jobCardId = searchParams.get('jobCardId');
+  
   try {
+    const whereClause: any = {};
+    if (status) whereClause.status = status;
+    if (jobCardId) whereClause.jobCardId = jobCardId;
+    
     const estimates = await prisma.estimate.findMany({
-      where: status ? { status } : {},
-      include: { lines: true },
+      where: whereClause,
+      include: { 
+        lines: true,
+        approvals: true,
+        variance: true
+      },
       orderBy: { createdAt: 'desc' },
       take: 100
     });
@@ -34,42 +43,76 @@ export async function POST(request: Request) {
       customerNotes, internalNotes,
       validityDays = 7,
       lines = [],
-      photos = []
+      photos = [],
+      jobCardId,
+      estimateType = 'STANDARD',
+      estimatedCompletionHours,
+      estimatedDeliveryDate,
+      warranty
     } = body;
 
     const estimateNumber = await generateEstimateNumber();
 
-    // Calculate totals from lines
-    let subtotal = 0, taxTotal = 0;
-    const processedLines = lines.map((l: any) => {
+    let partsCost = 0;
+    let labourCost = 0;
+    let partsGST = 0;
+    let labourGST = 0;
+    let subtotal = 0;
+    let totalGST = 0;
+
+    const processedLines = lines.map((l: any, index: number) => {
       const qty = parseFloat(l.quantity) || 1;
       const price = parseFloat(l.unitPrice) || 0;
       const taxRate = parseFloat(l.taxRate) || 18;
       const discVal = l.discountType === 'percent'
         ? (price * qty * (parseFloat(l.discountValue) || 0) / 100)
         : (parseFloat(l.discountValue) || 0);
+        
       const lineBase = price * qty - discVal;
       const lineTax = lineBase * taxRate / 100;
       const lineTotal = lineBase + lineTax;
+      
       subtotal += lineBase;
-      taxTotal += lineTax;
+      totalGST += lineTax;
+      
+      const type = (l.lineType || l.itemType || 'PART').toUpperCase();
+      
+      if (type === 'PART') {
+          partsCost += lineBase;
+          partsGST += lineTax;
+      } else if (type === 'LABOR' || type === 'LABOUR') {
+          labourCost += lineBase;
+          labourGST += lineTax;
+      }
+
       return {
-        lineType: l.lineType || 'part',
-        name: l.name,
+        itemType: type === 'LABOUR' ? 'LABOR' : (type === 'CHARGE' ? 'CHARGE' : 'PART'),
+        lineItemNumber: index + 1,
+        lineType: type,
+        name: l.name || l.partDescription || l.serviceName || 'Item',
         partNumber: l.partNumber || null,
         brand: l.brand || null,
         quantity: qty,
         unitPrice: price,
         taxRate,
+        gstPercent: taxRate,
+        gstAmount: lineTax,
         discountType: l.discountType || null,
-        discountValue: parseFloat(l.discountValue) || null,
-        lineTotal
+        discountValue: parseFloat(l.discountValue) || 0,
+        discountAmountItem: discVal,
+        lineTotal,
+        reason: l.reason || null,
+        estimatedHours: l.estimatedHours || null,
+        complexity: l.complexity || null,
       };
     });
 
     const estimate = await prisma.estimate.create({
       data: {
         estimateNumber,
+        estimateType,
+        status: 'DRAFT',
+        jobCardId: jobCardId || null,
         customerId: customerId || null,
         vehicleId: vehicleId || null,
         advisorId: advisorId || null,
@@ -82,9 +125,21 @@ export async function POST(request: Request) {
         internalNotes: internalNotes || null,
         photos: JSON.stringify(photos),
         validityDays,
+        
+        partsCost,
+        partsGST,
+        labourCost,
+        labourGST,
         subtotalAmount: subtotal,
-        taxAmount: taxTotal,
-        totalAmount: subtotal + taxTotal,
+        taxAmount: totalGST,
+        totalGST: totalGST,
+        totalAmount: subtotal + totalGST,
+        grandTotal: subtotal + totalGST,
+        
+        estimatedCompletionHours,
+        estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : null,
+        warranty,
+        
         lines: { create: processedLines }
       },
       include: { lines: true }

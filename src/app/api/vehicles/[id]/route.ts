@@ -27,6 +27,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const updatedVehicle = await prisma.vehicle.update({
       where: { id },
       data: {
+        vin: data.vin !== undefined ? (data.vin || null) : vehicle.vin,
+        manufactureYear: data.manufactureYear ? parseInt(data.manufactureYear, 10) : (data.manufactureYear === null ? null : vehicle.manufactureYear),
+        color: data.color !== undefined ? (data.color || null) : vehicle.color,
+        nextServiceDate: data.nextServiceDate ? new Date(data.nextServiceDate) : (data.nextServiceDate === null ? null : vehicle.nextServiceDate),
+        emissionInspectionExpiryDate: data.emissionInspectionExpiryDate ? new Date(data.emissionInspectionExpiryDate) : (data.emissionInspectionExpiryDate === null ? null : vehicle.emissionInspectionExpiryDate),
         nextOilChangeDate: data.nextOilChangeDate ? new Date(data.nextOilChangeDate) : null,
         nextOilChangeDistance: data.nextOilChangeDistance ? parseInt(data.nextOilChangeDistance) : null,
         batteryMake: data.batteryMake || null,

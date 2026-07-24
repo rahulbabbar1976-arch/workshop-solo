@@ -250,6 +250,8 @@ export default function SoloNewJobcardPage() {
       data.append("model", formData.model);
       data.append("year", formData.year);
       data.append("odometer", formData.odometer);
+      data.append("driverName", formData.driverName);
+      data.append("driverMobile", formData.driverMobile);
       
       const res = await ensureVehicleAction(data);
       if (res.success && res.vehicleId) {
@@ -374,6 +376,8 @@ export default function SoloNewJobcardPage() {
       data.append("odometer", formData.odometer);
       data.append("complaint", formData.complaint);
       data.append("observations", formData.observations);
+      data.append("driverName", formData.driverName);
+      data.append("driverMobile", formData.driverMobile);
       
       try {
         const res = await createJobCardAction(data);

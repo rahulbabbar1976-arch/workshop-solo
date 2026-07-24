@@ -135,7 +135,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         discountAmount,
         taxAmount,
         grandTotal,
-        status: "draft",
+        status: 'DRAFT',
         partsSnapshot,
         laborSnapshot
       }

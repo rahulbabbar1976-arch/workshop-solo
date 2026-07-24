@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const updated = await prisma.estimate.update({
       where: { id },
       data: {
-        status: "sent",
+        status: "SENT",
         sentAt: new Date()
       }
     });

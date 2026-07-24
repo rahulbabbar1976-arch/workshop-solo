@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const updated = await prisma.estimate.update({
       where: { id },
       data: {
-        status: "rejected",
+        status: "REJECTED",
         rejectedAt: new Date(),
         rejectionReason
       }

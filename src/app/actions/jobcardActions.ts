@@ -55,6 +55,8 @@ export async function ensureVehicleAction(formData: FormData) {
   const model = formData.get("model") as string;
   const odometer = formData.get("odometer") ? parseInt(formData.get("odometer") as string) : null;
   const address = formData.get("address") as string;
+  const driverName = formData.get("driverName") as string;
+  const driverMobile = formData.get("driverMobile") as string;
 
   const result = await prisma.$transaction(async (tx) => {
     // 1. Upsert Customer
@@ -68,7 +70,17 @@ export async function ensureVehicleAction(formData: FormData) {
           displayName: customerName || "Unknown Customer",
           primaryMobile: mobile,
           addressLine1: address,
+          driverName: driverName || null,
+          driverMobile: driverMobile || null,
           tenantId
+        }
+      });
+    } else if (driverName || driverMobile) {
+      customer = await tx.customer.update({
+        where: { id: customer.id },
+        data: {
+          driverName: driverName || customer.driverName,
+          driverMobile: driverMobile || customer.driverMobile
         }
       });
     }
@@ -120,6 +132,8 @@ export async function createJobCardAction(formData: FormData) {
   const odometer = formData.get("odometer") ? parseInt(formData.get("odometer") as string) : null;
   const complaint = formData.get("complaint") as string;
   const address = formData.get("address") as string;
+  const driverName = formData.get("driverName") as string;
+  const driverMobile = formData.get("driverMobile") as string;
 
   // Transaction to Upsert Customer -> Upsert Vehicle -> Create JobCard
   const result = await prisma.$transaction(async (tx) => {
@@ -135,7 +149,17 @@ export async function createJobCardAction(formData: FormData) {
           displayName: customerName || "Unknown Customer",
           primaryMobile: mobile,
           addressLine1: address,
+          driverName: driverName || null,
+          driverMobile: driverMobile || null,
           tenantId
+        }
+      });
+    } else if (driverName || driverMobile) {
+      customer = await tx.customer.update({
+        where: { id: customer.id },
+        data: {
+          driverName: driverName || customer.driverName,
+          driverMobile: driverMobile || customer.driverMobile
         }
       });
     }
@@ -172,6 +196,24 @@ export async function createJobCardAction(formData: FormData) {
         tenantId,
         customerId: customer.id,
         vehicleId: vehicle.id,
+      }
+    });
+
+    // Also create JobCardSnapshot (Audit-proof)
+    await tx.jobCardSnapshot.create({
+      data: {
+        jobcardId: jobCard.id,
+        customerName: customer.displayName,
+        customerMobile: customer.primaryMobile,
+        customerDriverName: driverName || customer.driverName,
+        customerDriverMobile: driverMobile || customer.driverMobile,
+        customerAddress: customer.addressLine1,
+        vehicleRegistrationNumber: vehicle.registrationNumberRaw,
+        vehicleManufacturer: vehicle.manufacturer,
+        vehicleModel: vehicle.model,
+        vehicleColor: vehicle.color,
+        vehicleVin: vehicle.vin,
+        intakeOdometerSnapshot: odometer
       }
     });
 

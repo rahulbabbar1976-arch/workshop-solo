@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowLeft, Edit2, Camera, Car, Calendar, Package, Wrench, CheckCircle, Clock, Trash2, ZoomIn, X, Loader2, Save, Send, ShieldAlert, BadgeCheck, FileText, ChevronRight, PenLine, Phone, Contact, MessageCircle, Printer, Plus, UploadCloud, ImageOff, Calculator, Lock } from "lucide-react";
+import { ArrowLeft, Edit2, Camera, Car, Calendar, Package, Wrench, CheckCircle, Clock, Trash2, ZoomIn, X, Loader2, Save, Send, ShieldAlert, BadgeCheck, FileText, ChevronRight, PenLine, Phone, Contact, MessageCircle, Printer, Plus, UploadCloud, ImageOff, Calculator, Lock, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useSaveContact } from "@/hooks/useSaveContact";
 import { compressInBrowser } from "@/hooks/useImageCompressor";
 import { useRouter } from "next/navigation";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { CameraPicker } from "@/components/CameraPicker";
+import AIIntelligenceModal from "@/components/AIIntelligenceModal";
 
 const QUOTA_BYTES = 1_048_576; // 1 MB
 
@@ -81,8 +82,8 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
   const [editCustomerName, setEditCustomerName] = useState(jobCard.customer?.displayName || "");
   const [editCustomerMobile, setEditCustomerMobile] = useState(jobCard.customer?.primaryMobile || "");
   const [editCustomerAddress, setEditCustomerAddress] = useState(jobCard.customer?.addressLine1 || "");
-  const [editDriverName, setEditDriverName] = useState(jobCard.customer?.driverName || "");
-  const [editDriverMobile, setEditDriverMobile] = useState(jobCard.customer?.driverMobile || "");
+  const [editDriverName, setEditDriverName] = useState(jobCard.customer?.driverName || jobCard.snapshot?.customerDriverName || "");
+  const [editDriverMobile, setEditDriverMobile] = useState(jobCard.customer?.driverMobile || jobCard.snapshot?.customerDriverMobile || "");
   
   // Complaint Edit state
   const [isComplaintEditModalOpen, setIsComplaintEditModalOpen] = useState(false);
@@ -91,6 +92,11 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
   const [showPrintDropdown, setShowPrintDropdown] = useState(false);
 
   const [isVehicleEditModalOpen, setIsVehicleEditModalOpen] = useState(false);
+  const [editVin, setEditVin] = useState(jobCard.vehicle?.vin || "");
+  const [editYear, setEditYear] = useState(jobCard.vehicle?.manufactureYear?.toString() || "");
+  const [editColor, setEditColor] = useState(jobCard.vehicle?.color || "");
+  const [editNextServiceDate, setEditNextServiceDate] = useState(jobCard.vehicle?.nextServiceDate ? new Date(jobCard.vehicle.nextServiceDate).toISOString().split('T')[0] : "");
+  const [editNextPucDate, setEditNextPucDate] = useState(jobCard.vehicle?.emissionInspectionExpiryDate ? new Date(jobCard.vehicle.emissionInspectionExpiryDate).toISOString().split('T')[0] : "");
   const [editNextOilDate, setEditNextOilDate] = useState(jobCard.vehicle?.nextOilChangeDate ? new Date(jobCard.vehicle.nextOilChangeDate).toISOString().split('T')[0] : "");
   const [editNextOilDistance, setEditNextOilDistance] = useState(jobCard.vehicle?.nextOilChangeDistance?.toString() || "");
   const [editBatteryMake, setEditBatteryMake] = useState(jobCard.vehicle?.batteryMake || "");
@@ -107,6 +113,53 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
   const [flexibleCost, setFlexibleCost] = useState("");
   const [estimatedTime, setEstimatedTime] = useState("");
   const [isSavingEstimate, setIsSavingEstimate] = useState(false);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+
+  const handleApplyAISuggestions = async (suggestedParts: any[], suggestedLabour: any[]) => {
+    try {
+      let updatedParts = [...(jobCard.partLines || [])];
+      suggestedParts.forEach(p => {
+        updatedParts.push({
+          partName: p.partDescription,
+          quantityRequested: 1,
+          sellingPrice: p.estimatedPrice || 0,
+          discountType: 'percent',
+          discountValue: 0
+        });
+      });
+
+      let updatedLabor = [...(jobCard.labourLines || [])];
+      suggestedLabour.forEach(l => {
+        updatedLabor.push({
+          jobDescription: l.jobDescription,
+          hourQty: l.estimatedHours || 1,
+          unitPrice: l.hourlyRate || 500,
+          discountType: 'percent',
+          discountValue: 0
+        });
+      });
+
+      const res = await fetch(`/api/jobcards/${jobCard.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parts: updatedParts,
+          labour: updatedLabor
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.jobcard) setJobCard(data.jobcard);
+        alert("Successfully applied AI diagnostic suggestions to the JobCard!");
+      } else {
+        alert("Failed to apply AI suggestions");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error applying AI suggestions");
+    }
+  };
 
   // Action Menu
   const [showActionMenu, setShowActionMenu] = useState(false);
@@ -400,6 +453,11 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          vin: editVin || null,
+          manufactureYear: editYear ? parseInt(editYear) : null,
+          color: editColor || null,
+          nextServiceDate: editNextServiceDate ? new Date(editNextServiceDate) : null,
+          emissionInspectionExpiryDate: editNextPucDate ? new Date(editNextPucDate) : null,
           nextOilChangeDate: editNextOilDate ? new Date(editNextOilDate) : null,
           nextOilChangeDistance: editNextOilDistance ? parseInt(editNextOilDistance) : null,
           batteryMake: editBatteryMake || null,
@@ -1153,6 +1211,12 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                 >
                   <Calculator className="w-4 h-4 mr-2" /> Generate Estimate
                 </button>
+                <button
+                  onClick={() => { setShowActionMenu(false); setIsAIModalOpen(true); }}
+                  className="w-full text-left px-4 py-2 hover:bg-purple-50 text-purple-700 flex items-center"
+                >
+                  <Sparkles className="w-4 h-4 mr-2 text-purple-600 animate-pulse" /> AI Diagnostics & Suggestions
+                </button>
                 <Link
                   href={`/solo/jobcards/${jobCard.id}/print`}
                   onClick={() => setShowActionMenu(false)}
@@ -1460,9 +1524,9 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
                  <div className="font-medium text-gray-500">Address</div>
                  <div>{jobCard.currentCustomer?.addressLine1 || jobCard.customer?.addressLine1 || "-"}</div>
                  <div className="font-medium text-gray-500">Driver Name</div>
-                 <div>{jobCard.currentCustomer?.driverName || jobCard.customer?.driverName || "-"}</div>
+                  <div>{jobCard.customer?.driverName || jobCard.snapshot?.customerDriverName || jobCard.currentCustomer?.driverName || "-"}</div>
                  <div className="font-medium text-gray-500">Driver Mobile</div>
-                 <div>{jobCard.currentCustomer?.driverMobile || jobCard.customer?.driverMobile || "-"}</div>
+                 <div>{jobCard.customer?.driverMobile || jobCard.snapshot?.customerDriverMobile || jobCard.currentCustomer?.driverMobile || "-"}</div>
               </div>
             </div>
 
@@ -1471,8 +1535,10 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
               <div className="flex justify-between items-center mb-3"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Vehicle Extended Details</h3>
 <button onClick={() => setIsVehicleEditModalOpen(true)} className="p-1 text-gray-400 hover:text-teal-600 rounded"><Edit2 className="w-3 h-3" /></button></div>
               <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-700">
+                 <div className="font-medium text-gray-500">VIN (Chassis No)</div>
+                 <div className="font-mono text-xs">{jobCard.vehicle?.vin || jobCard.snapshot?.vehicleVin || "-"}</div>
                  <div className="font-medium text-gray-500">Color</div>
-                 <div>{jobCard.vehicle?.color || "-"}</div>
+                 <div>{jobCard.vehicle?.color || jobCard.snapshot?.vehicleColor || "-"}</div>
                  <div className="font-medium text-gray-500">Year</div>
                  <div>{jobCard.vehicle?.manufactureYear || "-"}</div>
                  <div className="font-medium text-gray-500">Odometer</div>
@@ -2475,16 +2541,50 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
             <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                 <h4 className="font-bold text-sm text-gray-700 mb-3 uppercase tracking-wider flex items-center">
-                  <Wrench className="w-4 h-4 mr-2 text-gray-500" /> Service Information
+                  <Car className="w-4 h-4 mr-2 text-gray-500" /> Vehicle Identification & Specs
                 </h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Next Oil Date</label>
-                    <input type="date" value={editNextOilDate} onChange={(e) => setEditNextOilDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" />
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">VIN (Chassis Number)</label>
+                    <input type="text" value={editVin} onChange={(e) => setEditVin(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" placeholder="e.g. MA13A2B3C4D567890" />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Next Oil KM</label>
-                    <input type="number" value={editNextOilDistance} onChange={(e) => setEditNextOilDistance(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" placeholder="e.g. 50000" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Manufacture Year</label>
+                      <input type="number" value={editYear} onChange={(e) => setEditYear(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" placeholder="e.g. 2022" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Color</label>
+                      <input type="text" value={editColor} onChange={(e) => setEditColor(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" placeholder="e.g. White / Metallic Silver" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                <h4 className="font-bold text-sm text-gray-700 mb-3 uppercase tracking-wider flex items-center">
+                  <Wrench className="w-4 h-4 mr-2 text-gray-500" /> Service & Inspection Dates
+                </h4>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Next Service Date</label>
+                      <input type="date" value={editNextServiceDate} onChange={(e) => setEditNextServiceDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Next PUC Date</label>
+                      <input type="date" value={editNextPucDate} onChange={(e) => setEditNextPucDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Next Oil Date</label>
+                      <input type="date" value={editNextOilDate} onChange={(e) => setEditNextOilDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Next Oil KM</label>
+                      <input type="number" value={editNextOilDistance} onChange={(e) => setEditNextOilDistance(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-blue-500" placeholder="e.g. 50000" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2544,6 +2644,16 @@ export function JobCardDetailClient({ jobCard: initialJobCard, profile, permissi
           </div>
         </div>
       )}
+
+      <AIIntelligenceModal
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        jobCardId={jobCard.id}
+        vehicleMake={jobCard.vehicle?.manufacturer || jobCard.vehicle?.make}
+        vehicleModel={jobCard.vehicle?.model}
+        complaintsText={jobCard.complaints?.map((c: any) => c.customerComplaintText || c.advisorObservationText || c.description || '').filter(Boolean).join('. ')}
+        onApplySuggestions={handleApplyAISuggestions}
+      />
 
     </div>
   );

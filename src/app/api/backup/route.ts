@@ -778,11 +778,18 @@ export async function POST(req: Request) {
             count++;
           }
 
-          // Import detailed items from JobCard_Items.csv or item.csv if available
-          let itemsCsvFile = path.join(folderPath, 'JobCard_Items.csv');
+          // Import detailed items from JobCard_Items.csv, invoice_items.csv, or item.csv
+          let itemsCsvFile = path.join(folderPath, 'invoice_items.csv');
+          let isInvoiceItems = true;
           if (!fs.existsSync(itemsCsvFile)) {
             itemsCsvFile = path.join(folderPath, 'item.csv');
+            isInvoiceItems = false;
           }
+          if (!fs.existsSync(itemsCsvFile)) {
+            itemsCsvFile = path.join(folderPath, 'JobCard_Items.csv');
+            isInvoiceItems = false;
+          }
+
           const jobCardPartsToCreate: any[] = [];
           const jobCardLaboursToCreate: any[] = [];
           
@@ -792,6 +799,19 @@ export async function POST(req: Request) {
             
             // Build a lookup map of sourceId (string) -> new jobcard UUID (string)
             const jcIdMap = new Map<string, string>();
+            
+            // Load already existing legacy jobcards from DB to ensure we match them
+            const existingLegacyJcs = await prisma.jobCard.findMany({
+              where: { legacyImportFlag: true },
+              select: { id: true, sourceRecordId: true }
+            });
+            for (const jc of existingLegacyJcs) {
+              if (jc.sourceRecordId) {
+                jcIdMap.set(jc.sourceRecordId, jc.id);
+              }
+            }
+            
+            // Add newly created jobcards
             for (const jc of jobcardsToCreate) {
               if (jc.sourceRecordId) {
                 jcIdMap.set(jc.sourceRecordId, jc.id);
@@ -799,25 +819,41 @@ export async function POST(req: Request) {
             }
             
             for (const row of itemRows) {
-              // Ensure we have enough columns and connection is WORKSHEET
-              if (row.length < 28) continue;
-              const connectionKey = row[8];
-              if (connectionKey !== 'WORKSHEET') continue;
+              let connectionId = '';
+              let type = '';
+              let name = '';
+              let quantity = 1;
+              let price = 0.0;
+              let taxRate = 0.0;
+              let discountValue = 0.0;
+
+              if (isInvoiceItems) {
+                if (row.length < 15) continue;
+                connectionId = row[1];
+                name = row[5] || '';
+                type = row[7]; // '1' = Labor, '0' = Part
+                quantity = Math.abs(parseFloat(row[12]) || 1.0);
+                price = parseFloat(row[14]) || 0.0;
+                taxRate = parseFloat(row[16]) || 0.0; // optional
+              } else {
+                // Ensure we have enough columns and connection is WORKSHEET or INVOICE
+                if (row.length < 28) continue;
+                const connectionKey = row[8];
+                if (connectionKey !== 'WORKSHEET' && connectionKey !== 'INVOICE') continue;
+                
+                connectionId = row[7];
+                price = parseFloat(row[12]) || 0.0;
+                taxRate = parseFloat(row[13]) || 0.0;
+                const rawDiscount = parseFloat(row[15]) || 0.0;
+                discountValue = Math.abs(rawDiscount) * 100;
+                type = row[18]; 
+                name = row[22] || '';
+                quantity = Math.abs(parseFloat(row[24]) || 1.0);
+              }
               
-              const connectionId = row[7];
+              if (!name.trim()) continue;
               const jobcardId = jcIdMap.get(connectionId);
               if (!jobcardId) continue;
-              
-              const type = row[18]; // '0' = Product, '1' = Service
-              const name = row[22] || '';
-              if (!name.trim()) continue;
-              
-              const rawQty = parseFloat(row[24]) || 1.0;
-              const quantity = Math.abs(rawQty);
-              const price = parseFloat(row[12]) || 0.0;
-              const taxRate = parseFloat(row[13]) || 0.0;
-              const rawDiscount = parseFloat(row[15]) || 0.0;
-              const discountValue = Math.abs(rawDiscount) * 100;
               
               if (type === '0') {
                 jobCardPartsToCreate.push({
@@ -830,7 +866,8 @@ export async function POST(req: Request) {
                   sellingPrice: price,
                   taxRate,
                   discountType: discountValue > 0 ? 'percent' : null,
-                  discountValue: discountValue > 0 ? discountValue : null
+                  discountValue: discountValue > 0 ? discountValue : null,
+                  totalPrice: quantity * price
                 });
               } else if (type === '1') {
                 jobCardLaboursToCreate.push({
@@ -842,7 +879,8 @@ export async function POST(req: Request) {
                   taxRate,
                   discountType: discountValue > 0 ? 'percent' : null,
                   discountValue: discountValue > 0 ? discountValue : null,
-                  quantity
+                  quantity,
+                  totalPrice: quantity * price
                 });
               }
             }
